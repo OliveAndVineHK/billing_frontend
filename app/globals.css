@@ -25,15 +25,21 @@
   font-style: normal;
 }
 
+html {
+  background: var(--background);
+  overflow-x: hidden;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   font-optical-sizing: auto;
   font-style: normal;
+  overflow-x: hidden;
+  min-height: 100%;
 }
 
-/* Dim non-hovered module button icons when one is hovered */
 .module-buttons-group .module-btn .module-btn-icon {
   opacity: 1;
   transition: opacity 0.35s ease-in-out;
