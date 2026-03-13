@@ -32,3 +32,12 @@ body {
   font-optical-sizing: auto;
   font-style: normal;
 }
+
+/* Dim non-hovered module button icons when one is hovered */
+.module-buttons-group .module-btn .module-btn-icon {
+  opacity: 1;
+  transition: opacity 0.35s ease-in-out;
+}
+.module-buttons-group:has(.module-btn:hover) .module-btn:not(:hover) .module-btn-icon {
+  opacity: 0.4;
+}

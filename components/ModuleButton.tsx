@@ -6,13 +6,13 @@ export function ModuleButton({ iconSrc, iconAlt, href, onClick, width = 390, hei
   const imageWrapperClass = imageScale != null ? "relative shrink-0" : "relative h-full w-full";
   const imageWrapperStyle = imageScale != null ? { width: `${imageScale * 100}%`, height: `${imageScale * 100}%` } : undefined;
   const content = (
-    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl">
+    <div className="module-btn-icon relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl">
       <div className={imageWrapperClass} style={imageWrapperStyle}>
         <Image src={iconSrc} alt={iconAlt} fill className={imageScale != null ? "object-contain" : "object-cover"} sizes={`${width}px`} />
       </div>
     </div>
   );
-  const baseClasses = "relative z-10 flex w-full max-w-full items-center justify-center rounded-xl border-6 border-gray-100 bg-white p-0 overflow-visible transition-colors hover:border-[#54D3DA] hover:bg-gray-50 shrink-0 cursor-pointer md:w-[390px] md:max-w-[390px]";
+  const baseClasses = "module-btn relative z-10 flex w-full max-w-full items-center justify-center rounded-xl border-6 border-gray-100 bg-white p-0 overflow-visible transition-colors hover:border-[#54D3DA] hover:bg-gray-50 shrink-0 cursor-pointer md:w-[390px] md:max-w-[390px]";
   const style = { width: "100%", maxWidth: `${width}px`, aspectRatio: `${width}/${height}` };
   const buttonOrLink = href ? <a href={href} className={baseClasses} style={style}>{content}</a> : <button type="button" onClick={onClick} className={baseClasses} style={style}>{content}</button>;
   if (hoverBackImage) {
@@ -22,10 +22,10 @@ export function ModuleButton({ iconSrc, iconAlt, href, onClick, width = 390, hei
       : { left: 0, top: 0, width: "70%", height: "90%", transform: "translate(-45%, -45%)" };
     const objectPos = isTopRight ? "object-contain object-right-top" : "object-contain object-left-top";
     return (
-      <div className="group relative inline-block w-full max-w-full overflow-visible md:w-[390px] md:max-w-[390px]" style={{ width: "100%", maxWidth: `${width}px`, aspectRatio: `${width}/${height}` }}>
+      <div className="module-btn group relative inline-block w-full max-w-full overflow-visible md:w-[390px] md:max-w-[390px]" style={{ width: "100%", maxWidth: `${width}px`, aspectRatio: `${width}/${height}` }}>
         <div className="pointer-events-none absolute z-0" style={positionStyle}>
           <div className="relative h-full w-full opacity-0 scale-90 transition-all duration-300 ease-out group-hover:opacity-100 group-hover:scale-100">
-            <Image src={hoverBackImage} alt="" fill className={objectPos} sizes="360px" priority={false} />
+            <Image src={hoverBackImage} alt="" fill className={objectPos} sizes="360px" />
           </div>
         </div>
         {buttonOrLink}
