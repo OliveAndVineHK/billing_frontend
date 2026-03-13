@@ -1,8 +1,8 @@
 import Image from "next/image";
 
-type ModuleButtonProps = { iconSrc: string; iconAlt: string; href?: string; onClick?: () => void; width?: number; height?: number; imageScale?: number; hoverBackImage?: string; hoverBackImagePosition?: "top-left" | "top-right" };
+type ModuleButtonProps = { iconSrc: string; iconAlt: string; href?: string; onClick?: () => void; onTouchEnd?: () => void; width?: number; height?: number; imageScale?: number; hoverBackImage?: string; hoverBackImagePosition?: "top-left" | "top-right" };
 
-export function ModuleButton({ iconSrc, iconAlt, href, onClick, width = 390, height = 260, imageScale, hoverBackImage, hoverBackImagePosition = "top-left" }: ModuleButtonProps) {
+export function ModuleButton({ iconSrc, iconAlt, href, onClick, onTouchEnd, width = 390, height = 260, imageScale, hoverBackImage, hoverBackImagePosition = "top-left" }: ModuleButtonProps) {
   const imageWrapperClass = imageScale != null ? "relative shrink-0" : "relative h-full w-full";
   const imageWrapperStyle = imageScale != null ? { width: `${imageScale * 100}%`, height: `${imageScale * 100}%` } : undefined;
   const content = (
@@ -14,7 +14,7 @@ export function ModuleButton({ iconSrc, iconAlt, href, onClick, width = 390, hei
   );
   const baseClasses = "module-btn relative z-10 flex w-full max-w-full items-center justify-center rounded-xl border-6 border-gray-100 bg-white p-0 overflow-visible transition-colors hover:border-[#54D3DA] hover:bg-gray-50 focus:border-[#54D3DA] focus:bg-gray-50 focus-visible:outline-none shrink-0 cursor-pointer md:w-[390px] md:max-w-[390px]";
   const style = { width: "100%", maxWidth: `${width}px`, aspectRatio: `${width}/${height}` };
-  const buttonOrLink = href ? <a href={href} className={baseClasses} style={style}>{content}</a> : <button type="button" onClick={onClick} className={baseClasses} style={style}>{content}</button>;
+  const buttonOrLink = href ? <a href={href} className={baseClasses} style={style} onTouchEnd={onTouchEnd}>{content}</a> : <button type="button" onClick={onClick} onTouchEnd={onTouchEnd} className={baseClasses} style={style}>{content}</button>;
   if (hoverBackImage) {
     const isTopRight = hoverBackImagePosition === "top-right";
     const positionStyle = isTopRight
