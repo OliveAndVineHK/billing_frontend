@@ -47,3 +47,10 @@ body {
 .module-buttons-group:has(.module-btn:hover) .module-btn:not(:hover) .module-btn-icon {
   opacity: 0.4;
 }
+
+@media (hover: hover) {
+  .module-btn.group:hover .module-btn-cat {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
