@@ -6,7 +6,6 @@ import { ModuleButton } from "@/components/ModuleButton";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useState, useRef, useEffect } from "react";
 
-/** Minimum time the loading overlay stays visible before navigation (ms). */
 const MIN_LOADING_MS = 800;
 
 export default function ModuleSelection() {
@@ -15,7 +14,6 @@ export default function ModuleSelection() {
   const [isNavigatingToHome, setIsNavigatingToHome] = useState(false);
   const lastTouchTime = useRef(0);
   const lastPaymentTouchTime = useRef(0);
-  /** Mobile: minty peeks up inside loading overlay (same motion as petty-cash toggle). */
   const [loadingMintyPeek, setLoadingMintyPeek] = useState(false);
 
   useEffect(() => {

@@ -3,8 +3,15 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --primary: #656565;
+  --secondary: #54d3da;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, monospace;
+}
+
+@theme {
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
 }
 
 @media (prefers-color-scheme: dark) {

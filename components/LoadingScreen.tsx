@@ -2,11 +2,8 @@ import type { ReactNode } from "react";
 
 type LoadingScreenProps = {
   message?: string;
-  /** When true, shows message below the spinner. Default false (spinner only). */
   showMessage?: boolean;
-  /** When true, no full-screen wrapper — use inside a parent overlay (e.g. with bottom slot). */
   embedded?: boolean;
-  /** e.g. mobile minty peek at bottom */
   children?: ReactNode;
 };
 
