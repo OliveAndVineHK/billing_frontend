@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 
 const COLUMN_TITLES = [
   "Contact / Description",
@@ -145,14 +146,26 @@ function unpaidAmountTextClass(status: string): string {
 type PaymentRequestTableProps = {
   rows?: PaymentRequestRow[];
   onRecordPayment?: (rowId: string) => void;
+  statusFilter?: PaymentRequestStatusFilter;
 };
 
-export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment }: PaymentRequestTableProps) {
+const TABLE_COL_COUNT = 1 + COLUMN_TITLES.length + 2;
+
+export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusFilter = "All" }: PaymentRequestTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
-  const allSelected = rows.length > 0 && selectedIds.size === rows.length;
-  const someSelected = selectedIds.size > 0 && !allSelected;
+  const visibleRows = useMemo(
+    () => (statusFilter === "All" ? rows : rows.filter((r) => r.status === statusFilter)),
+    [rows, statusFilter],
+  );
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [statusFilter]);
+
+  const allSelected = visibleRows.length > 0 && visibleRows.every((r) => selectedIds.has(r.id));
+  const someSelected = visibleRows.some((r) => selectedIds.has(r.id)) && !allSelected;
 
   useEffect(() => {
     const el = headerCheckboxRef.current;
@@ -161,7 +174,7 @@ export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment }: Payme
 
   const toggleAll = () => {
     if (allSelected) setSelectedIds(new Set());
-    else setSelectedIds(new Set(rows.map((r) => r.id)));
+    else setSelectedIds(new Set(visibleRows.map((r) => r.id)));
   };
 
   const toggleRow = (id: string) => {
@@ -191,7 +204,14 @@ export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment }: Payme
               </tr>
             </thead>
             <tbody className="bg-white">
-              {rows.map((row) => {
+              {visibleRows.length === 0 ? (
+                <tr>
+                  <td colSpan={TABLE_COL_COUNT} className="border-b border-gray-100 px-4 py-8 text-center text-sm text-primary/70 sm:px-5">
+                    No payment requests match this status.
+                  </td>
+                </tr>
+              ) : null}
+              {visibleRows.map((row) => {
                 const isPaid = row.status === "Paid";
                 const isPaymentRequested = row.status === "Payment Requested";
                 const isDraft = row.status === "Draft";
