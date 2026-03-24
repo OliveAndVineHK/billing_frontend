@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 type ModuleButtonProps = { iconSrc: string; iconAlt: string; href?: string; onClick?: () => void; onTouchEnd?: () => void; width?: number; height?: number; imageScale?: number; hoverBackImage?: string; hoverBackImagePosition?: "top-left" | "top-right" };
 
@@ -14,18 +15,15 @@ export function ModuleButton({ iconSrc, iconAlt, href, onClick, onTouchEnd, widt
   );
   const baseClasses = "module-btn relative z-10 flex w-full max-w-full items-center justify-center rounded-xl border-6 border-gray-100 bg-white p-0 overflow-visible transition-colors hover:border-[#54D3DA] hover:bg-gray-50 focus:border-[#54D3DA] focus:bg-gray-50 focus-visible:outline-none shrink-0 cursor-pointer md:w-[390px] md:max-w-[390px]";
   const style = { width: "100%", maxWidth: `${width}px`, aspectRatio: `${width}/${height}` };
-
-  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    onClick?.();
-  };
-  const handleLinkTouchEnd = (e: React.TouchEvent<HTMLAnchorElement>) => {
-    onTouchEnd?.();
-  };
-
-  const buttonOrLink = href
-    ? <a href={href} className={baseClasses} style={style} onClick={handleLinkClick} onTouchEnd={handleLinkTouchEnd}>{content}</a>
-    : <button type="button" onClick={onClick} onTouchEnd={onTouchEnd} className={baseClasses} style={style}>{content}</button>;
-
+  const buttonOrLink = href ? (
+    <Link href={href} className={baseClasses} style={style} onTouchEnd={onTouchEnd}>
+      {content}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} onTouchEnd={onTouchEnd} className={baseClasses} style={style}>
+      {content}
+    </button>
+  );
   if (hoverBackImage) {
     const isTopRight = hoverBackImagePosition === "top-right";
     const positionStyle = isTopRight

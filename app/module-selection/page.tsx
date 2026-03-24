@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { ModuleButton } from "@/components/ModuleButton";
 import { useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
@@ -29,8 +30,27 @@ function ModuleSelectionContent() {
     ? entityName.split(/\s+/).map((w) => w[0]).join("").toUpperCase().slice(0, 2)
     : "?";
 
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { useState, useRef, useEffect } from "react";
+
+const MIN_LOADING_MS = 800;
+
+export default function ModuleSelection() {
+  const router = useRouter();
   const [showMinty, setShowMinty] = useState(false);
+  const [isNavigatingToHome, setIsNavigatingToHome] = useState(false);
   const lastTouchTime = useRef(0);
+  const lastPaymentTouchTime = useRef(0);
+  const [loadingMintyPeek, setLoadingMintyPeek] = useState(false);
+
+  useEffect(() => {
+    if (!isNavigatingToHome) {
+      setLoadingMintyPeek(false);
+      return;
+    }
+    const id = requestAnimationFrame(() => setLoadingMintyPeek(true));
+    return () => cancelAnimationFrame(id);
+  }, [isNavigatingToHome]);
 
   const toggleMinty = () => setShowMinty((prev) => !prev);
 
@@ -42,6 +62,23 @@ function ModuleSelectionContent() {
   const handleClick = () => {
     if (Date.now() - lastTouchTime.current < 400) return;
     toggleMinty();
+  };
+
+  const navigateToHome = () => {
+    setIsNavigatingToHome(true);
+    window.setTimeout(() => {
+      router.push("/");
+    }, MIN_LOADING_MS);
+  };
+
+  const handlePaymentTouchEnd = () => {
+    lastPaymentTouchTime.current = Date.now();
+    navigateToHome();
+  };
+
+  const handlePaymentClick = () => {
+    if (Date.now() - lastPaymentTouchTime.current < 400) return;
+    navigateToHome();
   };
 
   return (
@@ -58,14 +95,27 @@ function ModuleSelectionContent() {
 
         <h1 className="text-center text-lg font-bold text-black sm:text-xl md:text-2xl">Choose Module Type</h1>
         <div className="module-buttons-group mx-auto flex w-full max-w-[260px] flex-col items-center justify-center gap-4 sm:max-w-[400px] sm:flex-row sm:flex-nowrap sm:gap-6 md:max-w-[820px]">
-          <ModuleButton iconSrc="/pettycash-icon.webp" iconAlt="Petty cash" imageScale={0.8} hoverBackImage="/minty-l.webp" href={module1Href} onClick={handleClick} onTouchEnd={handleTouchEnd} />
-          <ModuleButton iconSrc="/payment-icon.webp" iconAlt="Payment request" imageScale={1.0} hoverBackImage="/minty-r.webp" hoverBackImagePosition="top-right" href={module2Href} onClick={handleClick} onTouchEnd={handleTouchEnd} />
+          <ModuleButton iconSrc="/pettycash-icon.webp" iconAlt="Petty cash" imageScale={0.8} hoverBackImage="/minty-l.webp" onClick={handleClick} onTouchEnd={handleTouchEnd} />
+          <ModuleButton iconSrc="/payment-icon.webp" iconAlt="Payment request" imageScale={1.0} hoverBackImage="/minty-r.webp" hoverBackImagePosition="top-right" onClick={handlePaymentClick} onTouchEnd={handlePaymentTouchEnd} />
         </div>
       </main>
 
       <div className={`pointer-events-none fixed bottom-0 left-1/2 z-[100] block h-[260px] w-[280px] max-w-[85vw] -translate-x-1/2 transition-transform duration-300 ease-out md:hidden ${showMinty ? "translate-y-[25%]" : "translate-y-full"}`} aria-hidden>
         <Image src="/minty.webp" alt="" fill className="object-contain object-bottom" sizes="280px" />
       </div>
+
+      {isNavigatingToHome ? (
+        <div className="fixed inset-0 z-[200] flex flex-col bg-white">
+          <LoadingScreen embedded>
+            <div
+              className={`pointer-events-none relative h-[260px] w-[280px] max-w-[85vw] shrink-0 self-center transition-transform duration-300 ease-out md:hidden ${loadingMintyPeek ? "translate-y-[25%]" : "translate-y-full"}`}
+              aria-hidden
+            >
+              <Image src="/minty.webp" alt="" fill className="object-contain object-bottom" sizes="280px" />
+            </div>
+          </LoadingScreen>
+        </div>
+      ) : null}
     </div>
   );
 }
