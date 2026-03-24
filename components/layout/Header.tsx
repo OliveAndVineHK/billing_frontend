@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { NavMenu } from "@/components/NavMenu";
+import { NavMenu } from "./NavMenu";
 
 type HeaderProps = {
   title?: string;
