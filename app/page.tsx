@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Header } from "@/components/Header";
-import { PaymentRequestToolbar } from "@/components/PaymentRequestToolbar";
+import { Header } from "@/components/layout";
+import { PaymentRequestTable, PaymentRequestToolbar } from "@/components/payment-request";
 
 export const metadata: Metadata = {
   title: "Payment Request",
@@ -12,7 +12,9 @@ export default function Home() {
     <div className="flex min-h-dvh min-h-screen flex-col bg-white">
       <Header title="Payment Request" showLogo={false} />
       <PaymentRequestToolbar />
-      <main className="flex min-h-0 flex-1 flex-col px-4 py-8 sm:px-6" />
+      <main className="flex min-h-0 flex-1 flex-col pt-2 sm:pt-3">
+        <PaymentRequestTable />
+      </main>
     </div>
   );
 }
