@@ -4,7 +4,6 @@ export {
   type PaymentRequestColumnTitle,
   type PaymentRequestRow,
 } from "./PaymentRequestTable";
-export { PaymentRequestToolbar } from "./PaymentRequestToolbar";
 export { PaymentRequestDetailBody } from "./PaymentRequestDetailBody";
 export { PaymentRequestDetailSkeleton } from "./PaymentRequestDetailSkeleton";
 export { InvoiceAttachmentToolbar } from "./InvoiceAttachmentToolbar";

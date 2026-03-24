@@ -77,19 +77,6 @@ export function Header({
             corporate_fare
           </span>
           <span className="min-w-0 max-w-[min(100%,9rem)] truncate text-sm font-medium text-primary sm:max-w-[14rem] sm:text-base md:max-w-xs lg:max-w-md">
-      <div className="flex w-full min-w-0 flex-row items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
-        {homeHref ? (
-          <Link href={homeHref} className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-            {brand}
-          </Link>
-        ) : (
-          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">{brand}</div>
-        )}
-        <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
-          <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary sm:text-[26px]" aria-hidden>
-            corporate_fare
-          </span>
-          <span className="min-w-0 max-w-[min(100%,9rem)] truncate text-sm font-medium text-primary sm:max-w-[14rem] sm:text-base md:max-w-xs">
             {companyName}
           </span>
           <div className="shrink-0 pl-0.5 sm:pl-2">
