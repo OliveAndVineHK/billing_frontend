@@ -1,0 +1,545 @@
+"use client";
+
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
+
+export type PaymentRequestModalProps = {
+  open: boolean;
+  onClose: () => void;
+  onSaveDraft?: () => void;
+  onCancel?: () => void;
+  onConfirm?: () => void;
+};
+
+const SAMPLE_FILENAMES = [
+  "01 Nov 2025_ChunFatSeafood_240 1.pdf",
+  "01 Nov 2025_ChunFatSeafood_240 1.pdf",
+];
+
+/** Material Symbols icon + color for uploaded file row (Google Material Icons naming). */
+function getUploadedFileIconInfo(filename: string): { icon: string; iconClass: string } {
+  const ext = filename.trim().split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "pdf") {
+    return { icon: "picture_as_pdf", iconClass: "text-red-600" };
+  }
+  if (ext === "jpg" || ext === "jpeg" || ext === "png") {
+    return { icon: "image", iconClass: "text-sky-600" };
+  }
+  if (ext === "xls" || ext === "xlsx" || ext === "xlsm") {
+    return { icon: "table_chart", iconClass: "text-emerald-700" };
+  }
+  return { icon: "draft", iconClass: "text-primary" };
+}
+
+const CURRENCY_OPTIONS: ThemedSelectOption[] = [
+  { value: "HK$", label: "HK$" },
+  { value: "USD", label: "USD" },
+  { value: "CNY", label: "CNY" },
+];
+
+const CONTACT_OPTIONS: ThemedSelectOption[] = [
+  { value: "", label: "Select contact" },
+  { value: "Young Bros Transport", label: "Young Bros Transport" },
+  { value: "Other contact", label: "Other contact" },
+];
+
+const ACCOUNT_OPTIONS: ThemedSelectOption[] = [
+  { value: "", label: "Select account code" },
+  { value: "425 - Transport", label: "425 - Transport" },
+  { value: "400 - General", label: "400 - General" },
+];
+
+type ValidatedField = "amount" | "contact" | "accountCode" | "invoiceDate" | "dueDate";
+
+function parseAmountValue(raw: string): number | null {
+  const t = raw.trim().replace(/,/g, "");
+  if (!t) return null;
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+function validatePaymentRequestForm(values: {
+  amount: string;
+  contact: string;
+  accountCode: string;
+  invoiceDate: string;
+  dueDate: string;
+}): Partial<Record<ValidatedField, string>> {
+  const e: Partial<Record<ValidatedField, string>> = {};
+  const n = parseAmountValue(values.amount);
+  if (n === null) {
+    e.amount = "Amount is required.";
+  } else if (n <= 0) {
+    e.amount = "Enter an amount greater than zero.";
+  }
+  if (!values.contact.trim()) {
+    e.contact = "Contact is required.";
+  }
+  if (!values.accountCode.trim()) {
+    e.accountCode = "Account code is required.";
+  }
+  if (!values.invoiceDate.trim()) {
+    e.invoiceDate = "Invoice date is required.";
+  }
+  if (!values.dueDate.trim()) {
+    e.dueDate = "Due date is required.";
+  }
+  return e;
+}
+
+function FieldLabel({
+  htmlFor,
+  children,
+  required,
+}: {
+  htmlFor?: string;
+  children: ReactNode;
+  required?: boolean;
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-primary sm:text-xs"
+    >
+      {children}
+      {required ? <span className="text-red-500"> *</span> : null}
+    </label>
+  );
+}
+
+export function PaymentRequestModal({
+  open,
+  onClose,
+  onSaveDraft,
+  onCancel,
+  onConfirm,
+}: PaymentRequestModalProps) {
+  const titleId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const invoiceDateRef = useRef<HTMLInputElement>(null);
+  const dueDateRef = useRef<HTMLInputElement>(null);
+
+  const openDatePicker = (input: HTMLInputElement | null) => {
+    if (!input) return;
+    if (typeof input.showPicker === "function") {
+      try {
+        input.showPicker();
+        return;
+      } catch {
+        /* showPicker can throw outside a user gesture in some browsers */
+      }
+    }
+    input.focus();
+  };
+
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>(SAMPLE_FILENAMES);
+  const [billNo, setBillNo] = useState("MBIDAN-115803031626");
+  const [currency, setCurrency] = useState("HK$");
+  const [amount, setAmount] = useState("1,500.00");
+  const [description, setDescription] = useState("");
+  const [contact, setContact] = useState("Young Bros Transport");
+  const [accountCode, setAccountCode] = useState("425 - Transport");
+  const [invoiceDate, setInvoiceDate] = useState("2026-03-03");
+  const [dueDate, setDueDate] = useState("2026-03-03");
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<ValidatedField, string>>>({});
+
+  const clearFieldError = (key: ValidatedField) => {
+    setFieldErrors((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (open) setFieldErrors({});
+  }, [open]);
+
+  const triggerLibraryPick = () => fileInputRef.current?.click();
+
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files;
+    if (!list?.length) return;
+    const names = Array.from(list).map((f) => f.name);
+    setUploadedFiles((prev) => [...prev, ...names]);
+    e.target.value = "";
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveDraft = () => {
+    onSaveDraft?.();
+  };
+
+  const handleCancel = () => {
+    onCancel?.();
+    onClose();
+  };
+
+  const handleConfirm = () => {
+    const next = validatePaymentRequestForm({
+      amount,
+      contact,
+      accountCode,
+      invoiceDate,
+      dueDate,
+    });
+    if (Object.keys(next).length > 0) {
+      setFieldErrors(next);
+      return;
+    }
+    setFieldErrors({});
+    onConfirm?.();
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[300] flex items-center justify-center p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6"
+      role="presentation"
+    >
+      <button
+        type="button"
+        aria-label="Close dialog"
+        className="absolute inset-0 bg-black/35 backdrop-blur-[1px]"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full max-w-[min(100vw-1rem,640px)] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92vh,880px)] sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-4 pb-3 pt-4 sm:gap-4 sm:px-6 sm:pb-4 sm:pt-6">
+          <h2 id={titleId} className="min-w-0 pr-2 text-lg font-bold leading-snug text-black sm:text-xl md:text-2xl">
+            Add Payment Request
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+            aria-label="Close"
+          >
+            <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
+              close
+            </span>
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="sr-only"
+            multiple
+            accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.xlsm,application/pdf,image/jpeg,image/png,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={handleFilesSelected}
+          />
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={triggerLibraryPick}
+              className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 bg-white px-3 py-3 transition-colors active:bg-secondary/5 sm:min-h-[104px] sm:py-4"
+            >
+              <span className="material-symbols-outlined text-2xl leading-none text-secondary sm:text-3xl" aria-hidden>
+                library_add
+              </span>
+              <span className="text-center text-xs font-medium text-secondary sm:text-sm">Add from Library</span>
+            </button>
+            <button
+              type="button"
+              onClick={triggerLibraryPick}
+              className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 bg-white px-3 py-3 transition-colors active:bg-secondary/5 sm:min-h-[104px] sm:py-4"
+            >
+              <span className="material-symbols-outlined text-2xl leading-none text-secondary sm:text-3xl" aria-hidden>
+                library_add
+              </span>
+              <span className="text-center text-xs font-medium text-secondary sm:text-sm">Add from Library</span>
+            </button>
+          </div>
+
+          <p className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-wide text-primary/80">
+            Uploaded files ({uploadedFiles.length})
+          </p>
+          <ul className="flex flex-col gap-2">
+            {uploadedFiles.map((name, index) => {
+              const { icon, iconClass } = getUploadedFileIconInfo(name);
+              return (
+              <li
+                key={`${name}-${index}`}
+                className="flex items-start gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 sm:items-center"
+              >
+                <span
+                  className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`}
+                  aria-hidden
+                >
+                  {icon}
+                </span>
+                <span className="min-w-0 flex-1 break-words text-sm leading-snug text-black sm:truncate sm:leading-normal">
+                  {name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeFile(index)}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-primary/60 transition-colors hover:bg-gray-100 hover:text-primary"
+                  aria-label={`Remove ${name}`}
+                >
+                  <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+                    close
+                  </span>
+                </button>
+              </li>
+            );
+            })}
+          </ul>
+
+          <div className="mt-6 flex flex-col gap-5">
+            <div>
+              <FieldLabel htmlFor="pr-bill-no">Bill No.</FieldLabel>
+              <input
+                id="pr-bill-no"
+                type="text"
+                value={billNo}
+                onChange={(e) => setBillNo(e.target.value)}
+                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
+                placeholder="MBIDAN-115803031626"
+              />
+            </div>
+
+            <div>
+              <FieldLabel htmlFor="pr-amount" required>
+                Amount
+              </FieldLabel>
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-0">
+                <ThemedSelect
+                  id="pr-currency"
+                  ariaLabel="Currency"
+                  value={currency}
+                  onChange={setCurrency}
+                  options={CURRENCY_OPTIONS}
+                  className="w-full shrink-0 sm:w-auto"
+                  fullWidth
+                  triggerClassName="rounded-lg border border-gray-200 bg-gray-50 px-2 sm:w-auto sm:min-w-[4.75rem] sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3 md:min-w-[5.25rem]"
+                />
+                <input
+                  id="pr-amount"
+                  type="text"
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    clearFieldError("amount");
+                  }}
+                  aria-invalid={!!fieldErrors.amount}
+                  className={
+                    "box-border h-11 min-h-[44px] min-w-0 w-full rounded-lg border bg-white px-3 text-base text-black focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:border-l-0 sm:text-sm " +
+                    (fieldErrors.amount
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
+                      : "border-gray-200 focus:border-secondary focus:ring-secondary/25")
+                  }
+                />
+              </div>
+              {fieldErrors.amount ? (
+                <p className="mt-1 text-xs text-red-600" role="alert">
+                  {fieldErrors.amount}
+                </p>
+              ) : null}
+            </div>
+
+            <div>
+              <FieldLabel htmlFor="pr-description">Description (Optional)</FieldLabel>
+              <input
+                id="pr-description"
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Lorem ipsum Dolor"
+                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
+              />
+            </div>
+
+            <div>
+              <FieldLabel htmlFor="pr-contact" required>
+                Contact
+              </FieldLabel>
+              <ThemedSelect
+                id="pr-contact"
+                value={contact}
+                onChange={(v) => {
+                  setContact(v);
+                  clearFieldError("contact");
+                }}
+                options={CONTACT_OPTIONS}
+                error={!!fieldErrors.contact}
+              />
+              {fieldErrors.contact ? (
+                <p className="mt-1 text-xs text-red-600" role="alert">
+                  {fieldErrors.contact}
+                </p>
+              ) : null}
+            </div>
+
+            <div>
+              <FieldLabel htmlFor="pr-account" required>
+                Account Code
+              </FieldLabel>
+              <ThemedSelect
+                id="pr-account"
+                value={accountCode}
+                onChange={(v) => {
+                  setAccountCode(v);
+                  clearFieldError("accountCode");
+                }}
+                options={ACCOUNT_OPTIONS}
+                error={!!fieldErrors.accountCode}
+              />
+              {fieldErrors.accountCode ? (
+                <p className="mt-1 text-xs text-red-600" role="alert">
+                  {fieldErrors.accountCode}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
+              <div>
+                <FieldLabel htmlFor="pr-invoice-date" required>
+                  Invoice Date
+                </FieldLabel>
+                <div className="relative">
+                  <input
+                    ref={invoiceDateRef}
+                    id="pr-invoice-date"
+                    type="date"
+                    value={invoiceDate}
+                    onChange={(e) => {
+                      setInvoiceDate(e.target.value);
+                      clearFieldError("invoiceDate");
+                    }}
+                    aria-invalid={!!fieldErrors.invoiceDate}
+                    className={
+                      "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
+                      (fieldErrors.invoiceDate
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
+                        : "border-gray-200 focus:border-secondary focus:ring-secondary/25")
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => openDatePicker(invoiceDateRef.current)}
+                    className={
+                      "absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11 " +
+                      (fieldErrors.invoiceDate ? "border-gray-200 bg-red-50" : "border-gray-200 bg-gray-50")
+                    }
+                    aria-label="Open calendar for invoice date"
+                  >
+                    <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+                      calendar_today
+                    </span>
+                  </button>
+                </div>
+                {fieldErrors.invoiceDate ? (
+                  <p className="mt-1 text-xs text-red-600" role="alert">
+                    {fieldErrors.invoiceDate}
+                  </p>
+                ) : null}
+              </div>
+              <div>
+                <FieldLabel htmlFor="pr-due-date" required>
+                  Due Date
+                </FieldLabel>
+                <div className="relative">
+                  <input
+                    ref={dueDateRef}
+                    id="pr-due-date"
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => {
+                      setDueDate(e.target.value);
+                      clearFieldError("dueDate");
+                    }}
+                    aria-invalid={!!fieldErrors.dueDate}
+                    className={
+                      "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
+                      (fieldErrors.dueDate
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
+                        : "border-gray-200 focus:border-secondary focus:ring-secondary/25")
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => openDatePicker(dueDateRef.current)}
+                    className={
+                      "absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11 " +
+                      (fieldErrors.dueDate ? "border-gray-200 bg-red-50" : "border-gray-200 bg-gray-50")
+                    }
+                    aria-label="Open calendar for due date"
+                  >
+                    <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+                      calendar_today
+                    </span>
+                  </button>
+                </div>
+                {fieldErrors.dueDate ? (
+                  <p className="mt-1 text-xs text-red-600" role="alert">
+                    {fieldErrors.dueDate}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 flex-col gap-2 border-t border-gray-100 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-5 sm:pb-5">
+          <div className="order-1 flex w-full min-w-0 gap-2 sm:order-2 sm:ml-auto sm:w-auto">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="box-border h-12 min-h-[48px] min-w-0 flex-1 rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px] sm:flex-none sm:px-4"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className="box-border h-12 min-h-[48px] min-w-0 flex-1 rounded-lg border border-transparent bg-secondary px-4 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px] sm:flex-none sm:px-5"
+            >
+              Confirm
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            className="order-2 box-border h-12 min-h-[48px] w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-semibold text-primary transition-colors hover:bg-gray-50 sm:order-1 sm:h-11 sm:min-h-[44px] sm:w-auto"
+          >
+            Save as Draft
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

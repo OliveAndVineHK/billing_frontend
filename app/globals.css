@@ -5,7 +5,8 @@
   --foreground: #171717;
   --primary: #656565;
   --secondary: #54d3da;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Inter from next/font (--font-inter on <html className>) */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: ui-monospace, monospace;
 }
 
@@ -21,15 +22,11 @@
   }
 }
 
-.inter {
-  font-family: var(--font-sans);
-  font-optical-sizing: auto;
-  font-style: normal;
-}
-
 html {
   background: var(--background);
   overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -55,4 +52,13 @@ body {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* Hide native date input calendar icon; use a single custom control + showPicker() */
+input[type="date"].pr-date-input::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+}
+input[type="date"].pr-date-input::-moz-calendar-picker-indicator {
+  display: none;
 }
