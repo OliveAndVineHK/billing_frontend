@@ -20,28 +20,28 @@ export function Header({ title = "Payment Request", showLogo = false, brandHref,
       {showLogo ? (
         <Image src="/logo-selection.webp" alt="" width={40} height={40} priority className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" />
       ) : null}
-      <span className="text-base font-semibold text-black sm:text-lg">{title}</span>
+      <span className="min-w-0 truncate text-base font-semibold text-black sm:text-lg">{title}</span>
     </>
   );
 
   return (
     <header className="border-b border-gray-200 bg-white pt-[env(safe-area-inset-top,0px)]">
-      <div className="flex w-full flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-4">
+      <div className="flex w-full min-w-0 flex-row items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
         {homeHref ? (
-          <Link href={homeHref} className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <Link href={homeHref} className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             {brand}
           </Link>
         ) : (
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">{brand}</div>
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">{brand}</div>
         )}
-        <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
+        <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
           <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary sm:text-[26px]" aria-hidden>
             corporate_fare
           </span>
-          <span className="min-w-0 max-w-[min(100%,10rem)] truncate text-sm font-medium text-primary sm:max-w-[14rem] sm:text-base md:max-w-xs">
+          <span className="min-w-0 max-w-[min(100%,9rem)] truncate text-sm font-medium text-primary sm:max-w-[14rem] sm:text-base md:max-w-xs">
             {companyName}
           </span>
-          <div className="pl-1 sm:pl-3">
+          <div className="shrink-0 pl-0.5 sm:pl-2">
             <NavMenu items={navItems} companyAbbreviation={companyAbbreviation} onLogout={onLogout} />
           </div>
         </div>
