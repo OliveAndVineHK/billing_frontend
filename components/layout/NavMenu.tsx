@@ -92,7 +92,7 @@ export function NavMenu({ items = defaultItems, menuSections = DEFAULT_MENU_SECT
       </button>
       <div className={`fixed inset-0 z-[200] ${open ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!open}>
         <button type="button" className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ease-out ${open ? "opacity-100" : "opacity-0"}`} onClick={() => setOpen(false)} tabIndex={open ? 0 : -1} aria-label="Close menu" />
-        <nav id={panelId} className={`absolute right-0 top-0 flex h-full w-[min(100vw,16rem)] max-w-full flex-col bg-white shadow-xl transition-transform duration-300 ease-out ${open ? "translate-x-0" : "translate-x-full"}`} aria-label="Main navigation">
+        <nav id={panelId} className={`absolute right-0 top-0 flex h-full w-[min(100vw,18rem)] max-w-[calc(100vw-env(safe-area-inset-left)-env(safe-area-inset-right))] flex-col bg-white pt-[env(safe-area-inset-top,0px)] shadow-xl transition-transform duration-300 ease-out ${open ? "translate-x-0" : "translate-x-full"}`} aria-label="Main navigation">
           <div className="flex flex-col gap-3 border-b border-primary/20 px-4 py-3 sm:px-6 sm:py-4">
             <div className="flex min-w-0 items-center justify-between gap-3">
               <span className="min-w-0 truncate text-sm font-semibold tracking-wide text-primary sm:text-base" title={companyAbbreviation}>
