@@ -1,0 +1,72 @@
+const DB_NAME = "payment-request-attachments";
+const STORE = "by-request-id";
+const VERSION = 1;
+
+type StoredFile = { name: string; type: string; buffer: ArrayBuffer };
+
+function openDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, VERSION);
+    req.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.createObjectStore(STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error ?? new Error("IndexedDB open failed"));
+  });
+}
+
+/** Persist uploaded files for a payment request id so the details page can preview after navigation. */
+export async function saveAttachmentBlobs(requestId: string, files: File[]): Promise<void> {
+  const db = await openDb();
+  try {
+    if (files.length === 0) {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE, "readwrite");
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore(STORE).delete(requestId);
+      });
+      return;
+    }
+    const stored: StoredFile[] = await Promise.all(
+      files.map(async (f) => ({
+        name: f.name,
+        type: f.type || "application/octet-stream",
+        buffer: await f.arrayBuffer(),
+      })),
+    );
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.objectStore(STORE).put({ files: stored }, requestId);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+export type LoadedAttachmentBlob = { name: string; type: string; blob: Blob };
+
+export async function loadAttachmentBlobs(requestId: string): Promise<LoadedAttachmentBlob[]> {
+  const db = await openDb();
+  try {
+    const record = await new Promise<{ files: StoredFile[] } | undefined>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readonly");
+      const r = tx.objectStore(STORE).get(requestId);
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    });
+    if (!record?.files?.length) return [];
+    return record.files.map((f) => ({
+      name: f.name,
+      type: f.type,
+      blob: new Blob([f.buffer], { type: f.type }),
+    }));
+  } finally {
+    db.close();
+  }
+}
