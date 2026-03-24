@@ -54,17 +54,8 @@ function NavMenuItemLink({
 }) {
   const active = navItemIsActive(pathname, item.href);
   return (
-    <Link
-      href={item.href}
-      onClick={onNavigate}
-      aria-current={active ? "page" : undefined}
-      className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-base font-medium transition-colors ${active ? "bg-secondary/15 text-secondary" : "text-primary hover:bg-primary/10"} ${className}`}
-    >
-      {item.icon ? (
-        <span className={`material-symbols-outlined shrink-0 text-[22px] leading-none ${active ? "text-secondary" : "text-primary"}`} aria-hidden>
-          {item.icon}
-        </span>
-      ) : null}
+    <Link href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-base font-medium transition-colors ${active ? "bg-secondary/15 text-secondary" : "text-primary hover:bg-primary/10"} ${className}`}>
+      {item.icon ? <span className={`material-symbols-outlined shrink-0 text-[22px] leading-none ${active ? "text-secondary" : "text-primary"}`} aria-hidden>{item.icon}</span> : null}
       {item.label}
     </Link>
   );

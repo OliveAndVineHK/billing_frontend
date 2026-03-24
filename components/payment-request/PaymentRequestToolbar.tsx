@@ -13,16 +13,7 @@ export function PaymentRequestToolbar() {
         {STATUS_FILTERS.map((label) => {
           const isActive = activeStatus === label;
           return (
-            <button
-              key={label}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setActiveStatus(label)}
-              className={`box-border inline-flex h-[42px] min-h-[42px] shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border px-3 text-sm font-medium transition-colors sm:px-4 sm:text-base ${isActive ? "border-secondary bg-secondary/15 text-secondary" : "border-primary/25 text-primary hover:bg-primary/10"}`}
-            >
-              {label}
-            </button>
+            <button key={label} type="button" role="tab" aria-selected={isActive} onClick={() => setActiveStatus(label)} className={`box-border inline-flex h-[42px] min-h-[42px] shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border px-3 text-sm font-medium transition-colors sm:px-4 sm:text-base ${isActive ? "border-secondary bg-secondary/15 text-secondary" : "border-primary/25 text-primary hover:bg-primary/10"}`}>{label}</button>
           );
         })}
       </div>
@@ -32,31 +23,11 @@ export function PaymentRequestToolbar() {
           Search by contact or description
         </label>
         <div className="relative min-w-0 flex-1">
-          <input
-            id="payment-request-search"
-            type="search"
-            name="q"
-            placeholder="Search by contact or description"
-            className="box-border h-[42px] min-h-[42px] w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-3 text-sm leading-normal text-primary placeholder:text-primary/50 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30"
-          />
+          <input id="payment-request-search" type="search" name="q" placeholder="Search by contact or description" className="box-border h-[42px] min-h-[42px] w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-3 text-sm leading-normal text-primary placeholder:text-primary/50 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30" />
         </div>
         <div className="flex shrink-0 items-stretch justify-end gap-2">
-          <button
-            type="button"
-            aria-label="Filter"
-            className="box-border inline-flex h-[42px] min-h-[42px] w-[42px] min-w-[42px] cursor-pointer items-center justify-center rounded-lg border border-primary/25 text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
-          >
-            <span className="material-symbols-outlined text-[22px] leading-none">filter_alt</span>
-          </button>
-          <button
-            type="button"
-            className="box-border inline-flex h-[42px] min-h-[42px] cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
-          >
-            Add Bill
-            <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
-              add
-            </span>
-          </button>
+          <button type="button" aria-label="Filter" className="box-border inline-flex h-[42px] min-h-[42px] w-[42px] min-w-[42px] cursor-pointer items-center justify-center rounded-lg border border-primary/25 text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"><span className="material-symbols-outlined text-[22px] leading-none">filter_alt</span></button>
+          <button type="button" className="box-border inline-flex h-[42px] min-h-[42px] cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">Add Bill<span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>add</span></button>
         </div>
       </div>
     </div>
