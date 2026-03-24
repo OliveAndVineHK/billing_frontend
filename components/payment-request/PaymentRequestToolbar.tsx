@@ -3,10 +3,15 @@
 import { useState } from "react";
 import { PaymentRequestModal } from "@/components/PaymentRequestModal";
 
-const STATUS_FILTERS = ["All", "Draft", "Payment Requested", "Paid", "Voided"] as const;
+export const PAYMENT_REQUEST_STATUS_FILTERS = ["All", "Draft", "Payment Requested", "Paid", "Voided"] as const;
+export type PaymentRequestStatusFilter = (typeof PAYMENT_REQUEST_STATUS_FILTERS)[number];
 
-export function PaymentRequestToolbar() {
-  const [activeStatus, setActiveStatus] = useState<(typeof STATUS_FILTERS)[number]>("All");
+type PaymentRequestToolbarProps = {
+  activeStatus: PaymentRequestStatusFilter;
+  onActiveStatusChange: (status: PaymentRequestStatusFilter) => void;
+};
+
+export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange }: PaymentRequestToolbarProps) {
   const [billModalOpen, setBillModalOpen] = useState(false);
   const [billModalMounted, setBillModalMounted] = useState(false);
 
@@ -14,10 +19,10 @@ export function PaymentRequestToolbar() {
     <>
     <div className="flex w-full min-w-0 flex-col gap-3 bg-white px-4 py-3 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
       <div className="-mx-4 flex min-w-0 gap-2 overflow-x-auto overscroll-x-contain px-4 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Filter by status">
-        {STATUS_FILTERS.map((label) => {
+        {PAYMENT_REQUEST_STATUS_FILTERS.map((label) => {
           const isActive = activeStatus === label;
           return (
-            <button key={label} type="button" role="tab" aria-selected={isActive} onClick={() => setActiveStatus(label)} className={`box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm md:text-base ${isActive ? "border-secondary bg-secondary/15 text-secondary" : "border-primary/25 text-primary hover:bg-primary/10"}`}>{label}</button>
+            <button key={label} type="button" role="tab" aria-selected={isActive} onClick={() => onActiveStatusChange(label)} className={`box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm md:text-base ${isActive ? "border-secondary bg-secondary/15 text-secondary" : "border-primary/25 text-primary hover:bg-primary/10"}`}>{label}</button>
           );
         })}
       </div>
