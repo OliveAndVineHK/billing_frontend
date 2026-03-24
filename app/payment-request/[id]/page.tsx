@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { Header } from "@/components/layout";
-import { PaymentRequestDetailBody } from "@/components/payment-request/PaymentRequestDetailBody";
+import { PaymentRequestDetailSkeleton } from "@/components/payment-request/PaymentRequestDetailSkeleton";
+
+const PaymentRequestDetailBody = dynamic(
+  () => import("@/components/payment-request/PaymentRequestDetailBody").then((m) => ({ default: m.PaymentRequestDetailBody })),
+  { loading: () => <PaymentRequestDetailSkeleton /> },
+);
 
 export const metadata: Metadata = {
   title: "Payment Request Details",
@@ -21,7 +27,7 @@ export default function PaymentRequestDetailPage() {
           <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700 sm:text-sm">Payment Requested</span>
         }
       />
-      <main className="flex min-h-0 flex-1 flex-col pt-2 sm:pt-3">
+      <main className="flex min-h-0 flex-1 flex-col pt-2 sm:pt-3 lg:pt-4">
         <PaymentRequestDetailBody />
       </main>
     </div>

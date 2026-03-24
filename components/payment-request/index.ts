@@ -6,9 +6,14 @@ export {
 } from "./PaymentRequestTable";
 export { PaymentRequestToolbar } from "./PaymentRequestToolbar";
 export { PaymentRequestDetailBody } from "./PaymentRequestDetailBody";
+export { PaymentRequestDetailSkeleton } from "./PaymentRequestDetailSkeleton";
 export { InvoiceAttachmentToolbar } from "./InvoiceAttachmentToolbar";
-export { InvoiceAttachmentPreview } from "./InvoiceAttachmentPreview";
+export { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 export { BillActionBar } from "./BillActionBar";
-export { PaymentRequestDetailedInfo } from "./PaymentRequestDetailedInfo";
+export {
+  PaymentRequestDetailedInfo,
+  type PaymentRequestDetailedInfoData,
+  type PaymentRequestDetailedInfoProps,
+} from "./PaymentRequestDetailedInfo";
 export { PaymentHistoryCard, type PaymentHistoryRow } from "./PaymentHistoryCard";
 export { ActivityHistoryAccordion, type ActivityHistoryItem } from "./ActivityHistoryAccordion";

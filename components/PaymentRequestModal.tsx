@@ -1,7 +1,16 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
+
+/** Temporary: replace with a real `fetch` / server action. Simulates a successful API response. */
+async function simulatePaymentRequestSubmit(): Promise<{ ok: true }> {
+  console.log("Send api request here");
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  return { ok: true };
+}
 
 export type PaymentRequestModalProps = {
   open: boolean;
@@ -11,10 +20,7 @@ export type PaymentRequestModalProps = {
   onConfirm?: () => void;
 };
 
-const SAMPLE_FILENAMES = [
-  "01 Nov 2025_ChunFatSeafood_240 1.pdf",
-  "01 Nov 2025_ChunFatSeafood_240 1.pdf",
-];
+type UploadedEntry = { id: string; file: File };
 
 /** Material Symbols icon + color for uploaded file row (Google Material Icons naming). */
 function getUploadedFileIconInfo(filename: string): { icon: string; iconClass: string } {
@@ -114,6 +120,7 @@ export function PaymentRequestModal({
   onCancel,
   onConfirm,
 }: PaymentRequestModalProps) {
+  const router = useRouter();
   const titleId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const invoiceDateRef = useRef<HTMLInputElement>(null);
@@ -132,7 +139,7 @@ export function PaymentRequestModal({
     input.focus();
   };
 
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>(SAMPLE_FILENAMES);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedEntry[]>([]);
   const [billNo, setBillNo] = useState("MBIDAN-115803031626");
   const [currency, setCurrency] = useState("HK$");
   const [amount, setAmount] = useState("1,500.00");
@@ -142,6 +149,7 @@ export function PaymentRequestModal({
   const [invoiceDate, setInvoiceDate] = useState("2026-03-03");
   const [dueDate, setDueDate] = useState("2026-03-03");
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<ValidatedField, string>>>({});
+  const [confirmSubmitting, setConfirmSubmitting] = useState(false);
 
   const clearFieldError = (key: ValidatedField) => {
     setFieldErrors((prev) => {
@@ -174,18 +182,23 @@ export function PaymentRequestModal({
     if (open) setFieldErrors({});
   }, [open]);
 
-  const triggerLibraryPick = () => fileInputRef.current?.click();
+  useEffect(() => {
+    if (!open) setConfirmSubmitting(false);
+  }, [open]);
 
   const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = e.target.files;
     if (!list?.length) return;
-    const names = Array.from(list).map((f) => f.name);
-    setUploadedFiles((prev) => [...prev, ...names]);
+    const added: UploadedEntry[] = Array.from(list).map((file) => ({
+      id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
+      file,
+    }));
+    setUploadedFiles((prev) => [...prev, ...added]);
     e.target.value = "";
   };
 
-  const removeFile = (index: number) => {
-    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+  const removeFile = (entryId: string) => {
+    setUploadedFiles((prev) => prev.filter((x) => x.id !== entryId));
   };
 
   const handleSaveDraft = () => {
@@ -197,7 +210,7 @@ export function PaymentRequestModal({
     onClose();
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const next = validatePaymentRequestForm({
       amount,
       contact,
@@ -210,8 +223,25 @@ export function PaymentRequestModal({
       return;
     }
     setFieldErrors({});
-    onConfirm?.();
-    onClose();
+    if (confirmSubmitting) return;
+    setConfirmSubmitting(true);
+    try {
+      const id = billNo.trim() || `new-${Date.now()}`;
+      try {
+        await saveAttachmentBlobs(
+          id,
+          uploadedFiles.map((x) => x.file),
+        );
+      } catch (e) {
+        console.error("Could not store attachments for preview:", e);
+      }
+      await simulatePaymentRequestSubmit();
+      onConfirm?.();
+      onClose();
+      router.push(`/payment-request/${encodeURIComponent(id)}`);
+    } finally {
+      setConfirmSubmitting(false);
+    }
   };
 
   if (!open) return null;
@@ -251,47 +281,42 @@ export function PaymentRequestModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="sr-only"
-            multiple
-            accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.xlsm,application/pdf,image/jpeg,image/png,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            onChange={handleFilesSelected}
-          />
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={triggerLibraryPick}
-              className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 bg-white px-3 py-3 transition-colors active:bg-secondary/5 sm:min-h-[104px] sm:py-4"
-            >
-              <span className="material-symbols-outlined text-2xl leading-none text-secondary sm:text-3xl" aria-hidden>
-                library_add
-              </span>
-              <span className="text-center text-xs font-medium text-secondary sm:text-sm">Add from Library</span>
-            </button>
-            <button
-              type="button"
-              onClick={triggerLibraryPick}
-              className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 bg-white px-3 py-3 transition-colors active:bg-secondary/5 sm:min-h-[104px] sm:py-4"
-            >
-              <span className="material-symbols-outlined text-2xl leading-none text-secondary sm:text-3xl" aria-hidden>
-                library_add
-              </span>
-              <span className="text-center text-xs font-medium text-secondary sm:text-sm">Add from Library</span>
-            </button>
+          {/* Full-area file input overlay: avoids sr-only / display:none issues with native pickers on some browsers */}
+          <div className="relative mb-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="absolute inset-0 z-20 h-full min-h-[88px] w-full cursor-pointer opacity-0 sm:min-h-[104px]"
+              multiple
+              accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.xlsm,application/pdf,image/jpeg,image/png,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              onChange={handleFilesSelected}
+              aria-label="Choose files to upload"
+            />
+            <div className="pointer-events-none grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 bg-white px-3 py-3 sm:min-h-[104px] sm:py-4">
+                <span className="material-symbols-outlined text-2xl leading-none text-secondary sm:text-3xl" aria-hidden>
+                  library_add
+                </span>
+                <span className="text-center text-xs font-medium text-secondary sm:text-sm">Add from Library</span>
+              </div>
+              <div className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 bg-white px-3 py-3 sm:min-h-[104px] sm:py-4">
+                <span className="material-symbols-outlined text-2xl leading-none text-secondary sm:text-3xl" aria-hidden>
+                  library_add
+                </span>
+                <span className="text-center text-xs font-medium text-secondary sm:text-sm">Add from Library</span>
+              </div>
+            </div>
           </div>
 
           <p className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-wide text-primary/80">
             Uploaded files ({uploadedFiles.length})
           </p>
           <ul className="flex flex-col gap-2">
-            {uploadedFiles.map((name, index) => {
-              const { icon, iconClass } = getUploadedFileIconInfo(name);
+            {uploadedFiles.map(({ id, file }) => {
+              const { icon, iconClass } = getUploadedFileIconInfo(file.name);
               return (
               <li
-                key={`${name}-${index}`}
+                key={id}
                 className="flex items-start gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 sm:items-center"
               >
                 <span
@@ -301,13 +326,13 @@ export function PaymentRequestModal({
                   {icon}
                 </span>
                 <span className="min-w-0 flex-1 break-words text-sm leading-snug text-black sm:truncate sm:leading-normal">
-                  {name}
+                  {file.name}
                 </span>
                 <button
                   type="button"
-                  onClick={() => removeFile(index)}
+                  onClick={() => removeFile(id)}
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-primary/60 transition-colors hover:bg-gray-100 hover:text-primary"
-                  aria-label={`Remove ${name}`}
+                  aria-label={`Remove ${file.name}`}
                 >
                   <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
                     close
@@ -525,10 +550,11 @@ export function PaymentRequestModal({
             </button>
             <button
               type="button"
-              onClick={handleConfirm}
-              className="box-border h-12 min-h-[48px] min-w-0 flex-1 rounded-lg border border-transparent bg-secondary px-4 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px] sm:flex-none sm:px-5"
+              onClick={() => void handleConfirm()}
+              disabled={confirmSubmitting}
+              className="box-border h-12 min-h-[48px] min-w-0 flex-1 rounded-lg border border-transparent bg-secondary px-4 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px] sm:flex-none sm:px-5"
             >
-              Confirm
+              {confirmSubmitting ? "Confirming…" : "Confirm"}
             </button>
           </div>
           <button

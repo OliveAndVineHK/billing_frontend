@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Header } from "@/components/layout";
-import { PaymentRequestTable, PaymentRequestToolbar } from "@/components/payment-request";
+import { PaymentRequestTable } from "@/components/payment-request/PaymentRequestTable";
+import { PaymentRequestToolbar } from "@/components/payment-request/PaymentRequestToolbar";
 
 export const metadata: Metadata = {
   title: "Payment Request",

@@ -5,15 +5,69 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const MIN_SCALE = 0.6;
 const MAX_SCALE = 3;
 
+export type InvoiceAttachmentPreviewItem = {
+  url: string;
+  name: string;
+  mime: string;
+};
+
 type InvoiceAttachmentPreviewProps = {
-  /** Optional image URLs; placeholder blocks are shown when empty */
+  /** Built from IndexedDB / object URLs on the details page */
+  attachments?: InvoiceAttachmentPreviewItem[];
+  /** Legacy: plain image URLs only */
   imageSrcs?: string[];
   className?: string;
   fullscreen?: boolean;
   onExitFullscreen?: () => void;
+  /** While blobs are loading from IndexedDB */
+  isLoadingAttachments?: boolean;
 };
 
-export function InvoiceAttachmentPreview({ imageSrcs = [], className = "", fullscreen = false, onExitFullscreen }: InvoiceAttachmentPreviewProps) {
+function PreviewBlock({ url, name, mime }: InvoiceAttachmentPreviewItem) {
+  const mimeLower = mime.toLowerCase();
+  if (mimeLower.startsWith("image/")) {
+    return (
+      <img
+        src={url}
+        alt={name || "Attachment"}
+        className="mx-auto block h-auto max-h-[min(75vh,56rem)] w-full object-contain"
+        draggable={false}
+      />
+    );
+  }
+  if (mimeLower === "application/pdf") {
+    return (
+      <div className="relative w-full overflow-hidden rounded bg-white">
+        {/* Full width of gray panel; height tracks page aspect (11/8.5) */}
+        <div className="relative w-full pb-[129.41%]">
+          <iframe
+            src={url}
+            title={name || "PDF preview"}
+            className="absolute inset-0 h-full w-full rounded border-0 bg-white"
+          />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 bg-gray-50 px-4 py-8 text-center">
+      <span className="material-symbols-outlined text-[40px] text-primary/35" aria-hidden>
+        draft
+      </span>
+      <p className="text-sm font-medium text-primary">{name || "File"}</p>
+      <p className="text-xs text-primary/50">Preview is not available for this file type.</p>
+    </div>
+  );
+}
+
+export function InvoiceAttachmentPreview({
+  attachments,
+  imageSrcs = [],
+  className = "",
+  fullscreen = false,
+  onExitFullscreen,
+  isLoadingAttachments = false,
+}: InvoiceAttachmentPreviewProps) {
   const [scale, setScale] = useState(1);
   const pinchRef = useRef<{ initialDistance: number; initialScale: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -21,14 +75,17 @@ export function InvoiceAttachmentPreview({ imageSrcs = [], className = "", fulls
   const getDistance = (a: { clientX: number; clientY: number }, b: { clientX: number; clientY: number }) =>
     Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      pinchRef.current = {
-        initialDistance: getDistance(e.touches[0], e.touches[1]),
-        initialScale: scale,
-      };
-    }
-  }, [scale]);
+  const onTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches.length === 2) {
+        pinchRef.current = {
+          initialDistance: getDistance(e.touches[0], e.touches[1]),
+          initialScale: scale,
+        };
+      }
+    },
+    [scale],
+  );
 
   const onTouchMove = useCallback((e: React.TouchEvent) => {
     if (e.touches.length !== 2 || !pinchRef.current) return;
@@ -52,42 +109,50 @@ export function InvoiceAttachmentPreview({ imageSrcs = [], className = "", fulls
     return () => el.removeEventListener("touchmove", preventOverscroll);
   }, []);
 
-  const pages =
-    imageSrcs.length > 0
-      ? imageSrcs
-      : [null];
+  const items: (InvoiceAttachmentPreviewItem | null)[] =
+    attachments && attachments.length > 0
+      ? attachments
+      : imageSrcs.length > 0
+        ? imageSrcs.map((url) => ({ url, name: "", mime: "image/png" }))
+        : [null];
 
   const inner = (
     <div
-      className="flex min-h-0 w-full flex-col gap-4 p-3 sm:p-4"
+      className="flex min-h-0 w-full flex-col gap-4 p-2 sm:p-3"
       style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}
     >
-      {pages.map((src, i) => (
-        <figure
-          key={src ?? `placeholder-${i}`}
-          className="mx-auto w-full max-w-md overflow-hidden rounded border border-gray-200 bg-white shadow-sm"
-        >
-          {src ? (
-            // eslint-disable-next-line @next/next/no-img-element -- dynamic preview URLs
-            <img src={src} alt="" className="block h-auto w-full object-contain" draggable={false} />
-          ) : (
-            <div className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 bg-gray-50 px-4 text-center text-sm text-primary/60">
-              <span className="material-symbols-outlined text-[40px] text-primary/35" aria-hidden>
-                description
-              </span>
-              <span>Invoice attachment preview</span>
-              <span className="text-xs text-primary/45">Pinch to zoom on mobile</span>
-            </div>
-          )}
-        </figure>
-      ))}
+      {isLoadingAttachments ? (
+        <div className="flex w-full min-w-0 flex-col gap-3 rounded border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="h-4 w-[75%] animate-pulse rounded bg-gray-200" />
+          <div className="aspect-[8.5/11] w-full max-h-[min(82vh,56rem)] animate-pulse rounded bg-gray-100" />
+        </div>
+      ) : (
+        items.map((item, i) => (
+          <figure
+            key={item ? `${item.url}-${i}` : `placeholder-${i}`}
+            className="mx-auto w-full min-w-0 max-w-full overflow-hidden rounded border border-gray-200 bg-white shadow-sm"
+          >
+            {item ? (
+              <PreviewBlock {...item} />
+            ) : (
+              <div className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 bg-gray-50 px-4 text-center text-sm text-primary/60">
+                <span className="material-symbols-outlined text-[40px] text-primary/35" aria-hidden>
+                  description
+                </span>
+                <span>Invoice attachment preview</span>
+                <span className="text-xs text-primary/45">Pinch to zoom on mobile</span>
+              </div>
+            )}
+          </figure>
+        ))
+      )}
     </div>
   );
 
   const scrollArea = (
     <div
       ref={scrollRef}
-      className="relative min-h-[min(60vh,32rem)] flex-1 overflow-auto rounded-lg border border-gray-200 bg-gray-100 touch-pan-x touch-pan-y"
+      className="relative flex min-h-[min(60vh,32rem)] min-w-0 flex-1 flex-col overflow-auto rounded-lg border border-gray-200 bg-gray-100 touch-pan-x touch-pan-y"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
