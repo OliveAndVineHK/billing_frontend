@@ -9,9 +9,10 @@ export type PaymentRequestStatusFilter = (typeof PAYMENT_REQUEST_STATUS_FILTERS)
 type PaymentRequestToolbarProps = {
   activeStatus: PaymentRequestStatusFilter;
   onActiveStatusChange: (status: PaymentRequestStatusFilter) => void;
+  onBillCreated?: () => void;
 };
 
-export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange }: PaymentRequestToolbarProps) {
+export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBillCreated }: PaymentRequestToolbarProps) {
   const [billModalOpen, setBillModalOpen] = useState(false);
   const [billModalMounted, setBillModalMounted] = useState(false);
 
@@ -41,7 +42,7 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange }: Pa
       </div>
     </div>
     {billModalMounted ? (
-      <PaymentRequestModal open={billModalOpen} onClose={() => setBillModalOpen(false)} />
+      <PaymentRequestModal open={billModalOpen} onClose={() => setBillModalOpen(false)} onConfirm={onBillCreated} />
     ) : null}
     </>
   );

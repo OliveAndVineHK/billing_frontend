@@ -217,6 +217,7 @@ type PaymentRequestTableProps = {
   onRowDelete?: (rowId: string) => void;
   onRowPublish?: (rowId: string) => void;
   onRowRepublish?: (rowId: string) => void;
+  loading?: boolean;
 };
 
 const ROW_MENU_MIN_WIDTH_PX = 160;
@@ -232,6 +233,7 @@ export function PaymentRequestTable({
   onRowDelete,
   onRowPublish,
   onRowRepublish,
+  loading = false,
 }: PaymentRequestTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bankslipModalRowId, setBankslipModalRowId] = useState<string | null>(null);
@@ -355,7 +357,16 @@ export function PaymentRequestTable({
               </tr>
             </thead>
             <tbody className="bg-white">
-              {visibleRows.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={TABLE_COL_COUNT} className="border-b border-gray-100 px-4 py-10 text-center text-sm text-primary/60 sm:px-5">
+                    <span className="inline-flex items-center gap-2">
+                      <span className="material-symbols-outlined animate-spin text-secondary text-[22px]">progress_activity</span>
+                      Loading bills…
+                    </span>
+                  </td>
+                </tr>
+              ) : visibleRows.length === 0 ? (
                 <tr>
                   <td colSpan={TABLE_COL_COUNT} className="border-b border-gray-100 px-4 py-8 text-center text-sm text-primary/70 sm:px-5">No payment requests match this status.</td>
                 </tr>
