@@ -34,6 +34,67 @@ export type PaymentRequestRow = {
   xeroActive?: boolean;
 };
 
+function isActionColumnTitle(title: string) {
+  return title === "Payment" || title === "Paid Date" || title === "Bankslip";
+}
+
+type SortKey = "contact" | "invoiceDate" | "status" | "submittedDate" | "unpaidAmount" | "paidDate";
+
+const SORTABLE_TITLE: Partial<Record<PaymentRequestColumnTitle, SortKey>> = {
+  "Contact / Description": "contact",
+  "Invoice Date": "invoiceDate",
+  Status: "status",
+  "Submitted Date": "submittedDate",
+  "Unpaid Amount": "unpaidAmount",
+  "Paid Date": "paidDate",
+};
+
+function dateSortValue(s: string): number | null {
+  const t = s.trim();
+  if (!t || t === "-") return null;
+  const ms = Date.parse(t);
+  return Number.isNaN(ms) ? null : ms;
+}
+
+function unpaidSortValue(s: string): number | null {
+  const t = s.trim();
+  if (!t) return null;
+  const n = Number.parseFloat(t.replace(/[^0-9.-]+/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+function compareNullableNumber(a: number | null, b: number | null, dir: 1 | -1): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  if (a < b) return -dir;
+  if (a > b) return dir;
+  return 0;
+}
+
+function compareRows(a: PaymentRequestRow, b: PaymentRequestRow, key: SortKey, dir: "asc" | "desc"): number {
+  const d = dir === "asc" ? 1 : -1;
+  switch (key) {
+    case "contact": {
+      const t = a.contactTitle.localeCompare(b.contactTitle, undefined, { sensitivity: "base" });
+      if (t !== 0) return t * d;
+      return a.contactCaption.localeCompare(b.contactCaption, undefined, { sensitivity: "base" }) * d;
+    }
+    case "invoiceDate":
+      return compareNullableNumber(dateSortValue(a.invoiceDate), dateSortValue(b.invoiceDate), d);
+    case "submittedDate":
+      return compareNullableNumber(dateSortValue(a.submittedDate), dateSortValue(b.submittedDate), d);
+    case "paidDate":
+      return compareNullableNumber(dateSortValue(a.paidDate), dateSortValue(b.paidDate), d);
+    case "status":
+      return a.status.localeCompare(b.status, undefined, { sensitivity: "base" }) * d;
+    case "unpaidAmount":
+      return compareNullableNumber(unpaidSortValue(a.unpaidAmount), unpaidSortValue(b.unpaidAmount), d);
+    default:
+      return 0;
+  }
+}
+
 const DEMO_ROWS: PaymentRequestRow[] = [
   {
     id: "1",
@@ -175,6 +236,7 @@ export function PaymentRequestTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bankslipModalRowId, setBankslipModalRowId] = useState<string | null>(null);
   const [rowMenu, setRowMenu] = useState<RowMenuState | null>(null);
+  const [sort, setSort] = useState<{ key: SortKey | null; dir: "asc" | "desc" }>({ key: null, dir: "asc" });
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
   const visibleRows = useMemo(
@@ -182,13 +244,25 @@ export function PaymentRequestTable({
     [rows, statusFilter],
   );
 
+  const sortedVisibleRows = useMemo(() => {
+    if (!sort.key) return visibleRows;
+    const next = [...visibleRows];
+    next.sort((a, b) => compareRows(a, b, sort.key!, sort.dir));
+    return next;
+  }, [visibleRows, sort.key, sort.dir]);
+
   const allSelected = visibleRows.length > 0 && visibleRows.every((r) => selectedIds.has(r.id));
   const someSelected = visibleRows.some((r) => selectedIds.has(r.id)) && !allSelected;
 
   useEffect(() => {
     setSelectedIds(new Set());
+    setSort({ key: null, dir: "asc" });
     setRowMenu(null);
   }, [statusFilter]);
+
+  const onSortColumn = (sk: SortKey) => {
+    setSort((s) => (s.key === sk ? { key: sk, dir: s.dir === "asc" ? "desc" : "asc" } : { key: sk, dir: "asc" }));
+  };
 
   useEffect(() => {
     const el = headerCheckboxRef.current;
@@ -197,7 +271,7 @@ export function PaymentRequestTable({
 
   const toggleAll = () => {
     if (allSelected) setSelectedIds(new Set());
-    else setSelectedIds(new Set(visibleRows.map((r) => r.id)));
+    else setSelectedIds(new Set(sortedVisibleRows.map((r) => r.id)));
   };
 
   const toggleRow = (id: string) => {
@@ -246,15 +320,38 @@ export function PaymentRequestTable({
         <div className="overflow-x-auto touch-pan-x [-webkit-overflow-scrolling:touch]">
           <table className="min-w-[82rem] w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th scope="col" className="w-12 min-w-[2.75rem] px-2 py-3 text-center sm:px-3 sm:py-3.5">
+              <tr>
+                <th scope="col" className="w-12 min-w-[2.75rem] border-b border-gray-200 bg-[#9CA3AF] px-2 py-3 text-center sm:px-3 sm:py-3.5">
                   <input ref={headerCheckboxRef} type="checkbox" checked={allSelected} onChange={toggleAll} className={HEADER_CHECKBOX_CLASS} aria-label="Select all rows" suppressHydrationWarning />
                 </th>
-                {COLUMN_TITLES.map((title, index) => (
-                  <th key={title} scope="col" className={`px-4 py-3 text-left text-xs font-semibold text-primary sm:px-5 sm:py-3.5 sm:text-sm ${index === 0 ? "min-w-[14rem]" : title === "Payment" || title === "Bankslip" ? "min-w-[11rem] whitespace-nowrap" : title === "Invoice Date" || title === "Paid Date" ? "min-w-[9rem] whitespace-nowrap" : title === "Status" ? "min-w-[10rem] whitespace-nowrap" : title === "Unpaid Amount" ? "min-w-[13rem] whitespace-nowrap" : "min-w-[7rem] whitespace-nowrap"}`}>{title}</th>
-                ))}
-                <th scope="col" aria-label="Xero" className="w-14 min-w-[3.25rem] px-2 py-3 text-center sm:px-3 sm:py-3.5" />
-                <th scope="col" aria-label="Row actions" className="w-12 min-w-[2.75rem] px-2 py-3 text-center sm:px-3 sm:py-3.5" />
+                {COLUMN_TITLES.map((title, index) => {
+                  const sortKeyForCol = SORTABLE_TITLE[title];
+                  const sortActive = sortKeyForCol != null && sort.key === sortKeyForCol;
+                  const thBase = `border-b border-gray-200 px-4 py-3 text-left text-xs sm:px-5 sm:py-3.5 sm:text-sm ${isActionColumnTitle(title) ? "bg-secondary text-white" : "bg-[#9CA3AF] text-white"} ${index === 0 ? "min-w-[14rem]" : title === "Payment" || title === "Bankslip" ? "min-w-[11rem] whitespace-nowrap" : title === "Invoice Date" || title === "Paid Date" ? "min-w-[9rem] whitespace-nowrap" : title === "Status" ? "min-w-[10rem] whitespace-nowrap" : title === "Unpaid Amount" ? "min-w-[13rem] whitespace-nowrap" : "min-w-[7rem] whitespace-nowrap"}`;
+                  const hoverSort = title === "Paid Date" ? "hover:bg-white/15 focus-visible:outline-white/60" : "hover:bg-black/10 focus-visible:outline-white/60";
+                  return (
+                    <th key={title} scope="col" aria-sort={sortActive ? (sort.dir === "asc" ? "ascending" : "descending") : undefined} className={thBase}>
+                      {sortKeyForCol ? (
+                        <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
+                          <span className="min-w-0 flex-1 truncate font-semibold">{title}</span>
+                          <button type="button" className={`inline-flex size-7 shrink-0 items-center justify-center rounded outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${hoverSort}`} aria-label={`Sort by ${title}${sortActive ? `, ${sort.dir === "asc" ? "ascending" : "descending"}` : ""}`} onClick={() => onSortColumn(sortKeyForCol)}>
+                            <span className="inline-flex size-5 items-center justify-center" aria-hidden>
+                              <span className={`material-symbols-outlined block text-[18px] leading-none ${sortActive ? "opacity-100" : "opacity-60"}`}>{sortActive ? (sort.dir === "asc" ? "expand_less" : "expand_more") : "expand_more"}</span>
+                            </span>
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="font-semibold">{title}</span>
+                      )}
+                    </th>
+                  );
+                })}
+                <th scope="col" aria-label="Xero" className="w-14 min-w-[3.25rem] border-b border-gray-200 bg-secondary px-2 py-3 text-center text-white sm:px-3 sm:py-3.5">
+                  <span className="sr-only">Xero</span>
+                </th>
+                <th scope="col" aria-label="Row actions" className="w-12 min-w-[2.75rem] border-b border-gray-200 bg-secondary px-2 py-3 text-center text-white sm:px-3 sm:py-3.5">
+                  <span className="sr-only">Row actions</span>
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white">
@@ -263,7 +360,7 @@ export function PaymentRequestTable({
                   <td colSpan={TABLE_COL_COUNT} className="border-b border-gray-100 px-4 py-8 text-center text-sm text-primary/70 sm:px-5">No payment requests match this status.</td>
                 </tr>
               ) : null}
-              {visibleRows.map((row) => {
+              {sortedVisibleRows.map((row) => {
                 const isPaid = row.status === "Paid";
                 const isPaymentRequested = row.status === "Payment Requested";
                 const isDraft = row.status === "Draft";
