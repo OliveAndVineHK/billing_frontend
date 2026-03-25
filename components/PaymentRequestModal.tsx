@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
 
@@ -162,11 +164,7 @@ export function PaymentRequestModal({
 
   useEffect(() => {
     if (!open) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
+    return pushAppScrollLock();
   }, [open]);
 
   useEffect(() => {
@@ -246,9 +244,9 @@ export function PaymentRequestModal({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[300] flex items-center justify-center p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6"
+      className="fixed inset-0 z-[300] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6"
       role="presentation"
     >
       <button
@@ -261,7 +259,7 @@ export function PaymentRequestModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full max-w-[min(100vw-1rem,640px)] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92vh,880px)] sm:rounded-2xl"
+        className="relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full min-w-0 max-w-[640px] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,880px)] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-4 pb-3 pt-4 sm:gap-4 sm:px-6 sm:pb-4 sm:pt-6">
@@ -292,14 +290,8 @@ export function PaymentRequestModal({
               onChange={handleFilesSelected}
               aria-label="Choose files to upload"
             />
-            <div className="pointer-events-none grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 bg-white px-3 py-3 sm:min-h-[104px] sm:py-4">
-                <span className="material-symbols-outlined text-2xl leading-none text-secondary sm:text-3xl" aria-hidden>
-                  library_add
-                </span>
-                <span className="text-center text-xs font-medium text-secondary sm:text-sm">Add from Library</span>
-              </div>
-              <div className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 bg-white px-3 py-3 sm:min-h-[104px] sm:py-4">
+            <div className="pointer-events-none">
+              <div className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[#EDEDED] bg-white px-3 py-3 sm:min-h-[104px] sm:py-4">
                 <span className="material-symbols-outlined text-2xl leading-none text-secondary sm:text-3xl" aria-hidden>
                   library_add
                 </span>
@@ -317,7 +309,7 @@ export function PaymentRequestModal({
               return (
               <li
                 key={id}
-                className="flex items-start gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 sm:items-center"
+                className="flex items-start gap-2 rounded-lg border border-[#EDEDED] bg-white px-3 py-2.5 sm:items-center"
               >
                 <span
                   className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`}
@@ -351,7 +343,7 @@ export function PaymentRequestModal({
                 type="text"
                 value={billNo}
                 onChange={(e) => setBillNo(e.target.value)}
-                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
+                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
                 placeholder="MBIDAN-115803031626"
               />
             </div>
@@ -367,9 +359,10 @@ export function PaymentRequestModal({
                   value={currency}
                   onChange={setCurrency}
                   options={CURRENCY_OPTIONS}
-                  className="w-full shrink-0 sm:w-auto"
+                  className="w-full shrink-0 sm:w-24"
                   fullWidth
-                  triggerClassName="rounded-lg border border-gray-200 bg-gray-50 px-2 sm:w-auto sm:min-w-[4.75rem] sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3 md:min-w-[5.25rem]"
+                  uniformFill
+                  triggerClassName="w-full px-2 sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3"
                 />
                 <input
                   id="pr-amount"
@@ -385,7 +378,7 @@ export function PaymentRequestModal({
                     "box-border h-11 min-h-[44px] min-w-0 w-full rounded-lg border bg-white px-3 text-base text-black focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:border-l-0 sm:text-sm " +
                     (fieldErrors.amount
                       ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
-                      : "border-gray-200 focus:border-secondary focus:ring-secondary/25")
+                      : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
                   }
                 />
               </div>
@@ -404,7 +397,7 @@ export function PaymentRequestModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Lorem ipsum Dolor"
-                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
+                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
               />
             </div>
 
@@ -470,20 +463,17 @@ export function PaymentRequestModal({
                       "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
                       (fieldErrors.invoiceDate
                         ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
-                        : "border-gray-200 focus:border-secondary focus:ring-secondary/25")
+                        : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
                     }
                   />
                   <button
                     type="button"
                     onClick={() => openDatePicker(invoiceDateRef.current)}
-                    className={
-                      "absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11 " +
-                      (fieldErrors.invoiceDate ? "border-gray-200 bg-red-50" : "border-gray-200 bg-gray-50")
-                    }
+                    className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
                     aria-label="Open calendar for invoice date"
                   >
                     <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                      calendar_today
+                      calendar_clock
                     </span>
                   </button>
                 </div>
@@ -512,20 +502,17 @@ export function PaymentRequestModal({
                       "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
                       (fieldErrors.dueDate
                         ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
-                        : "border-gray-200 focus:border-secondary focus:ring-secondary/25")
+                        : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
                     }
                   />
                   <button
                     type="button"
                     onClick={() => openDatePicker(dueDateRef.current)}
-                    className={
-                      "absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11 " +
-                      (fieldErrors.dueDate ? "border-gray-200 bg-red-50" : "border-gray-200 bg-gray-50")
-                    }
+                    className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
                     aria-label="Open calendar for due date"
                   >
                     <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                      calendar_today
+                      calendar_clock
                     </span>
                   </button>
                 </div>
@@ -566,6 +553,7 @@ export function PaymentRequestModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

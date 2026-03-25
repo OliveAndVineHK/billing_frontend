@@ -34,8 +34,10 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
         />
       </head>
-      <body className="antialiased">
-        {children}
+      <body className="m-0 min-w-0 overflow-x-clip antialiased">
+        <div id="app-scroll-root" className="min-h-dvh min-h-screen w-full min-w-0 max-w-full">
+          {children}
+        </div>
       </body>
     </html>
   );

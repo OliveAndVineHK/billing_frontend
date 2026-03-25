@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function PaymentRequestDetailPage() {
   return (
-    <div className="flex min-h-dvh min-h-screen flex-col bg-white">
+    <div className="flex min-h-dvh min-h-screen min-w-0 max-w-full flex-col overflow-x-clip bg-white">
       <Header
         title="Payment Request Details"
         showLogo={false}
@@ -27,7 +27,7 @@ export default function PaymentRequestDetailPage() {
           <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700 sm:text-sm">Payment Requested</span>
         }
       />
-      <main className="flex min-h-0 flex-1 flex-col pt-2 sm:pt-3 lg:pt-4">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3 lg:pt-4">
         <PaymentRequestDetailBody />
       </main>
     </div>
