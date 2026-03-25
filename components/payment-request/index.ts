@@ -23,3 +23,4 @@ export {
 } from "./PaymentRequestToolbar";
 export { PaymentRequestView } from "./PaymentRequestView";
 export { UploadBankslipModal, type UploadBankslipModalProps } from "./UploadBankslipModal";
+export { RecordPaymentModal, type RecordPaymentModalProps } from "./RecordPaymentModal";

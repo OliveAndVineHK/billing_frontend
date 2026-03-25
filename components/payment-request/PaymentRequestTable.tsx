@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { UploadBankslipModal } from "./UploadBankslipModal";
@@ -214,14 +215,29 @@ type PaymentRequestTableProps = {
   rows?: PaymentRequestRow[];
   onRecordPayment?: (rowId: string) => void;
   statusFilter?: PaymentRequestStatusFilter;
+  onRowDelete?: (rowId: string) => void;
+  onRowPublish?: (rowId: string) => void;
+  onRowRepublish?: (rowId: string) => void;
 };
+
+const ROW_MENU_MIN_WIDTH_PX = 160;
+
+type RowMenuState = { rowId: string; top: number; left: number };
 
 const TABLE_COL_COUNT = 1 + COLUMN_TITLES.length + 2;
 
-export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusFilter = "All" }: PaymentRequestTableProps) {
+export function PaymentRequestTable({
+  rows = DEMO_ROWS,
+  onRecordPayment,
+  statusFilter = "All",
+  onRowDelete,
+  onRowPublish,
+  onRowRepublish,
+}: PaymentRequestTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<{ key: SortKey | null; dir: "asc" | "desc" }>({ key: null, dir: "asc" });
   const [bankslipModalRowId, setBankslipModalRowId] = useState<string | null>(null);
+  const [rowMenu, setRowMenu] = useState<RowMenuState | null>(null);
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
   const visibleRows = useMemo(
@@ -239,6 +255,7 @@ export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusF
   useEffect(() => {
     setSelectedIds(new Set());
     setSort({ key: null, dir: "asc" });
+    setRowMenu(null);
   }, [statusFilter]);
 
   const onSortColumn = (sk: SortKey) => {
@@ -268,6 +285,35 @@ export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusF
   };
 
   const bankslipModalRow = bankslipModalRowId ? rows.find((r) => r.id === bankslipModalRowId) : undefined;
+
+  useEffect(() => {
+    if (!rowMenu) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setRowMenu(null);
+    };
+    const onMouseDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.closest("[data-row-menu-panel]")) return;
+      if (t.closest("[data-row-menu-trigger]")) return;
+      setRowMenu(null);
+    };
+    const onScroll = () => setRowMenu(null);
+    window.addEventListener("keydown", onKeyDown);
+    document.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [rowMenu]);
+
+  const toggleRowMenu = (rowId: string, trigger: HTMLButtonElement) => {
+    const r = trigger.getBoundingClientRect();
+    const left = Math.max(8, r.right - ROW_MENU_MIN_WIDTH_PX);
+    const top = r.bottom + 4;
+    setRowMenu((open) => (open?.rowId === rowId ? null : { rowId, top, left }));
+  };
 
   return (
     <div className="w-full min-w-0 px-4 pb-6 sm:px-6">
@@ -402,7 +448,18 @@ export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusF
                     <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={24} height={24} className="mx-auto h-6 w-6 max-h-6 max-w-6 object-contain" loading="lazy" decoding="async" />
                   </td>
                   <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
-                    <button type="button" className={rowMenuButtonClass} aria-label={`More options for ${row.contactTitle}`}>
+                    <button
+                      type="button"
+                      data-row-menu-trigger
+                      className={rowMenuButtonClass}
+                      aria-label={`More options for ${row.contactTitle}`}
+                      aria-expanded={rowMenu?.rowId === row.id}
+                      aria-haspopup="menu"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleRowMenu(row.id, e.currentTarget);
+                      }}
+                    >
                       <span className="material-symbols-outlined text-[22px] leading-none text-primary" aria-hidden>
                         more_vert
                       </span>
@@ -420,6 +477,52 @@ export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusF
         onClose={() => setBankslipModalRowId(null)}
         contactTitle={bankslipModalRow?.contactTitle}
       />
+      {rowMenu
+        ? createPortal(
+            <div
+              data-row-menu-panel
+              role="menu"
+              aria-label="Row actions"
+              className="fixed z-[400] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+              style={{ top: rowMenu.top, left: rowMenu.left, minWidth: ROW_MENU_MIN_WIDTH_PX }}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                onClick={() => {
+                  onRowDelete?.(rowMenu.rowId);
+                  setRowMenu(null);
+                }}
+              >
+                Delete
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100"
+                onClick={() => {
+                  onRowPublish?.(rowMenu.rowId);
+                  setRowMenu(null);
+                }}
+              >
+                Publish
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100"
+                onClick={() => {
+                  onRowRepublish?.(rowMenu.rowId);
+                  setRowMenu(null);
+                }}
+              >
+                Republish
+              </button>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
