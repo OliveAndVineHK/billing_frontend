@@ -220,10 +220,38 @@ type PaymentRequestTableProps = {
 };
 
 const ROW_MENU_MIN_WIDTH_PX = 160;
+/** Approximate panel width for positioning (matches `w-72` / 18rem). */
+const COLUMNS_MENU_WIDTH_PX = 288;
 
 type RowMenuState = { rowId: string; top: number; left: number };
+type ColumnsMenuState = { top: number; left: number };
+type ColumnSelectorKey = "contact" | "submittedDate" | "invoiceDate" | "status" | "unpaidAmount";
 
-const TABLE_COL_COUNT = 1 + COLUMN_TITLES.length + 2;
+const COLUMN_SELECTOR_ITEMS: Array<{ key: ColumnSelectorKey; label: string }> = [
+  { key: "contact", label: "Contact / Description" },
+  { key: "submittedDate", label: "Submitted Date" },
+  { key: "invoiceDate", label: "Invoice Date" },
+  { key: "status", label: "Status" },
+  { key: "unpaidAmount", label: "Unpaid Amount" },
+];
+
+const TITLE_SELECTOR_KEY: Partial<Record<PaymentRequestColumnTitle, ColumnSelectorKey>> = {
+  "Contact / Description": "contact",
+  "Submitted Date": "submittedDate",
+  "Invoice Date": "invoiceDate",
+  Status: "status",
+  "Unpaid Amount": "unpaidAmount",
+};
+
+const SELECTOR_TITLE: Record<ColumnSelectorKey, PaymentRequestColumnTitle> = {
+  contact: "Contact / Description",
+  submittedDate: "Submitted Date",
+  invoiceDate: "Invoice Date",
+  status: "Status",
+  unpaidAmount: "Unpaid Amount",
+};
+
+const NON_SELECTOR_TITLES: PaymentRequestColumnTitle[] = COLUMN_TITLES.filter((title) => !TITLE_SELECTOR_KEY[title]);
 
 export function PaymentRequestTable({
   rows = DEMO_ROWS,
@@ -236,7 +264,17 @@ export function PaymentRequestTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bankslipModalRowId, setBankslipModalRowId] = useState<string | null>(null);
   const [rowMenu, setRowMenu] = useState<RowMenuState | null>(null);
+  const [columnsMenu, setColumnsMenu] = useState<ColumnsMenuState | null>(null);
   const [sort, setSort] = useState<{ key: SortKey | null; dir: "asc" | "desc" }>({ key: null, dir: "asc" });
+  const [columnVisibility, setColumnVisibility] = useState<Record<ColumnSelectorKey, boolean>>({
+    contact: true,
+    submittedDate: true,
+    invoiceDate: true,
+    status: true,
+    unpaidAmount: true,
+  });
+  const [columnOrder, setColumnOrder] = useState<ColumnSelectorKey[]>(() => COLUMN_SELECTOR_ITEMS.map((item) => item.key));
+  const [draggingColumnKey, setDraggingColumnKey] = useState<ColumnSelectorKey | null>(null);
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
   const visibleRows = useMemo(
@@ -253,11 +291,19 @@ export function PaymentRequestTable({
 
   const allSelected = visibleRows.length > 0 && visibleRows.every((r) => selectedIds.has(r.id));
   const someSelected = visibleRows.some((r) => selectedIds.has(r.id)) && !allSelected;
+  const visibleSelectorCount = COLUMN_SELECTOR_ITEMS.reduce((n, item) => n + (columnVisibility[item.key] ? 1 : 0), 0);
+  const tableColCount = 1 + visibleSelectorCount + 2 + 2;
+  const orderedTableTitles = useMemo(() => [...columnOrder.map((key) => SELECTOR_TITLE[key]), ...NON_SELECTOR_TITLES], [columnOrder]);
+  const orderedSelectorItems = useMemo(
+    () => columnOrder.map((key) => COLUMN_SELECTOR_ITEMS.find((item) => item.key === key)).filter((item): item is { key: ColumnSelectorKey; label: string } => item != null),
+    [columnOrder],
+  );
 
   useEffect(() => {
     setSelectedIds(new Set());
     setSort({ key: null, dir: "asc" });
     setRowMenu(null);
+    setColumnsMenu(null);
   }, [statusFilter]);
 
   const onSortColumn = (sk: SortKey) => {
@@ -314,6 +360,48 @@ export function PaymentRequestTable({
     setRowMenu((open) => (open?.rowId === rowId ? null : { rowId, top, left }));
   };
 
+  const toggleColumnsMenu = (trigger: HTMLButtonElement) => {
+    const r = trigger.getBoundingClientRect();
+    const left = Math.max(8, r.right - COLUMNS_MENU_WIDTH_PX);
+    const top = r.bottom + 6;
+    setColumnsMenu((open) => (open ? null : { top, left }));
+  };
+
+  const moveColumnOrder = (source: ColumnSelectorKey, target: ColumnSelectorKey) => {
+    if (source === target) return;
+    setColumnOrder((prev) => {
+      const from = prev.indexOf(source);
+      const to = prev.indexOf(target);
+      if (from < 0 || to < 0) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!columnsMenu) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setColumnsMenu(null);
+    };
+    const onMouseDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.closest("[data-columns-menu-panel]")) return;
+      if (t.closest("[data-columns-menu-trigger]")) return;
+      setColumnsMenu(null);
+    };
+    const onScroll = () => setColumnsMenu(null);
+    window.addEventListener("keydown", onKeyDown);
+    document.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [columnsMenu]);
+
   return (
     <div className="w-full min-w-0 px-4 pb-6 sm:px-6">
       <div className="overflow-hidden rounded-lg border border-gray-200">
@@ -324,10 +412,12 @@ export function PaymentRequestTable({
                 <th scope="col" className="w-12 min-w-[2.75rem] border-b border-gray-200 bg-[#9CA3AF] px-2 py-3 text-center sm:px-3 sm:py-3.5">
                   <input ref={headerCheckboxRef} type="checkbox" checked={allSelected} onChange={toggleAll} className={HEADER_CHECKBOX_CLASS} aria-label="Select all rows" suppressHydrationWarning />
                 </th>
-                {COLUMN_TITLES.map((title, index) => {
+                {orderedTableTitles.map((title) => {
+                  const selectorKey = TITLE_SELECTOR_KEY[title];
+                  if (selectorKey && !columnVisibility[selectorKey]) return null;
                   const sortKeyForCol = SORTABLE_TITLE[title];
                   const sortActive = sortKeyForCol != null && sort.key === sortKeyForCol;
-                  const thBase = `border-b border-gray-200 px-4 py-3 text-left text-xs sm:px-5 sm:py-3.5 sm:text-sm ${isActionColumnTitle(title) ? "bg-secondary text-white" : "bg-[#9CA3AF] text-white"} ${index === 0 ? "min-w-[14rem]" : title === "Payment" || title === "Bankslip" ? "min-w-[11rem] whitespace-nowrap" : title === "Invoice Date" || title === "Paid Date" ? "min-w-[9rem] whitespace-nowrap" : title === "Status" ? "min-w-[10rem] whitespace-nowrap" : title === "Unpaid Amount" ? "min-w-[13rem] whitespace-nowrap" : "min-w-[7rem] whitespace-nowrap"}`;
+                  const thBase = `border-b border-gray-200 px-4 py-3 text-left text-xs sm:px-5 sm:py-3.5 sm:text-sm ${isActionColumnTitle(title) ? "bg-secondary text-white" : "bg-[#9CA3AF] text-white"} ${title === "Contact / Description" ? "min-w-[14rem]" : title === "Payment" || title === "Bankslip" ? "min-w-[11rem] whitespace-nowrap" : title === "Invoice Date" || title === "Paid Date" ? "min-w-[9rem] whitespace-nowrap" : title === "Status" ? "min-w-[10rem] whitespace-nowrap" : title === "Unpaid Amount" ? "min-w-[13rem] whitespace-nowrap" : "min-w-[7rem] whitespace-nowrap"}`;
                   const hoverSort = title === "Paid Date" ? "hover:bg-white/15 focus-visible:outline-white/60" : "hover:bg-black/10 focus-visible:outline-white/60";
                   return (
                     <th key={title} scope="col" aria-sort={sortActive ? (sort.dir === "asc" ? "ascending" : "descending") : undefined} className={thBase}>
@@ -346,18 +436,18 @@ export function PaymentRequestTable({
                     </th>
                   );
                 })}
-                <th scope="col" aria-label="Xero" className="w-14 min-w-[3.25rem] border-b border-gray-200 bg-secondary px-2 py-3 text-center text-white sm:px-3 sm:py-3.5">
-                  <span className="sr-only">Xero</span>
-                </th>
-                <th scope="col" aria-label="Row actions" className="w-12 min-w-[2.75rem] border-b border-gray-200 bg-secondary px-2 py-3 text-center text-white sm:px-3 sm:py-3.5">
-                  <span className="sr-only">Row actions</span>
+                <th scope="col" colSpan={2} aria-label="Actions" className="border-b border-gray-200 bg-secondary px-2 py-2 text-right text-white sm:px-3 sm:py-2.5">
+                  <button type="button" data-columns-menu-trigger className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/40 bg-white/15 px-3 text-sm font-medium text-white transition-colors hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" aria-label="Columns" aria-expanded={columnsMenu ? "true" : "false"} aria-haspopup="dialog" onClick={(e) => { e.stopPropagation(); toggleColumnsMenu(e.currentTarget); }}>
+                    <span>Columns</span>
+                    <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>vertical_split</span>
+                  </button>
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white">
               {visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={TABLE_COL_COUNT} className="border-b border-gray-100 px-4 py-8 text-center text-sm text-primary/70 sm:px-5">No payment requests match this status.</td>
+                  <td colSpan={tableColCount} className="border-b border-gray-100 px-4 py-8 text-center text-sm text-primary/70 sm:px-5">No payment requests match this status.</td>
                 </tr>
               ) : null}
               {sortedVisibleRows.map((row) => {
@@ -371,36 +461,19 @@ export function PaymentRequestTable({
                     <td className="border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3">
                       <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleRow(row.id)} className={HEADER_CHECKBOX_CLASS} aria-label={`Select row ${row.contactTitle}`} suppressHydrationWarning />
                     </td>
-                    <td className={contactCellClass}>
-                      <div className="flex min-w-0 flex-col gap-0.5">
-                        <span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>
-                        {row.contactCaption ? <span className="text-xs text-primary/65 sm:text-sm">{row.contactCaption}</span> : null}
-                      </div>
-                    </td>
-                    <td className={singleLineDateCellClass}>{row.invoiceDate}</td>
-                    <td className={singleLineStatusCellClass}>
-                      {row.status ? <span className={isPaid ? statusTagPaidClass : isPaymentRequested ? statusTagPaymentRequestedClass : isReturned ? statusTagReturnedClass : statusTagClass}>{row.status}</span> : null}
-                    </td>
-                    <td className={invoiceDateCellClass}>{row.submittedDate}</td>
-                    <td className={unpaidAmountCellClass}>
-                      {row.unpaidAmount || row.invoiceTotal ? (
-                        <div className="flex min-w-0 flex-col gap-0.5">
-                          {row.unpaidAmount ? <span className={"whitespace-nowrap text-sm font-semibold sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span> : null}
-                          {row.invoiceTotal ? <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span> : null}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}>
-                      <button type="button" disabled={isPaid} aria-label={isPaid ? `Already paid — ${row.contactTitle}` : `Record payment for ${row.contactTitle}`} onClick={() => { if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button>
-                    </td>
-                    <td className={`${singleLineDateCellClass} ${actionBodyCellBg}`}>{row.paidDate.trim() ? row.paidDate : <span className="text-primary/40 tabular-nums" aria-label="No paid date">-</span>}</td>
-                    <td className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>
-                      {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
-                        <div className="inline-flex items-center gap-1.5 text-secondary sm:gap-2" role="status" aria-label={`${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`}><span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span></div>
-                      ) : (
-                        <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>
-                      )}
-                    </td>
+                    {orderedTableTitles.map((title) => {
+                      const selectorKey = TITLE_SELECTOR_KEY[title];
+                      if (selectorKey && !columnVisibility[selectorKey]) return null;
+                      if (title === "Contact / Description") return <td key={`${row.id}-${title}`} className={contactCellClass}><div className="flex min-w-0 flex-col gap-0.5"><span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>{row.contactCaption ? <span className="text-xs text-primary/65 sm:text-sm">{row.contactCaption}</span> : null}</div></td>;
+                      if (title === "Invoice Date") return <td key={`${row.id}-${title}`} className={singleLineDateCellClass}>{row.invoiceDate}</td>;
+                      if (title === "Status") return <td key={`${row.id}-${title}`} className={singleLineStatusCellClass}>{row.status ? <span className={isPaid ? statusTagPaidClass : isPaymentRequested ? statusTagPaymentRequestedClass : isReturned ? statusTagReturnedClass : statusTagClass}>{row.status}</span> : null}</td>;
+                      if (title === "Submitted Date") return <td key={`${row.id}-${title}`} className={invoiceDateCellClass}>{row.submittedDate}</td>;
+                      if (title === "Unpaid Amount") return <td key={`${row.id}-${title}`} className={unpaidAmountCellClass}>{row.unpaidAmount || row.invoiceTotal ? (<div className="flex min-w-0 flex-col gap-0.5">{row.unpaidAmount ? <span className={"whitespace-nowrap text-sm font-semibold sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span> : null}{row.invoiceTotal ? <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span> : null}</div>) : null}</td>;
+                      if (title === "Payment") return <td key={`${row.id}-${title}`} className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}><button type="button" disabled={isPaid} aria-label={isPaid ? `Already paid — ${row.contactTitle}` : `Record payment for ${row.contactTitle}`} onClick={() => { if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button></td>;
+                      if (title === "Paid Date") return <td key={`${row.id}-${title}`} className={`${singleLineDateCellClass} ${actionBodyCellBg}`}>{row.paidDate.trim() ? row.paidDate : <span className="text-primary/40 tabular-nums" aria-label="No paid date">-</span>}</td>;
+                      if (title === "Bankslip") return <td key={`${row.id}-${title}`} className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>{row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (<div className="inline-flex items-center gap-1.5 text-secondary sm:gap-2" role="status" aria-label={`${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`}><span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span></div>) : (<button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>)}</td>;
+                      return null;
+                    })}
                     <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
                       <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={24} height={24} className="mx-auto h-6 w-6 max-h-6 max-w-6 object-contain" />
                     </td>
@@ -421,6 +494,31 @@ export function PaymentRequestTable({
               <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50" onClick={() => { onRowDelete?.(rowMenu.rowId); setRowMenu(null); }}>Delete</button>
               <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onRowPublish?.(rowMenu.rowId); setRowMenu(null); }}>Publish</button>
               <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onRowRepublish?.(rowMenu.rowId); setRowMenu(null); }}>Republish</button>
+            </div>,
+            document.body,
+          )
+        : null}
+      {columnsMenu
+        ? createPortal(
+            <div data-columns-menu-panel role="dialog" aria-label="Columns selector" className="fixed z-[400] w-[min(18rem,calc(100vw-1rem))] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg" style={{ top: columnsMenu.top, left: columnsMenu.left }}>
+              <div className="border-b border-gray-200 px-3 py-2">
+                <h3 className="text-sm font-semibold text-primary">Columns</h3>
+                <p className="mt-1 text-xs leading-snug text-primary/65">Select columns to show in the column or drag to reorder.</p>
+              </div>
+              <ul className="max-h-[min(22rem,55dvh)] overflow-y-auto overscroll-contain py-1">
+                {orderedSelectorItems.map((item) => (
+                  <li key={item.key}>
+                    <label className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-gray-100" draggable onDragStart={() => setDraggingColumnKey(item.key)} onDragOver={(e) => e.preventDefault()} onDrop={() => { if (!draggingColumnKey) return; moveColumnOrder(draggingColumnKey, item.key); setDraggingColumnKey(null); }} onDragEnd={() => setDraggingColumnKey(null)}>
+                      <span className="material-symbols-outlined shrink-0 text-[20px] leading-none text-primary/55" aria-hidden>drag_indicator</span>
+                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      <input type="checkbox" className={HEADER_CHECKBOX_CLASS} checked={columnVisibility[item.key]} onChange={() => setColumnVisibility((prev) => ({ ...prev, [item.key]: !prev[item.key] }))} aria-label={`Toggle ${item.label} column`} suppressHydrationWarning />
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <div className="border-t border-gray-200 px-3 py-2 text-right">
+                <button type="button" className="inline-flex h-9 items-center rounded-lg bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary" onClick={() => setColumnsMenu(null)}>Save Changes</button>
+              </div>
             </div>,
             document.body,
           )
