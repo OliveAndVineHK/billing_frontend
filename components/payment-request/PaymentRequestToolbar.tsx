@@ -18,7 +18,7 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange }: Pa
   return (
     <>
     <div className="flex w-full min-w-0 flex-col gap-3 bg-white px-4 py-3 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
-      <div className="-mx-4 flex min-w-0 gap-2 overflow-x-auto overscroll-x-contain px-4 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Filter by status">
+      <div className="-mx-4 flex min-w-0 touch-pan-x gap-2 overflow-x-auto overscroll-x-contain px-4 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:touch-auto sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Filter by status">
         {PAYMENT_REQUEST_STATUS_FILTERS.map((label) => {
           const isActive = activeStatus === label;
           return (

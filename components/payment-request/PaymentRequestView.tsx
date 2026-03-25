@@ -10,7 +10,7 @@ export function PaymentRequestView() {
   return (
     <>
       <PaymentRequestToolbar activeStatus={statusFilter} onActiveStatusChange={setStatusFilter} />
-      <main className="flex min-h-0 flex-1 flex-col pt-2 sm:pt-3">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3">
         <PaymentRequestTable statusFilter={statusFilter} />
       </main>
     </>

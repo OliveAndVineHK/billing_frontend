@@ -1,6 +1,8 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState } from "react";
+import { pushAppScrollLock } from "@/lib/appScrollRoot";
 
 export type UploadBankslipModalProps = {
   open: boolean;
@@ -53,11 +55,7 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
 
   useEffect(() => {
     if (!open) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
+    return pushAppScrollLock();
   }, [open]);
 
   useEffect(() => {
@@ -102,9 +100,9 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[300] flex items-center justify-center p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6"
+      className="fixed inset-0 z-[300] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6"
       role="presentation"
     >
       <button
@@ -118,7 +116,7 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={contactTitle ? descriptionId : undefined}
-        className="relative z-[1] flex max-h-[min(100dvh-1rem,640px)] w-full max-w-[min(100vw-1rem,480px)] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92vh,640px)] sm:rounded-2xl"
+        className="relative z-[1] flex max-h-[min(100dvh-1rem,640px)] w-full min-w-0 max-w-[480px] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,640px)] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-4 pb-3 pt-4 sm:gap-4 sm:px-6 sm:pb-4 sm:pt-6">
@@ -267,6 +265,7 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

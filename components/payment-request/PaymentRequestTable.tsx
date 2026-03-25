@@ -272,7 +272,7 @@ export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusF
   return (
     <div className="w-full min-w-0 px-4 pb-6 sm:px-6">
       <div className="overflow-hidden rounded-lg border border-gray-200">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto touch-pan-x [-webkit-overflow-scrolling:touch]">
           <table className="min-w-[82rem] w-full border-collapse text-left">
             <thead>
               <tr>
