@@ -1,18 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useRef, useEffect } from "react";
 import { ModuleButton } from "@/components/ModuleButton";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { setAuth } from "@/lib/auth";
 
 const MODULE1_URL =
   process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://192.168.1.60:5001";
+const MODULE2_BACKEND_URL =
+  process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://127.0.0.1:8000";
 const MIN_LOADING_MS = 800;
 
 function ModuleSelectionContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const entityId = searchParams.get("entity_id") ?? "";
   const entityName = searchParams.get("entity_name") ?? "";
@@ -22,6 +22,10 @@ function ModuleSelectionContent() {
     entityId && token
       ? `${MODULE1_URL}/entity/${entityId}/enter?token=${token}`
       : `${MODULE1_URL}/entity`;
+
+  const module2Href = token
+    ? `${MODULE2_BACKEND_URL}/landing?token=${token}`
+    : MODULE2_BACKEND_URL;
 
   const entityBackHref = `${MODULE1_URL}/entity`;
 
@@ -75,9 +79,8 @@ function ModuleSelectionContent() {
 
   const navigateToModule2 = () => {
     setIsNavigating(true);
-    if (token) setAuth(token, entityId, entityName);
     window.setTimeout(() => {
-      router.push("/");
+      window.location.href = module2Href;
     }, MIN_LOADING_MS);
   };
 

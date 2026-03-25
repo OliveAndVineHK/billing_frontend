@@ -4,7 +4,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
-import { createBill, uploadBillAttachment } from "@/lib/api";
+
+/** Temporary: replace with a real `fetch` / server action. Simulates a successful API response. */
+async function simulatePaymentRequestSubmit(): Promise<{ ok: true }> {
+  console.log("Send api request here");
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  return { ok: true };
+}
 
 export type PaymentRequestModalProps = {
   open: boolean;
@@ -220,53 +226,19 @@ export function PaymentRequestModal({
     if (confirmSubmitting) return;
     setConfirmSubmitting(true);
     try {
-      const parsedAmount = parseAmountValue(amount) ?? 0;
-      const acctCode = accountCode.split(" - ")[0]?.trim() ?? "";
-
-      const bill = await createBill({
-        contact,
-        description,
-        amount: parsedAmount,
-        currency_code: currency,
-        invoice_date: invoiceDate || null,
-        due_date: dueDate || null,
-        reference: billNo,
-        line_items: [
-          {
-            description,
-            quantity: 1,
-            unit_amount: parsedAmount,
-            line_amount: parsedAmount,
-            account_code: acctCode,
-          },
-        ],
-      });
-
-      for (const entry of uploadedFiles) {
-        try {
-          await uploadBillAttachment(bill.id, entry.file);
-        } catch (e) {
-          console.error("Failed to upload attachment:", e);
-        }
-      }
-
+      const id = billNo.trim() || `new-${Date.now()}`;
       try {
         await saveAttachmentBlobs(
-          bill.id,
+          id,
           uploadedFiles.map((x) => x.file),
         );
       } catch (e) {
         console.error("Could not store attachments for preview:", e);
       }
-
+      await simulatePaymentRequestSubmit();
       onConfirm?.();
       onClose();
-      router.push(`/payment-request/${encodeURIComponent(bill.id)}`);
-    } catch (err) {
-      console.error("Failed to create bill:", err);
-      setFieldErrors({
-        amount: err instanceof Error ? err.message : "Failed to create bill. Please try again.",
-      });
+      router.push(`/payment-request/${encodeURIComponent(id)}`);
     } finally {
       setConfirmSubmitting(false);
     }
