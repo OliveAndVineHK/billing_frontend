@@ -113,6 +113,10 @@ const dataCellBase = "border-b border-gray-100 px-4 py-3 text-sm text-primary sm
 const dataCellClass = `${dataCellBase} align-top`;
 const contactCellClass = `${dataCellBase} align-middle`;
 const invoiceDateCellClass = `${dataCellBase} align-middle`;
+/** Invoice + Paid date: keep “03 Mar 2026” on one line on narrow viewports (horizontal scroll handles overflow). */
+const singleLineDateCellClass = `${dataCellBase} align-middle whitespace-nowrap tabular-nums min-w-[9rem]`;
+const singleLineStatusCellClass = `${dataCellBase} align-middle whitespace-nowrap min-w-[10rem]`;
+const unpaidAmountCellClass = `${dataCellBase} align-middle tabular-nums min-w-[13rem]`;
 
 const statusTagClass =
   "inline-flex items-center rounded-lg bg-[#EDEDED] px-2.5 py-1 text-xs font-medium text-[#C0C0C0] sm:text-sm";
@@ -127,7 +131,7 @@ const statusTagReturnedClass =
   "inline-flex items-center rounded-lg bg-[#EA9713]/10 px-2.5 py-1 text-xs font-semibold text-[#EA9713] sm:text-sm";
 
 const recordPaymentButtonClass =
-  "box-border inline-flex h-10 min-h-10 w-max max-w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-xs font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-primary/50 disabled:shadow-none disabled:hover:opacity-100 sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm";
+  "box-border inline-flex h-10 min-h-10 w-max max-w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-xs font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-[#EDEDED] disabled:text-[#C0C0C0] disabled:shadow-none disabled:hover:opacity-100 sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm";
 
 const uploadBankslipButtonClass =
   "box-border inline-flex h-10 min-h-10 w-max max-w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-secondary bg-white px-3 text-xs font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm";
@@ -197,7 +201,7 @@ export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusF
                   <input ref={headerCheckboxRef} type="checkbox" checked={allSelected} onChange={toggleAll} className={HEADER_CHECKBOX_CLASS} aria-label="Select all rows" suppressHydrationWarning />
                 </th>
                 {COLUMN_TITLES.map((title, index) => (
-                  <th key={title} scope="col" className={`px-4 py-3 text-left text-xs font-semibold text-primary sm:px-5 sm:py-3.5 sm:text-sm ${index === 0 ? "min-w-[14rem]" : title === "Payment" || title === "Bankslip" ? "min-w-[11rem] whitespace-nowrap" : "min-w-[7rem] whitespace-nowrap"}`}>{title}</th>
+                  <th key={title} scope="col" className={`px-4 py-3 text-left text-xs font-semibold text-primary sm:px-5 sm:py-3.5 sm:text-sm ${index === 0 ? "min-w-[14rem]" : title === "Payment" || title === "Bankslip" ? "min-w-[11rem] whitespace-nowrap" : title === "Invoice Date" || title === "Paid Date" ? "min-w-[9rem] whitespace-nowrap" : title === "Status" ? "min-w-[10rem] whitespace-nowrap" : title === "Unpaid Amount" ? "min-w-[13rem] whitespace-nowrap" : "min-w-[7rem] whitespace-nowrap"}`}>{title}</th>
                 ))}
                 <th scope="col" aria-label="Xero" className="w-14 min-w-[3.25rem] px-2 py-3 text-center sm:px-3 sm:py-3.5" />
                 <th scope="col" aria-label="Row actions" className="w-12 min-w-[2.75rem] px-2 py-3 text-center sm:px-3 sm:py-3.5" />
@@ -230,33 +234,33 @@ export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusF
                       ) : null}
                     </div>
                   </td>
-                  <td className={invoiceDateCellClass}>{row.invoiceDate}</td>
-                  <td className={invoiceDateCellClass}>
+                  <td className={singleLineDateCellClass}>{row.invoiceDate}</td>
+                  <td className={singleLineStatusCellClass}>
                     {row.status ? (
                       <span className={isPaid ? statusTagPaidClass : isPaymentRequested ? statusTagPaymentRequestedClass : isReturned ? statusTagReturnedClass : statusTagClass}>{row.status}</span>
                     ) : null}
                   </td>
                   <td className={invoiceDateCellClass}>{row.submittedDate}</td>
-                  <td className={dataCellClass}>
+                  <td className={unpaidAmountCellClass}>
                     {row.unpaidAmount || row.invoiceTotal ? (
                       <div className="flex min-w-0 flex-col gap-0.5">
                         {row.unpaidAmount ? (
-                          <span className={"text-sm font-semibold tabular-nums sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span>
+                          <span className={"whitespace-nowrap text-sm font-semibold sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span>
                         ) : null}
                         {row.invoiceTotal ? (
-                          <span className="text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span>
+                          <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span>
                         ) : null}
                       </div>
                     ) : null}
                   </td>
-                  <td className={`${dataCellClass} align-middle`}>
+                  <td className={`${dataCellBase} align-middle text-left`}>
                     <button type="button" disabled={isPaid} {...(isPaid ? { "aria-label": `Already paid — ${row.contactTitle}` } : {})} onClick={() => { if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button>
                   </td>
-                  <td className={invoiceDateCellClass}>
+                  <td className={singleLineDateCellClass}>
                     {row.paidDate.trim() ? (
                       row.paidDate
                     ) : (
-                      <span className="text-primary/40 tabular-nums" aria-label="No paid date">—</span>
+                      <span className="text-primary/40 tabular-nums" aria-label="No paid date">-</span>
                     )}
                   </td>
                   <td className={invoiceDateCellClass}>
