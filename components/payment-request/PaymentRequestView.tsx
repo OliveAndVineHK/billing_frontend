@@ -99,11 +99,7 @@ export function PaymentRequestView() {
         {error ? (
           <div className="px-4 py-8 text-center sm:px-6">
             <p className="text-sm text-red-600">{error}</p>
-            <button
-              type="button"
-              onClick={loadBills}
-              className="mt-2 text-sm font-medium text-secondary hover:underline"
-            >
+            <button type="button" onClick={loadBills} className="mt-2 text-sm font-medium text-secondary hover:underline">
               Retry
             </button>
           </div>
