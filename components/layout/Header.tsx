@@ -42,21 +42,18 @@ export function Header({
   );
 
   const leftSection = showBack && backHref ? (
-    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3">
-      <Link
-        href={backHref}
-        className="inline-flex shrink-0 items-center gap-0.5 text-sm font-medium text-primary transition-colors hover:text-secondary sm:text-base"
-      >
+    <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 sm:gap-3">
+      <Link href={backHref} className="inline-flex shrink-0 items-center gap-0.5 text-sm font-medium text-primary transition-colors hover:text-secondary sm:text-base">
         <span className="material-symbols-outlined text-[22px] leading-none sm:text-[24px]" aria-hidden>
           chevron_left
         </span>
         {backLabel}
       </Link>
-      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         {showLogo ? (
           <Image src="/logo-selection.webp" alt="" width={40} height={40} priority className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" />
         ) : null}
-        <span className="min-w-0 text-base font-semibold text-black sm:text-lg">{title}</span>
+        <span className="min-w-0 truncate text-base font-semibold text-black sm:text-lg">{title}</span>
         {statusBadge}
       </div>
     </div>
@@ -70,16 +67,16 @@ export function Header({
 
   return (
     <header className="border-b border-gray-200 bg-white pt-[env(safe-area-inset-top,0px)]">
-      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-4 lg:px-8">
-        <div className="min-w-0 flex-1">{leftSection}</div>
-        <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
+      <div className="mx-auto flex w-full max-w-[1920px] flex-row items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
+        <div className="flex min-w-0 min-h-10 flex-1 items-center sm:min-h-0">{leftSection}</div>
+        <div className="flex min-w-0 shrink-0 items-center justify-end gap-1.5 sm:gap-3">
           <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary sm:text-[26px]" aria-hidden>
             corporate_fare
           </span>
-          <span className="min-w-0 max-w-[min(100%,9rem)] truncate text-sm font-medium text-primary sm:max-w-[14rem] sm:text-base md:max-w-xs lg:max-w-md">
+          <span className="min-w-0 max-w-[min(100%,6.5rem)] truncate text-sm font-medium text-primary sm:max-w-[9rem] sm:text-base md:max-w-[14rem] lg:max-w-md">
             {companyName}
           </span>
-          <div className="shrink-0 pl-0.5 sm:pl-2">
+          <div className="flex shrink-0 items-center pl-0.5 sm:pl-2">
             <NavMenu items={navItems} companyAbbreviation={companyAbbreviation} onLogout={onLogout} />
           </div>
         </div>
