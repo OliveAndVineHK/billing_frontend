@@ -1,6 +1,7 @@
 type BillActionBarProps = {
   onDeleteBill?: () => void;
   onPublishToXero?: () => void;
+  deleteDisabled?: boolean;
 };
 
 function XeroMark({ className = "" }: { className?: string }) {
@@ -14,13 +15,14 @@ function XeroMark({ className = "" }: { className?: string }) {
   );
 }
 
-export function BillActionBar({ onDeleteBill, onPublishToXero }: BillActionBarProps) {
+export function BillActionBar({ onDeleteBill, onPublishToXero, deleteDisabled }: BillActionBarProps) {
   return (
     <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
       <button
         type="button"
         onClick={onDeleteBill}
-        className="inline-flex h-10 min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-md bg-rose-50 px-3 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 sm:h-10 sm:w-auto sm:justify-start sm:px-4"
+        disabled={deleteDisabled}
+        className="inline-flex h-10 min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-md bg-rose-50 px-3 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-auto sm:justify-start sm:px-4"
       >
         Delete Bill
         <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
