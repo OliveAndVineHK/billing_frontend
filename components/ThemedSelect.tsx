@@ -22,6 +22,8 @@ type ThemedSelectProps = {
   triggerClassName?: string;
   /** When false, trigger uses intrinsic width (e.g. currency cell). Default true. */
   fullWidth?: boolean;
+  /** One filled control (e.g. currency) — no white + chevron strip split. */
+  uniformFill?: boolean;
   error?: boolean;
   disabled?: boolean;
 };
@@ -35,6 +37,7 @@ export function ThemedSelect({
   className = "",
   triggerClassName = "",
   fullWidth = true,
+  uniformFill = false,
   error = false,
   disabled = false,
 }: ThemedSelectProps) {
@@ -89,19 +92,26 @@ export function ThemedSelect({
   const selected = options.find((o) => o.value === value);
   const displayLabel = selected?.label ?? (options[0]?.label ?? "");
 
-  const baseTrigger =
-    "box-border flex h-11 min-h-[44px] min-w-0 cursor-pointer items-center justify-between gap-2 rounded-lg border bg-white py-0 pl-3 pr-2 text-left text-base font-medium text-black transition-colors focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm " +
+  const uniformBase =
+    "box-border flex h-11 min-h-[44px] min-w-0 cursor-pointer items-center justify-between gap-2 rounded-lg border py-0 pl-3 pr-2 text-left text-base font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm " +
+    (fullWidth ? "w-full " : "w-auto ") +
+    (error
+      ? "border-red-500 bg-red-50 text-black focus:border-red-500 focus:ring-red-200/50 "
+      : "border-[#EDEDED] bg-[#EDEDED] text-[#656565] hover:bg-[#E4E4E4] focus:border-secondary focus:ring-secondary/25 ");
+
+  const splitBase =
+    "box-border flex h-11 min-h-[44px] min-w-0 cursor-pointer items-stretch gap-0 overflow-hidden rounded-lg border bg-white p-0 text-left text-base font-medium text-black transition-colors focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm " +
     (fullWidth ? "w-full " : "w-auto ") +
     (error
       ? "border-red-500 focus:border-red-500 focus:ring-red-200/50 "
-      : "border-gray-200 focus:border-secondary ");
+      : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25 ");
 
   const menu = isOpen ? (
     <ul
       ref={menuRef}
       id={listboxId}
       role="listbox"
-      className="fixed z-[400] max-h-60 overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg ring-1 ring-black/5"
+      className="fixed z-[400] max-h-60 overflow-auto rounded-lg border border-[#EDEDED] bg-white py-1 shadow-lg ring-1 ring-black/5"
       style={{
         top: menuPos.top,
         left: menuPos.left,
@@ -136,26 +146,53 @@ export function ThemedSelect({
     </ul>
   ) : null;
 
+  const chevron = (
+    <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary" aria-hidden>
+      {isOpen ? "expand_less" : "expand_more"}
+    </span>
+  );
+
   return (
     <div className={`relative ${className}`}>
-      <button
-        ref={triggerRef}
-        type="button"
-        id={id}
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        aria-controls={isOpen ? listboxId : undefined}
-        aria-label={ariaLabel}
-        aria-invalid={error}
-        disabled={disabled}
-        onClick={() => !disabled && setIsOpen((o) => !o)}
-        className={`${baseTrigger} ${triggerClassName}`}
-      >
-        <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
-        <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary" aria-hidden>
-          {isOpen ? "expand_less" : "expand_more"}
-        </span>
-      </button>
+      {uniformFill ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          id={id}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-controls={isOpen ? listboxId : undefined}
+          aria-label={ariaLabel}
+          aria-invalid={error}
+          disabled={disabled}
+          onClick={() => !disabled && setIsOpen((o) => !o)}
+          className={`${uniformBase} ${triggerClassName}`}
+        >
+          <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
+          {chevron}
+        </button>
+      ) : (
+        <button
+          ref={triggerRef}
+          type="button"
+          id={id}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-controls={isOpen ? listboxId : undefined}
+          aria-label={ariaLabel}
+          aria-invalid={error}
+          disabled={disabled}
+          onClick={() => !disabled && setIsOpen((o) => !o)}
+          className={`${splitBase} ${triggerClassName}`}
+        >
+          <span className="flex min-h-[44px] min-w-0 flex-1 items-center py-0 pl-3 pr-2 sm:min-h-11">
+            <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
+          </span>
+          <span className="flex w-11 min-w-[44px] shrink-0 items-center justify-center border-l border-[#EDEDED] bg-[#EDEDED] transition-colors hover:bg-[#E4E4E4] sm:min-h-11">
+            {chevron}
+          </span>
+        </button>
+      )}
       {typeof document !== "undefined" && menu ? createPortal(menu, document.body) : null}
     </div>
   );

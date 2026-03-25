@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
+import { UploadBankslipModal } from "./UploadBankslipModal";
 
 const COLUMN_TITLES = [
   "Contact / Description",
@@ -220,6 +221,7 @@ const TABLE_COL_COUNT = 1 + COLUMN_TITLES.length + 2;
 export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusFilter = "All" }: PaymentRequestTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<{ key: SortKey | null; dir: "asc" | "desc" }>({ key: null, dir: "asc" });
+  const [bankslipModalRowId, setBankslipModalRowId] = useState<string | null>(null);
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
   const visibleRows = useMemo(
@@ -264,6 +266,8 @@ export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusF
       return next;
     });
   };
+
+  const bankslipModalRow = bankslipModalRowId ? rows.find((r) => r.id === bankslipModalRowId) : undefined;
 
   return (
     <div className="w-full min-w-0 px-4 pb-6 sm:px-6">
@@ -379,7 +383,14 @@ export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusF
                     {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
                       <div className="inline-flex items-center gap-1.5 text-secondary sm:gap-2" role="status" aria-label={`${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`}><span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span></div>
                     ) : (
-                      <button type="button" className={uploadBankslipButtonClass}>
+                      <button
+                        type="button"
+                        className={uploadBankslipButtonClass}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBankslipModalRowId(row.id);
+                        }}
+                      >
                         <span className="whitespace-nowrap">Upload</span>
                         <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>
                           upload_file
@@ -404,6 +415,11 @@ export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusF
           </table>
         </div>
       </div>
+      <UploadBankslipModal
+        open={bankslipModalRowId != null}
+        onClose={() => setBankslipModalRowId(null)}
+        contactTitle={bankslipModalRow?.contactTitle}
+      />
     </div>
   );
 }

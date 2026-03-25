@@ -292,14 +292,8 @@ export function PaymentRequestModal({
               onChange={handleFilesSelected}
               aria-label="Choose files to upload"
             />
-            <div className="pointer-events-none grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 bg-white px-3 py-3 sm:min-h-[104px] sm:py-4">
-                <span className="material-symbols-outlined text-2xl leading-none text-secondary sm:text-3xl" aria-hidden>
-                  library_add
-                </span>
-                <span className="text-center text-xs font-medium text-secondary sm:text-sm">Add from Library</span>
-              </div>
-              <div className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 bg-white px-3 py-3 sm:min-h-[104px] sm:py-4">
+            <div className="pointer-events-none">
+              <div className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[#EDEDED] bg-white px-3 py-3 sm:min-h-[104px] sm:py-4">
                 <span className="material-symbols-outlined text-2xl leading-none text-secondary sm:text-3xl" aria-hidden>
                   library_add
                 </span>
@@ -317,7 +311,7 @@ export function PaymentRequestModal({
               return (
               <li
                 key={id}
-                className="flex items-start gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 sm:items-center"
+                className="flex items-start gap-2 rounded-lg border border-[#EDEDED] bg-white px-3 py-2.5 sm:items-center"
               >
                 <span
                   className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`}
@@ -351,7 +345,7 @@ export function PaymentRequestModal({
                 type="text"
                 value={billNo}
                 onChange={(e) => setBillNo(e.target.value)}
-                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
+                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
                 placeholder="MBIDAN-115803031626"
               />
             </div>
@@ -367,9 +361,10 @@ export function PaymentRequestModal({
                   value={currency}
                   onChange={setCurrency}
                   options={CURRENCY_OPTIONS}
-                  className="w-full shrink-0 sm:w-auto"
+                  className="w-full shrink-0 sm:w-24"
                   fullWidth
-                  triggerClassName="rounded-lg border border-gray-200 bg-gray-50 px-2 sm:w-auto sm:min-w-[4.75rem] sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3 md:min-w-[5.25rem]"
+                  uniformFill
+                  triggerClassName="w-full px-2 sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3"
                 />
                 <input
                   id="pr-amount"
@@ -385,7 +380,7 @@ export function PaymentRequestModal({
                     "box-border h-11 min-h-[44px] min-w-0 w-full rounded-lg border bg-white px-3 text-base text-black focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:border-l-0 sm:text-sm " +
                     (fieldErrors.amount
                       ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
-                      : "border-gray-200 focus:border-secondary focus:ring-secondary/25")
+                      : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
                   }
                 />
               </div>
@@ -404,7 +399,7 @@ export function PaymentRequestModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Lorem ipsum Dolor"
-                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-gray-200 bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
+                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
               />
             </div>
 
@@ -470,20 +465,17 @@ export function PaymentRequestModal({
                       "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
                       (fieldErrors.invoiceDate
                         ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
-                        : "border-gray-200 focus:border-secondary focus:ring-secondary/25")
+                        : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
                     }
                   />
                   <button
                     type="button"
                     onClick={() => openDatePicker(invoiceDateRef.current)}
-                    className={
-                      "absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11 " +
-                      (fieldErrors.invoiceDate ? "border-gray-200 bg-red-50" : "border-gray-200 bg-gray-50")
-                    }
+                    className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
                     aria-label="Open calendar for invoice date"
                   >
                     <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                      calendar_today
+                      calendar_clock
                     </span>
                   </button>
                 </div>
@@ -512,20 +504,17 @@ export function PaymentRequestModal({
                       "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
                       (fieldErrors.dueDate
                         ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
-                        : "border-gray-200 focus:border-secondary focus:ring-secondary/25")
+                        : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
                     }
                   />
                   <button
                     type="button"
                     onClick={() => openDatePicker(dueDateRef.current)}
-                    className={
-                      "absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11 " +
-                      (fieldErrors.dueDate ? "border-gray-200 bg-red-50" : "border-gray-200 bg-gray-50")
-                    }
+                    className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
                     aria-label="Open calendar for due date"
                   >
                     <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                      calendar_today
+                      calendar_clock
                     </span>
                   </button>
                 </div>
