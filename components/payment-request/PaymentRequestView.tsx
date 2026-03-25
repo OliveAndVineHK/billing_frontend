@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { PaymentRequestTable, type PaymentRequestRow } from "./PaymentRequestTable";
 import { PaymentRequestToolbar, type PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { RecordPaymentModal } from "./RecordPaymentModal";
-import { fetchBills, type BillListItem } from "@/lib/api";
+import { deleteBill, fetchBills, type BillListItem } from "@/lib/api";
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return "";
@@ -109,6 +109,14 @@ export function PaymentRequestView() {
             statusFilter={statusFilter}
             loading={loading}
             onRecordPayment={() => setRecordPaymentOpen(true)}
+            onRowDelete={async (rowId) => {
+              try {
+                await deleteBill(rowId);
+                setBills((prev) => prev.filter((b) => b.id !== rowId));
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Failed to delete bill");
+              }
+            }}
           />
         )}
       </main>
