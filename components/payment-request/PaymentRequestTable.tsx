@@ -112,13 +112,13 @@ const DEMO_ROWS: PaymentRequestRow[] = [
 const HEADER_CHECKBOX_CLASS = "checkbox-secondary-white-tick h-4 w-4 rounded border border-primary/40";
 
 const dataCellBase = "border-b border-gray-100 px-4 py-3 text-sm text-primary sm:px-5 sm:py-3.5";
-const dataCellClass = `${dataCellBase} align-top`;
 const contactCellClass = `${dataCellBase} align-middle`;
 const invoiceDateCellClass = `${dataCellBase} align-middle`;
-/** Invoice + Paid date: keep “03 Mar 2026” on one line on narrow viewports (horizontal scroll handles overflow). */
 const singleLineDateCellClass = `${dataCellBase} align-middle whitespace-nowrap tabular-nums min-w-[9rem]`;
 const singleLineStatusCellClass = `${dataCellBase} align-middle whitespace-nowrap min-w-[10rem]`;
 const unpaidAmountCellClass = `${dataCellBase} align-middle tabular-nums min-w-[13rem]`;
+
+const actionBodyCellBg = "bg-secondary/8";
 
 const statusTagClass =
   "inline-flex items-center rounded-lg bg-[#EDEDED] px-2.5 py-1 text-xs font-medium text-[#C0C0C0] sm:text-sm";
@@ -173,7 +173,6 @@ export function PaymentRequestTable({
   onRowRepublish,
 }: PaymentRequestTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [sort, setSort] = useState<{ key: SortKey | null; dir: "asc" | "desc" }>({ key: null, dir: "asc" });
   const [bankslipModalRowId, setBankslipModalRowId] = useState<string | null>(null);
   const [rowMenu, setRowMenu] = useState<RowMenuState | null>(null);
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
@@ -183,12 +182,13 @@ export function PaymentRequestTable({
     [rows, statusFilter],
   );
 
+  const allSelected = visibleRows.length > 0 && visibleRows.every((r) => selectedIds.has(r.id));
+  const someSelected = visibleRows.some((r) => selectedIds.has(r.id)) && !allSelected;
+
   useEffect(() => {
     setSelectedIds(new Set());
-    setSort({ key: null, dir: "asc" });
+    setRowMenu(null);
   }, [statusFilter]);
-
-  const someSelected = visibleRows.some((r) => selectedIds.has(r.id)) && !allSelected;
 
   useEffect(() => {
     const el = headerCheckboxRef.current;
@@ -260,9 +260,7 @@ export function PaymentRequestTable({
             <tbody className="bg-white">
               {visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={TABLE_COL_COUNT} className="border-b border-gray-100 px-4 py-8 text-center text-sm text-primary/70 sm:px-5">
-                    No payment requests match this status.
-                  </td>
+                  <td colSpan={TABLE_COL_COUNT} className="border-b border-gray-100 px-4 py-8 text-center text-sm text-primary/70 sm:px-5">No payment requests match this status.</td>
                 </tr>
               ) : null}
               {visibleRows.map((row) => {
@@ -272,141 +270,60 @@ export function PaymentRequestTable({
                 const isReturned = row.status === "Returned";
                 const xeroConnected = !isDraft && row.xeroActive;
                 return (
-                <tr key={row.id} className="cursor-pointer transition-colors duration-150 ease-out hover:bg-gray-50">
-                  <td className="border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3">
-                    <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleRow(row.id)} className={HEADER_CHECKBOX_CLASS} aria-label={`Select row ${row.contactTitle}`} suppressHydrationWarning />
-                  </td>
-                  <td className={contactCellClass}>
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>
-                      {row.contactCaption ? (
-                        <span className="text-xs text-primary/65 sm:text-sm">{row.contactCaption}</span>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className={singleLineDateCellClass}>{row.invoiceDate}</td>
-                  <td className={singleLineStatusCellClass}>
-                    {row.status ? (
-                      <span className={isPaid ? statusTagPaidClass : isPaymentRequested ? statusTagPaymentRequestedClass : isReturned ? statusTagReturnedClass : statusTagClass}>{row.status}</span>
-                    ) : null}
-                  </td>
-                  <td className={invoiceDateCellClass}>{row.submittedDate}</td>
-                  <td className={unpaidAmountCellClass}>
-                    {row.unpaidAmount || row.invoiceTotal ? (
+                  <tr key={row.id} className="cursor-pointer transition-colors duration-150 ease-out hover:bg-gray-50">
+                    <td className="border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3">
+                      <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleRow(row.id)} className={HEADER_CHECKBOX_CLASS} aria-label={`Select row ${row.contactTitle}`} suppressHydrationWarning />
+                    </td>
+                    <td className={contactCellClass}>
                       <div className="flex min-w-0 flex-col gap-0.5">
-                        {row.unpaidAmount ? (
-                          <span className={"whitespace-nowrap text-sm font-semibold sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span>
-                        ) : null}
-                        {row.invoiceTotal ? (
-                          <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span>
-                        ) : null}
+                        <span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>
+                        {row.contactCaption ? <span className="text-xs text-primary/65 sm:text-sm">{row.contactCaption}</span> : null}
                       </div>
-                    ) : null}
-                  </td>
-                  <td className={`${dataCellBase} align-middle text-left`}>
-                    <button type="button" disabled={isPaid} {...(isPaid ? { "aria-label": `Already paid — ${row.contactTitle}` } : {})} onClick={() => { if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button>
-                  </td>
-                  <td className={singleLineDateCellClass}>
-                    {row.paidDate.trim() ? (
-                      row.paidDate
-                    ) : (
-                      <span className="text-primary/40 tabular-nums" aria-label="No paid date">-</span>
-                    )}
-                  </td>
-                  <td className={invoiceDateCellClass}>
-                    {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
-                      <div className="inline-flex items-center gap-1.5 text-secondary sm:gap-2" role="status" aria-label={`${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`}><span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span></div>
-                    ) : (
-                      <button
-                        type="button"
-                        className={uploadBankslipButtonClass}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setBankslipModalRowId(row.id);
-                        }}
-                      >
-                        <span className="whitespace-nowrap">Upload</span>
-                        <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>
-                          upload_file
-                        </span>
-                      </button>
-                    )}
-                  </td>
-                  <td className="border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3">
-                    <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={24} height={24} className="mx-auto h-6 w-6 max-h-6 max-w-6 object-contain" loading="lazy" decoding="async" />
-                  </td>
-                  <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
-                    <button
-                      type="button"
-                      data-row-menu-trigger
-                      className={rowMenuButtonClass}
-                      aria-label={`More options for ${row.contactTitle}`}
-                      aria-expanded={rowMenu?.rowId === row.id}
-                      aria-haspopup="menu"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleRowMenu(row.id, e.currentTarget);
-                      }}
-                    >
-                      <span className="material-symbols-outlined text-[22px] leading-none text-primary" aria-hidden>
-                        more_vert
-                      </span>
-                    </button>
-                  </td>
-                </tr>
+                    </td>
+                    <td className={singleLineDateCellClass}>{row.invoiceDate}</td>
+                    <td className={singleLineStatusCellClass}>
+                      {row.status ? <span className={isPaid ? statusTagPaidClass : isPaymentRequested ? statusTagPaymentRequestedClass : isReturned ? statusTagReturnedClass : statusTagClass}>{row.status}</span> : null}
+                    </td>
+                    <td className={invoiceDateCellClass}>{row.submittedDate}</td>
+                    <td className={unpaidAmountCellClass}>
+                      {row.unpaidAmount || row.invoiceTotal ? (
+                        <div className="flex min-w-0 flex-col gap-0.5">
+                          {row.unpaidAmount ? <span className={"whitespace-nowrap text-sm font-semibold sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span> : null}
+                          {row.invoiceTotal ? <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span> : null}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}>
+                      <button type="button" disabled={isPaid} aria-label={isPaid ? `Already paid — ${row.contactTitle}` : `Record payment for ${row.contactTitle}`} onClick={() => { if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button>
+                    </td>
+                    <td className={`${singleLineDateCellClass} ${actionBodyCellBg}`}>{row.paidDate.trim() ? row.paidDate : <span className="text-primary/40 tabular-nums" aria-label="No paid date">-</span>}</td>
+                    <td className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>
+                      {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
+                        <div className="inline-flex items-center gap-1.5 text-secondary sm:gap-2" role="status" aria-label={`${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`}><span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span></div>
+                      ) : (
+                        <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>
+                      )}
+                    </td>
+                    <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
+                      <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={24} height={24} className="mx-auto h-6 w-6 max-h-6 max-w-6 object-contain" />
+                    </td>
+                    <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
+                      <button type="button" data-row-menu-trigger className={rowMenuButtonClass} aria-label={`More options for ${row.contactTitle}`} aria-expanded={rowMenu?.rowId === row.id ? "true" : "false"} aria-haspopup="menu" onClick={(e) => { e.stopPropagation(); toggleRowMenu(row.id, e.currentTarget); }}><span className="material-symbols-outlined text-[22px] leading-none text-primary" aria-hidden>more_vert</span></button>
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
       </div>
-      <UploadBankslipModal
-        open={bankslipModalRowId != null}
-        onClose={() => setBankslipModalRowId(null)}
-        contactTitle={bankslipModalRow?.contactTitle}
-      />
+      <UploadBankslipModal open={bankslipModalRowId != null} onClose={() => setBankslipModalRowId(null)} contactTitle={bankslipModalRow?.contactTitle} />
       {rowMenu
         ? createPortal(
-            <div
-              data-row-menu-panel
-              role="menu"
-              aria-label="Row actions"
-              className="fixed z-[400] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
-              style={{ top: rowMenu.top, left: rowMenu.left, minWidth: ROW_MENU_MIN_WIDTH_PX }}
-            >
-              <button
-                type="button"
-                role="menuitem"
-                className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
-                onClick={() => {
-                  onRowDelete?.(rowMenu.rowId);
-                  setRowMenu(null);
-                }}
-              >
-                Delete
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100"
-                onClick={() => {
-                  onRowPublish?.(rowMenu.rowId);
-                  setRowMenu(null);
-                }}
-              >
-                Publish
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100"
-                onClick={() => {
-                  onRowRepublish?.(rowMenu.rowId);
-                  setRowMenu(null);
-                }}
-              >
-                Republish
-              </button>
+            <div data-row-menu-panel role="menu" aria-label="Row actions" className="fixed z-[400] rounded-lg border border-gray-200 bg-white py-1 shadow-lg" style={{ top: rowMenu.top, left: rowMenu.left, minWidth: ROW_MENU_MIN_WIDTH_PX }}>
+              <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50" onClick={() => { onRowDelete?.(rowMenu.rowId); setRowMenu(null); }}>Delete</button>
+              <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onRowPublish?.(rowMenu.rowId); setRowMenu(null); }}>Publish</button>
+              <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onRowRepublish?.(rowMenu.rowId); setRowMenu(null); }}>Republish</button>
             </div>,
             document.body,
           )

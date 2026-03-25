@@ -22,7 +22,7 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange }: Pa
         {PAYMENT_REQUEST_STATUS_FILTERS.map((label) => {
           const isActive = activeStatus === label;
           return (
-            <button key={label} type="button" role="tab" aria-selected={isActive} onClick={() => onActiveStatusChange(label)} className={`box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm md:text-base ${isActive ? "border-secondary bg-secondary/15 text-secondary" : "border-primary/25 text-primary hover:bg-primary/10"}`}>{label}</button>
+            <button key={label} type="button" role="tab" aria-selected={isActive ? "true" : "false"} onClick={() => onActiveStatusChange(label)} className={`box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm md:text-base ${isActive ? "border-secondary bg-secondary/15 text-secondary" : "border-primary/25 text-primary hover:bg-primary/10"}`}>{label}</button>
           );
         })}
       </div>
