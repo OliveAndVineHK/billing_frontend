@@ -151,11 +151,12 @@ type PaymentRequestTableProps = {
   rows?: PaymentRequestRow[];
   onRecordPayment?: (rowId: string) => void;
   statusFilter?: PaymentRequestStatusFilter;
+  loading?: boolean;
 };
 
 const TABLE_COL_COUNT = 1 + COLUMN_TITLES.length + 2;
 
-export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusFilter = "All" }: PaymentRequestTableProps) {
+export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusFilter = "All", loading = false }: PaymentRequestTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
@@ -208,7 +209,16 @@ export function PaymentRequestTable({ rows = DEMO_ROWS, onRecordPayment, statusF
               </tr>
             </thead>
             <tbody className="bg-white">
-              {visibleRows.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={TABLE_COL_COUNT} className="border-b border-gray-100 px-4 py-10 text-center text-sm text-primary/60 sm:px-5">
+                    <span className="inline-flex items-center gap-2">
+                      <span className="material-symbols-outlined animate-spin text-secondary text-[22px]">progress_activity</span>
+                      Loading bills…
+                    </span>
+                  </td>
+                </tr>
+              ) : visibleRows.length === 0 ? (
                 <tr>
                   <td colSpan={TABLE_COL_COUNT} className="border-b border-gray-100 px-4 py-8 text-center text-sm text-primary/70 sm:px-5">
                     No payment requests match this status.
