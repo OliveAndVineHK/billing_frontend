@@ -9,8 +9,8 @@ export type UploadBankslipModalProps = {
   onClose: () => void;
   /** Shown for context in the dialog description (optional). */
   contactTitle?: string;
-  /** Called when the user confirms with the current file selection and paid date. */
-  onComplete?: (files: File[], paidDate: string) => void;
+  /** Called when the user confirms with the current file selection, paid date, and amount. */
+  onComplete?: (files: File[], paidDate: string, amount: string) => void;
 };
 
 type UploadedEntry = { id: string; file: File };
@@ -39,17 +39,22 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
   const titleId = useId();
   const descriptionId = useId();
   const paidDateFieldId = useId();
+  const amountFieldId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const paidDateRef = useRef<HTMLInputElement>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedEntry[]>([]);
   const [paidDate, setPaidDate] = useState("2026-03-03");
+  const [amount, setAmount] = useState("");
   const [paidDateError, setPaidDateError] = useState<string | null>(null);
+  const [amountError, setAmountError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
       setUploadedFiles([]);
       setPaidDateError(null);
+      setAmountError(null);
       setPaidDate("2026-03-03");
+      setAmount("");
     }
   }, [open]);
 
@@ -86,14 +91,24 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
   };
 
   const handleDone = () => {
+    let invalid = false;
     if (!paidDate.trim()) {
       setPaidDateError("Paid date is required.");
-      return;
+      invalid = true;
+    } else {
+      setPaidDateError(null);
     }
-    setPaidDateError(null);
+    if (!amount.trim()) {
+      setAmountError("Amount is required.");
+      invalid = true;
+    } else {
+      setAmountError(null);
+    }
+    if (invalid) return;
     onComplete?.(
       uploadedFiles.map((x) => x.file),
       paidDate,
+      amount.trim(),
     );
     onClose();
   };
@@ -143,51 +158,78 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
-          <div className="mb-5 w-1/2 min-w-0 max-w-full">
-            <label
-              htmlFor={paidDateFieldId}
-              className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-primary sm:text-xs"
-            >
-              Paid date
-              <span className="text-red-500"> *</span>
-            </label>
-            <div className="relative w-full">
+          <div className="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
+            <div className="min-w-0">
+              <label htmlFor={paidDateFieldId} className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-primary sm:text-xs">
+                Paid date
+                <span className="text-red-500"> *</span>
+              </label>
+              <div className="relative w-full">
+                <input
+                  ref={paidDateRef}
+                  id={paidDateFieldId}
+                  type="date"
+                  value={paidDate}
+                  onChange={(e) => {
+                    setPaidDate(e.target.value);
+                    setPaidDateError(null);
+                  }}
+                  aria-invalid={!!paidDateError}
+                  aria-required
+                  className={
+                    "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
+                    (paidDateError
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
+                      : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => openDatePicker(paidDateRef.current)}
+                  className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                  aria-label="Open calendar for paid date"
+                >
+                  <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+                    calendar_clock
+                  </span>
+                </button>
+              </div>
+              {paidDateError ? (
+                <p className="mt-1 text-xs text-red-600" role="alert">
+                  {paidDateError}
+                </p>
+              ) : null}
+            </div>
+            <div className="min-w-0">
+              <label htmlFor={amountFieldId} className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-primary sm:text-xs">
+                Amount
+                <span className="text-red-500"> *</span>
+              </label>
               <input
-                ref={paidDateRef}
-                id={paidDateFieldId}
-                type="date"
-                value={paidDate}
+                id={amountFieldId}
+                type="text"
+                inputMode="decimal"
+                value={amount}
                 onChange={(e) => {
-                  setPaidDate(e.target.value);
-                  setPaidDateError(null);
+                  setAmount(e.target.value);
+                  setAmountError(null);
                 }}
-                aria-invalid={!!paidDateError}
+                placeholder="e.g. 1,500.00"
+                aria-invalid={!!amountError}
                 aria-required
                 className={
-                  "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
-                  (paidDateError
+                  "box-border h-11 min-h-[44px] w-full rounded-lg border bg-white px-3 text-base text-black placeholder:text-primary/45 focus:outline-none focus:ring-2 sm:min-h-11 sm:text-sm " +
+                  (amountError
                     ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
                     : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
                 }
               />
-              <button
-                type="button"
-                onClick={() => openDatePicker(paidDateRef.current)}
-                className={
-                  "absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
-                }
-                aria-label="Open calendar for paid date"
-              >
-                <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                  calendar_clock
-                </span>
-              </button>
+              {amountError ? (
+                <p className="mt-1 text-xs text-red-600" role="alert">
+                  {amountError}
+                </p>
+              ) : null}
             </div>
-            {paidDateError ? (
-              <p className="mt-1 text-xs text-red-600" role="alert">
-                {paidDateError}
-              </p>
-            ) : null}
           </div>
 
           <div className="relative mb-3">

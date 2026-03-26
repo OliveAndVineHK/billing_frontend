@@ -3,6 +3,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
+import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsModal";
 import { UploadBankslipModal } from "./UploadBankslipModal";
 
 const COLUMN_TITLES = [
@@ -31,6 +32,8 @@ export type PaymentRequestRow = {
   paidDate: string;
   bankslip: string;
   bankslipFileCount?: number;
+  /** When set, shown in Bank slip details modal; otherwise demo fields are derived from the row. */
+  bankSlipDetails?: BankSlipDetails;
   xeroActive?: boolean;
 };
 
@@ -137,6 +140,17 @@ const DEMO_ROWS: PaymentRequestRow[] = [
     paidDate: "16 Mar 2026",
     bankslip: "",
     bankslipFileCount: 1,
+    bankSlipDetails: {
+      createdBy: "John Doe",
+      createdAt: "14 Mar 2026 10:22 HKT",
+      toName: "Harbour Logistics Ltd",
+      toAccount: "147-622484-838",
+      amount: "HK$ 0.00",
+      fromName: "BUSINESS INTEGRATED SAVINGS - HKD SAVINGS",
+      fromAccount: "040-286XXX-838",
+      when: "15 Mar 2026",
+      files: [{ id: "h1", name: "Harbour_Logistics_receipt.pdf" }],
+    },
     xeroActive: false,
   },
   {
@@ -152,6 +166,37 @@ const DEMO_ROWS: PaymentRequestRow[] = [
     paidDate: "11 Mar 2026",
     bankslip: "",
     bankslipFileCount: 2,
+    bankSlipDetails: {
+      createdBy: "John Doe",
+      createdAt: "03 Mar 2026 13:36 HKT",
+      toName: "OL*VE AN* V*NE LTD",
+      toAccount: "147-622484-838",
+      amount: "HK$ 1,500.00",
+      fromName: "BUSINESS INTEGRATED SAVINGS - HKD SAVINGS",
+      fromAccount: "040-286XXX-838",
+      when: "03 Mar 2026",
+      files: [
+        {
+          id: "m1",
+          name: "01 Nov 2025_ChunFatSeafood_240 1.pdf",
+          details: {
+            createdAt: "03 Mar 2026 13:36 HKT",
+            amount: "HK$ 1,500.00",
+            when: "03 Mar 2026",
+          },
+        },
+        {
+          id: "m2",
+          name: "Metro_Office_slip_2.pdf",
+          details: {
+            createdAt: "10 Mar 2026 09:15 HKT",
+            amount: "HK$ 320.00",
+            when: "10 Mar 2026",
+            toName: "Metro Office Supplies",
+          },
+        },
+      ],
+    },
     xeroActive: false,
   },
   {
@@ -253,6 +298,26 @@ const SELECTOR_TITLE: Record<ColumnSelectorKey, PaymentRequestColumnTitle> = {
 
 const NON_SELECTOR_TITLES: PaymentRequestColumnTitle[] = COLUMN_TITLES.filter((title) => !TITLE_SELECTOR_KEY[title]);
 
+function getBankSlipDetailsForRow(row: PaymentRequestRow): BankSlipDetails {
+  if (row.bankSlipDetails) return row.bankSlipDetails;
+  const count = Math.max(0, row.bankslipFileCount ?? 0);
+  const files = Array.from({ length: count }, (_, i) => ({
+    id: `${row.id}-slip-${i}`,
+    name: `${row.contactTitle.replace(/\s+/g, "_")}_slip_${i + 1}.pdf`,
+  }));
+  return {
+    createdBy: "John Doe",
+    createdAt: `${row.submittedDate} 13:36 HKT`,
+    toName: row.contactTitle,
+    toAccount: "147-622484-838",
+    amount: row.unpaidAmount.trim() ? row.unpaidAmount : "—",
+    fromName: "BUSINESS INTEGRATED SAVINGS - HKD SAVINGS",
+    fromAccount: "040-286XXX-838",
+    when: row.paidDate.trim() ? row.paidDate : row.invoiceDate,
+    files,
+  };
+}
+
 export function PaymentRequestTable({
   rows = DEMO_ROWS,
   onRecordPayment,
@@ -263,6 +328,7 @@ export function PaymentRequestTable({
 }: PaymentRequestTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bankslipModalRowId, setBankslipModalRowId] = useState<string | null>(null);
+  const [bankSlipDetailsRowId, setBankSlipDetailsRowId] = useState<string | null>(null);
   const [rowMenu, setRowMenu] = useState<RowMenuState | null>(null);
   const [columnsMenu, setColumnsMenu] = useState<ColumnsMenuState | null>(null);
   const [sort, setSort] = useState<{ key: SortKey | null; dir: "asc" | "desc" }>({ key: null, dir: "asc" });
@@ -299,11 +365,19 @@ export function PaymentRequestTable({
     [columnOrder],
   );
 
+  const bankSlipDetailsPayload = useMemo(() => {
+    if (!bankSlipDetailsRowId) return null;
+    const r = rows.find((x) => x.id === bankSlipDetailsRowId);
+    return r ? getBankSlipDetailsForRow(r) : null;
+  }, [bankSlipDetailsRowId, rows]);
+
   useEffect(() => {
     setSelectedIds(new Set());
     setSort({ key: null, dir: "asc" });
     setRowMenu(null);
     setColumnsMenu(null);
+    setBankslipModalRowId(null);
+    setBankSlipDetailsRowId(null);
   }, [statusFilter]);
 
   const onSortColumn = (sk: SortKey) => {
@@ -424,7 +498,7 @@ export function PaymentRequestTable({
                       {sortKeyForCol ? (
                         <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
                           <span className="min-w-0 flex-1 truncate font-semibold">{title}</span>
-                          <button type="button" className={`inline-flex size-7 shrink-0 items-center justify-center rounded outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${hoverSort}`} aria-label={`Sort by ${title}${sortActive ? `, ${sort.dir === "asc" ? "ascending" : "descending"}` : ""}`} onClick={() => onSortColumn(sortKeyForCol)}>
+                          <button type="button" className={`inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${hoverSort}`} aria-label={`Sort by ${title}${sortActive ? `, ${sort.dir === "asc" ? "ascending" : "descending"}` : ""}`} onClick={() => onSortColumn(sortKeyForCol)}>
                             <span className="inline-flex size-5 items-center justify-center" aria-hidden>
                               <span className={`material-symbols-outlined block text-[18px] leading-none ${sortActive ? "opacity-100" : "opacity-60"}`}>{sortActive ? (sort.dir === "asc" ? "expand_less" : "expand_more") : "expand_more"}</span>
                             </span>
@@ -437,7 +511,7 @@ export function PaymentRequestTable({
                   );
                 })}
                 <th scope="col" colSpan={2} aria-label="Actions" className="border-b border-gray-200 bg-secondary px-2 py-2 text-right text-white sm:px-3 sm:py-2.5">
-                  <button type="button" data-columns-menu-trigger className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/40 bg-white/15 px-3 text-sm font-medium text-white transition-colors hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" aria-label="Columns" aria-expanded={columnsMenu ? "true" : "false"} aria-haspopup="dialog" onClick={(e) => { e.stopPropagation(); toggleColumnsMenu(e.currentTarget); }}>
+                  <button type="button" data-columns-menu-trigger className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-white/40 bg-white/15 px-3 text-sm font-medium text-white transition-colors hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" aria-label="Columns" aria-expanded={columnsMenu ? "true" : "false"} aria-haspopup="dialog" onClick={(e) => { e.stopPropagation(); toggleColumnsMenu(e.currentTarget); }}>
                     <span>Columns</span>
                     <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>vertical_split</span>
                   </button>
@@ -471,7 +545,7 @@ export function PaymentRequestTable({
                       if (title === "Unpaid Amount") return <td key={`${row.id}-${title}`} className={unpaidAmountCellClass}>{row.unpaidAmount || row.invoiceTotal ? (<div className="flex min-w-0 flex-col gap-0.5">{row.unpaidAmount ? <span className={"whitespace-nowrap text-sm font-semibold sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span> : null}{row.invoiceTotal ? <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span> : null}</div>) : null}</td>;
                       if (title === "Payment") return <td key={`${row.id}-${title}`} className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}><button type="button" disabled={isPaid} aria-label={isPaid ? `Already paid — ${row.contactTitle}` : `Record payment for ${row.contactTitle}`} onClick={() => { if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button></td>;
                       if (title === "Paid Date") return <td key={`${row.id}-${title}`} className={`${singleLineDateCellClass} ${actionBodyCellBg}`}>{row.paidDate.trim() ? row.paidDate : <span className="text-primary/40 tabular-nums" aria-label="No paid date">-</span>}</td>;
-                      if (title === "Bankslip") return <td key={`${row.id}-${title}`} className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>{row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (<div className="inline-flex items-center gap-1.5 text-secondary sm:gap-2" role="status" aria-label={`${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`}><span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span></div>) : (<button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>)}</td>;
+                      if (title === "Bankslip") return <td key={`${row.id}-${title}`} className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>{row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (<button type="button" className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-transparent p-1 text-left text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:gap-2" aria-label={`View ${row.bankslipFileCount} uploaded bank slip file${row.bankslipFileCount === 1 ? "" : "s"}`} onClick={(e) => { e.stopPropagation(); setBankSlipDetailsRowId(row.id); }}><span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span></button>) : (<button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>)}</td>;
                       return null;
                     })}
                     <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
@@ -488,6 +562,7 @@ export function PaymentRequestTable({
         </div>
       </div>
       <UploadBankslipModal open={bankslipModalRowId != null} onClose={() => setBankslipModalRowId(null)} contactTitle={bankslipModalRow?.contactTitle} />
+      {bankSlipDetailsRowId != null && bankSlipDetailsPayload ? <BankSlipDetailsModal open onClose={() => setBankSlipDetailsRowId(null)} details={bankSlipDetailsPayload} onUpload={() => { const id = bankSlipDetailsRowId; setBankSlipDetailsRowId(null); setBankslipModalRowId(id); }} /> : null}
       {rowMenu
         ? createPortal(
             <div data-row-menu-panel role="menu" aria-label="Row actions" className="fixed z-[400] rounded-lg border border-gray-200 bg-white py-1 shadow-lg" style={{ top: rowMenu.top, left: rowMenu.left, minWidth: ROW_MENU_MIN_WIDTH_PX }}>

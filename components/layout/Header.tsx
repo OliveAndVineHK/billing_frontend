@@ -37,7 +37,7 @@ export function Header({
       {showLogo ? (
         <Image src="/logo-selection.webp" alt="" width={40} height={40} priority className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" />
       ) : null}
-      <span className="min-w-0 truncate text-base font-semibold text-black sm:text-lg">{title}</span>
+      <span className="min-w-0 cursor-default truncate text-base font-semibold text-black sm:text-lg">{title}</span>
     </>
   );
 
@@ -53,14 +53,19 @@ export function Header({
         {showLogo ? (
           <Image src="/logo-selection.webp" alt="" width={40} height={40} priority className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" />
         ) : null}
-        <span className="min-w-0 truncate text-base font-semibold text-black sm:text-lg">{title}</span>
+        <span className="min-w-0 cursor-default truncate text-base font-semibold text-black sm:text-lg">{title}</span>
         {statusBadge}
       </div>
     </div>
   ) : homeHref ? (
-    <Link href={homeHref} className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-      {brand}
-    </Link>
+    <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+      {showLogo ? (
+        <Link href={homeHref} className="shrink-0">
+          <Image src="/logo-selection.webp" alt="" width={40} height={40} priority className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" />
+        </Link>
+      ) : null}
+      <span className="min-w-0 cursor-default truncate text-base font-semibold text-black sm:text-lg">{title}</span>
+    </div>
   ) : (
     <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">{brand}</div>
   );
