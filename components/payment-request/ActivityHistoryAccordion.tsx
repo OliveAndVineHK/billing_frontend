@@ -39,16 +39,12 @@ export function ActivityHistoryAccordion({ items = defaultItems }: ActivityHisto
         aria-expanded={open}
       >
         <h2 className="text-base font-semibold text-[#5c5c5c] sm:text-lg">Activity History</h2>
-        <span
-          className="material-symbols-outlined text-[#5c5c5c]/70 transition-transform"
-          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
-          aria-hidden
-        >
-          expand_more
+        <span className="material-symbols-outlined text-[#5c5c5c]/70" aria-hidden>
+          {open ? "expand_less" : "expand_more"}
         </span>
       </button>
       {open ? (
-        <div className="border-t border-gray-100 px-4 pb-5 pt-3 sm:px-5">
+        <div className="px-4 pb-5 pt-3 sm:px-5">
           <div
             className="min-h-0 max-h-[min(14rem,38dvh)] overflow-y-auto overscroll-y-contain pr-1 [scrollbar-gutter:stable] sm:max-h-[min(17.5rem,45vh)]"
             role="region"

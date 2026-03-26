@@ -132,7 +132,7 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBi
           Search by contact or description
         </label>
         <div className="relative min-w-0 flex-1">
-          <input id="payment-request-search" type="search" name="q" placeholder="Search by contact or description" className="box-border h-11 min-h-[44px] w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-3 text-base leading-normal text-primary placeholder:text-primary/50 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:h-[42px] sm:min-h-[42px] sm:text-sm" suppressHydrationWarning />
+          <input id="payment-request-search" type="search" name="q" placeholder="Search by contact or description" className="box-border h-11 min-h-[44px] w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-3 text-base leading-normal text-black placeholder:text-primary/50 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:h-[42px] sm:min-h-[42px] sm:text-sm" suppressHydrationWarning />
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <div ref={filterWrapRef} className="relative">

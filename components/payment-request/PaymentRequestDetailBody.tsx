@@ -190,10 +190,7 @@ export function PaymentRequestDetailBody() {
   return (
     <>
       {actionError ? (
-        <div
-          className="mx-auto mb-3 max-w-[1920px] px-4 text-sm text-rose-700 sm:px-6 lg:px-8"
-          role="alert"
-        >
+        <div className="mx-auto mb-3 max-w-[1920px] px-4 text-sm text-rose-700 sm:px-6 lg:px-8" role="alert">
           <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">{actionError}</div>
         </div>
       ) : null}
@@ -208,9 +205,7 @@ export function PaymentRequestDetailBody() {
             deleteDisabled={loadingBill || !bill || isDeleting}
           />
         </div>
-        <div
-          className={`flex min-h-0 min-w-0 flex-col lg:col-start-1 lg:row-start-2 ${fullscreen ? "min-h-[min(45dvh,22rem)] sm:min-h-[min(55dvh,30rem)] lg:min-h-[min(70vh,40rem)]" : ""}`}
-        >
+        <div className={`flex min-h-0 min-w-0 flex-col lg:col-start-1 lg:row-start-2 ${fullscreen ? "min-h-[min(45dvh,22rem)] sm:min-h-[min(55dvh,30rem)] lg:min-h-[min(70vh,40rem)]" : ""}`}>
           <InvoiceAttachmentPreview
             attachments={attachments}
             isLoadingAttachments={!attachmentsReady}
@@ -246,11 +241,7 @@ export function PaymentRequestDetailBody() {
             />
           ) : null}
 
-          <button
-            type="button"
-            onClick={() => setRecordPaymentOpen(true)}
-            className="box-border inline-flex h-12 w-full min-w-0 shrink-0 items-center justify-between gap-2 rounded-md border border-secondary/20 bg-secondary/10 px-4 text-left text-base font-semibold text-secondary transition-colors hover:bg-secondary/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[46px] sm:w-[199px] sm:self-start"
-          >
+          <button type="button" onClick={() => setRecordPaymentOpen(true)} className="box-border inline-flex h-12 w-full min-w-0 shrink-0 items-center justify-between gap-2 rounded-md border border-transparent bg-[#00C896]/10 px-4 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none sm:h-[46px] sm:w-[199px] sm:self-start">
             Add Payment
             <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
               add
@@ -259,9 +250,15 @@ export function PaymentRequestDetailBody() {
           <PaymentHistoryCard
             rows={payments.map((p) => ({
               id: p.id,
-              date: p.payment_date
-                ? new Date(p.payment_date + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-                : "—",
+              date: (() => {
+                const amt = parseFloat(p.amount || "0");
+                const shortDate = p.payment_date
+                  ? new Date(p.payment_date + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
+                  : "—";
+                if (p.payment_status === "pending") return `Pending on ${shortDate}`;
+                if (amt > 0 && amt + 1e-9 < invoiceTotalMajor) return `Partial Pay on ${shortDate}`;
+                return `Paid on ${shortDate}`;
+              })(),
               amountLabel: `(${currencyLabel} ${parseFloat(p.amount || "0").toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
               invoiceNo: p.reference_no || p.id.slice(0, 18).toUpperCase(),
             }))}
