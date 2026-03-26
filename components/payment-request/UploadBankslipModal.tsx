@@ -260,21 +260,23 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
               return (
                 <li
                   key={id}
-                  className="flex items-start gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 sm:items-center"
+                  className="relative flex items-center justify-start rounded-lg border border-gray-200 bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3"
                 >
-                  <span
-                    className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`}
-                    aria-hidden
-                  >
-                    {icon}
-                  </span>
-                  <span className="min-w-0 flex-1 break-words text-sm leading-snug text-black sm:truncate sm:leading-normal">
-                    {file.name}
-                  </span>
+                  <div className="flex min-w-0 items-center justify-start gap-2">
+                    <span
+                      className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`}
+                      aria-hidden
+                    >
+                      {icon}
+                    </span>
+                    <span className="min-w-0 break-words text-left text-sm leading-snug text-black sm:flex-1 sm:truncate sm:leading-normal">
+                      {file.name}
+                    </span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => removeFile(id)}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-primary/60 transition-colors hover:bg-gray-100 hover:text-primary"
+                    className="absolute right-2 top-1/2 flex h-8 w-8 shrink-0 -translate-y-1/2 items-center justify-center rounded-md text-primary/60 transition-colors hover:bg-gray-100 hover:text-primary sm:static sm:translate-y-0"
                     aria-label={`Remove ${file.name}`}
                   >
                     <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>

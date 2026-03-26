@@ -1,7 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { PaymentRequestModal } from "@/components/PaymentRequestModal";
+import { ThemedSelect } from "@/components/ThemedSelect";
+
+const FILTER_DATE_TYPE_OPTIONS = [
+  { value: "Invoice Date", label: "Invoice Date" },
+  { value: "Submitted Date", label: "Submitted Date" },
+  { value: "Paid Date", label: "Paid Date" },
+] as const;
+
+const fieldLabelClass = "mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-primary sm:text-xs";
+
+const textInputClass =
+  "box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm";
+
+const dateInputClass =
+  "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
 
 export const PAYMENT_REQUEST_STATUS_FILTERS = ["All", "Draft", "Payment Requested", "Paid", "Voided"] as const;
 export type PaymentRequestStatusFilter = (typeof PAYMENT_REQUEST_STATUS_FILTERS)[number];
@@ -11,10 +27,93 @@ type PaymentRequestToolbarProps = {
   onActiveStatusChange: (status: PaymentRequestStatusFilter) => void;
   onBillCreated?: () => void;
 };
+type FilterMenuState = { top: number; left: number; width: number };
 
 export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBillCreated }: PaymentRequestToolbarProps) {
+  const filterFieldIds = useId();
   const [billModalOpen, setBillModalOpen] = useState(false);
   const [billModalMounted, setBillModalMounted] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterMenu, setFilterMenu] = useState<FilterMenuState | null>(null);
+  const filterWrapRef = useRef<HTMLDivElement | null>(null);
+  const filterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const startDateRef = useRef<HTMLInputElement>(null);
+  const endDateRef = useRef<HTMLInputElement>(null);
+  const [minAmount, setMinAmount] = useState("");
+  const [maxAmount, setMaxAmount] = useState("");
+  const [dateType, setDateType] = useState("Invoice Date");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const openDatePicker = (input: HTMLInputElement | null) => {
+    if (!input) return;
+    if (typeof input.showPicker === "function") {
+      try {
+        input.showPicker();
+        return;
+      } catch {
+        /* showPicker can throw outside a user gesture in some browsers */
+      }
+    }
+    input.focus();
+  };
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      const t = event.target;
+      if (filterWrapRef.current?.contains(t as Node)) return;
+      if (t instanceof Element && t.closest("[data-filter-menu-panel]")) return;
+      /* ThemedSelect renders its listbox in a portal on document.body — not inside filterWrapRef */
+      if (t instanceof Element && t.closest("[data-themed-select-menu]")) return;
+      setFilterOpen(false);
+      setFilterMenu(null);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setFilterOpen(false);
+        setFilterMenu(null);
+      }
+    };
+    const onResizeOrScroll = () => {
+      setFilterOpen(false);
+      setFilterMenu(null);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    window.addEventListener("resize", onResizeOrScroll);
+    window.addEventListener("scroll", onResizeOrScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("resize", onResizeOrScroll);
+      window.removeEventListener("scroll", onResizeOrScroll, true);
+    };
+  }, [filterOpen]);
+
+  const onResetFilters = () => {
+    setMinAmount("");
+    setMaxAmount("");
+    setDateType("Invoice Date");
+    setStartDate("");
+    setEndDate("");
+  };
+
+  const toggleFilterMenu = (trigger: HTMLButtonElement) => {
+    setFilterOpen((open) => {
+      if (open) {
+        setFilterMenu(null);
+        return false;
+      }
+      const rect = trigger.getBoundingClientRect();
+      const viewportPadding = 8;
+      const maxWidth = Math.min(416, window.innerWidth - viewportPadding * 2);
+      const left = Math.max(viewportPadding, Math.min(rect.right - maxWidth, window.innerWidth - maxWidth - viewportPadding));
+      const top = rect.bottom + 8;
+      setFilterMenu({ top, left, width: maxWidth });
+      return true;
+    });
+  };
 
   return (
     <>
@@ -36,7 +135,151 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBi
           <input id="payment-request-search" type="search" name="q" placeholder="Search by contact or description" className="box-border h-11 min-h-[44px] w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-3 text-base leading-normal text-primary placeholder:text-primary/50 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:h-[42px] sm:min-h-[42px] sm:text-sm" suppressHydrationWarning />
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <button type="button" aria-label="Filter" className="box-border inline-flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-lg border border-primary/25 text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:w-[42px] sm:min-w-[42px]"><span className="material-symbols-outlined text-[22px] leading-none">filter_alt</span></button>
+          <div ref={filterWrapRef} className="relative">
+            <button
+              ref={filterButtonRef}
+              type="button"
+              aria-label="Filter"
+              aria-expanded={filterOpen ? "true" : "false"}
+              aria-haspopup="dialog"
+              onClick={() => {
+                if (!filterButtonRef.current) return;
+                toggleFilterMenu(filterButtonRef.current);
+              }}
+              className="box-border inline-flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-lg border border-primary/25 text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:w-[42px] sm:min-w-[42px]"
+            >
+              <span className="material-symbols-outlined text-[22px] leading-none">filter_alt</span>
+            </button>
+            {filterOpen && filterMenu && typeof document !== "undefined"
+              ? createPortal(
+              <div
+                data-filter-menu-panel
+                role="dialog"
+                aria-label="Filters"
+                className="fixed z-[400] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
+                style={{ top: filterMenu.top, left: filterMenu.left, width: filterMenu.width }}
+              >
+                <div className="border-b border-gray-200 px-3 py-2">
+                  <h3 className="text-sm font-semibold text-primary">Filters</h3>
+                  <p className="mt-1 text-xs leading-snug text-primary/65">Set amount and date criteria, then apply to narrow the list.</p>
+                </div>
+                <div className="px-3 py-4 sm:px-4">
+                  <div className="flex flex-col gap-5">
+                    <div>
+                      <label htmlFor={`${filterFieldIds}-min-amount`} className={fieldLabelClass}>
+                        Amount
+                      </label>
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
+                        <input
+                          id={`${filterFieldIds}-min-amount`}
+                          type="text"
+                          inputMode="decimal"
+                          value={minAmount}
+                          onChange={(e) => setMinAmount(e.target.value)}
+                          placeholder="0.00"
+                          className={textInputClass}
+                        />
+                        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-primary sm:text-xs">To</span>
+                        <input
+                          id={`${filterFieldIds}-max-amount`}
+                          type="text"
+                          inputMode="decimal"
+                          value={maxAmount}
+                          onChange={(e) => setMaxAmount(e.target.value)}
+                          placeholder="0.00"
+                          className={textInputClass}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor={`${filterFieldIds}-date-type`} className={fieldLabelClass}>
+                        Date Type
+                      </label>
+                      <ThemedSelect
+                        id={`${filterFieldIds}-date-type`}
+                        value={dateType}
+                        onChange={setDateType}
+                        options={[...FILTER_DATE_TYPE_OPTIONS]}
+                        ariaLabel="Date type"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
+                      <div>
+                        <label htmlFor={`${filterFieldIds}-start-date`} className={fieldLabelClass}>
+                          Start Date
+                        </label>
+                        <div className="relative">
+                          <input
+                            ref={startDateRef}
+                            id={`${filterFieldIds}-start-date`}
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className={dateInputClass}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => openDatePicker(startDateRef.current)}
+                            className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                            aria-label="Open calendar for start date"
+                          >
+                            <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+                              calendar_clock
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label htmlFor={`${filterFieldIds}-end-date`} className={fieldLabelClass}>
+                          End Date
+                        </label>
+                        <div className="relative">
+                          <input
+                            ref={endDateRef}
+                            id={`${filterFieldIds}-end-date`}
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className={dateInputClass}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => openDatePicker(endDateRef.current)}
+                            className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                            aria-label="Open calendar for end date"
+                          >
+                            <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+                              calendar_clock
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="border-t border-gray-200 px-3 py-2 sm:px-4">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={onResetFilters}
+                      className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px]"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterOpen(false)}
+                      className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px]"
+                    >
+                      Apply Filter
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body,
+            )
+              : null}
+          </div>
           <button type="button" onClick={() => { setBillModalMounted(true); setBillModalOpen(true); }} className="box-border inline-flex h-11 min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:px-4">Add Bill<span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>add</span></button>
         </div>
       </div>
