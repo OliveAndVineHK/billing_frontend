@@ -5,9 +5,15 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
-import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
+import { ThemedSelect } from "@/components/ThemedSelect";
 
 import { createBill, uploadBillAttachment } from "@/lib/api";
+import {
+  BILL_ACCOUNT_SELECT_OPTIONS,
+  BILL_CONTACT_SELECT_OPTIONS,
+  BILL_CURRENCY_SELECT_OPTIONS,
+  modalCurrencyToIsoCode,
+} from "@/lib/billFormSelectOptions";
 
 export type PaymentRequestModalProps = {
   open: boolean;
@@ -33,24 +39,6 @@ function getUploadedFileIconInfo(filename: string): { icon: string; iconClass: s
   }
   return { icon: "draft", iconClass: "text-primary" };
 }
-
-const CURRENCY_OPTIONS: ThemedSelectOption[] = [
-  { value: "HK$", label: "HK$" },
-  { value: "USD", label: "USD" },
-  { value: "CNY", label: "CNY" },
-];
-
-const CONTACT_OPTIONS: ThemedSelectOption[] = [
-  { value: "", label: "Select contact" },
-  { value: "Young Bros Transport", label: "Young Bros Transport" },
-  { value: "Other contact", label: "Other contact" },
-];
-
-const ACCOUNT_OPTIONS: ThemedSelectOption[] = [
-  { value: "", label: "Select account code" },
-  { value: "425 - Transport", label: "425 - Transport" },
-  { value: "400 - General", label: "400 - General" },
-];
 
 type ValidatedField = "amount" | "contact" | "accountCode" | "invoiceDate" | "dueDate";
 
@@ -226,7 +214,7 @@ export function PaymentRequestModal({
         contact,
         description,
         amount: parsedAmount,
-        currency_code: currency,
+        currency_code: modalCurrencyToIsoCode(currency),
         invoice_date: invoiceDate || null,
         due_date: dueDate || null,
         reference: billNo,
@@ -387,7 +375,7 @@ export function PaymentRequestModal({
                   ariaLabel="Currency"
                   value={currency}
                   onChange={setCurrency}
-                  options={CURRENCY_OPTIONS}
+                  options={BILL_CURRENCY_SELECT_OPTIONS}
                   className="w-full shrink-0 sm:w-24"
                   fullWidth
                   uniformFill
@@ -441,7 +429,7 @@ export function PaymentRequestModal({
                   setContact(v);
                   clearFieldError("contact");
                 }}
-                options={CONTACT_OPTIONS}
+                options={BILL_CONTACT_SELECT_OPTIONS}
                 error={!!fieldErrors.contact}
               />
               {fieldErrors.contact ? (
@@ -462,7 +450,7 @@ export function PaymentRequestModal({
                   setAccountCode(v);
                   clearFieldError("accountCode");
                 }}
-                options={ACCOUNT_OPTIONS}
+                options={BILL_ACCOUNT_SELECT_OPTIONS}
                 error={!!fieldErrors.accountCode}
               />
               {fieldErrors.accountCode ? (

@@ -1,5 +1,17 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useId, useRef } from "react";
+import { ThemedSelect } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import {
+  BILL_ACCOUNT_SELECT_OPTIONS,
+  BILL_CONTACT_SELECT_OPTIONS,
+  currencyOptionsForEditing,
+  isoCodeToModalCurrency,
+  mergeSelectOption,
+  modalCurrencyToIsoCode,
+} from "@/lib/billFormSelectOptions";
 
 /** Bill / request fields shown in the “Detailed Information” card. */
 export type PaymentRequestDetailedInfoData = {
@@ -28,37 +40,47 @@ export type PaymentRequestDetailedInfoProps = {
   className?: string;
 };
 
-const labelClass =
-  "text-[11px] font-semibold uppercase leading-tight tracking-[0.06em] text-[#5c5c5c] sm:text-xs";
-const valueClass = "text-sm leading-snug text-[#4a4a4a] sm:text-[15px]";
+/** Same as Add Payment Request modal field labels — used in view and edit so spacing matches. */
+const fieldLabelClass =
+  "mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-primary sm:text-xs";
 
-const amountLabelClass =
-  "text-[11px] font-medium uppercase tracking-wide text-primary/60";
+/** Same as modal text inputs (Bill No., Description, etc.). */
+const modalTextInputClass =
+  "box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm";
 
-const inputClass =
-  "mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm leading-snug text-[#4a4a4a] outline-none placeholder:text-primary/35 focus:border-secondary focus:ring-1 focus:ring-secondary/30 sm:text-[15px] disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-primary/50";
+const amountValueInputClass =
+  "box-border h-11 min-h-[44px] min-w-0 w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:border-l-0 sm:text-sm focus:border-secondary focus:ring-secondary/25";
 
 const cancelButtonClass =
-  "inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-full border border-secondary bg-white px-5 py-2.5 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:opacity-50";
+  "box-border h-11 min-h-[44px] shrink-0 rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[44px] sm:px-5";
 
 const saveButtonClass =
-  "inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-full bg-secondary px-5 py-2.5 text-sm font-semibold text-white transition-[filter] hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60";
+  "box-border h-11 min-h-[44px] shrink-0 rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[44px] sm:px-6";
 
-function RequiredMark() {
-  return (
-    <span className="ml-0.5 text-red-500" aria-hidden>
-      *
-    </span>
-  );
-}
+/** Header actions row: same min-height in view (Edit) and edit (Cancel + Save) to avoid vertical jump. */
+const headerActionsClass =
+  "flex min-h-[44px] w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end";
 
-function FieldLabel({ children, required }: { children: ReactNode; required?: boolean }) {
-  return (
-    <dt className={labelClass}>
-      {children}
-      {required ? <RequiredMark /> : null}
-    </dt>
-  );
+const editToggleButtonClass =
+  "inline-flex h-11 min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-4 text-sm font-semibold text-white transition-[filter] hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:opacity-50";
+
+function FieldLabel({
+  htmlFor,
+  editing,
+  children,
+}: {
+  htmlFor?: string;
+  editing: boolean;
+  children: ReactNode;
+}) {
+  if (editing && htmlFor) {
+    return (
+      <label htmlFor={htmlFor} className={fieldLabelClass}>
+        {children}
+      </label>
+    );
+  }
+  return <div className={fieldLabelClass}>{children}</div>;
 }
 
 function formatLongDate(iso: string): string {
@@ -68,129 +90,100 @@ function formatLongDate(iso: string): string {
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function TextRow({
-  label,
-  value,
-  required,
-  valueEmphasis = "normal",
-  isEditing,
-  onChange,
+function openDatePicker(input: HTMLInputElement | null) {
+  if (!input) return;
+  if (typeof input.showPicker === "function") {
+    try {
+      input.showPicker();
+      return;
+    } catch {
+      /* showPicker can throw outside a user gesture in some browsers */
+    }
+  }
+  input.focus();
+}
+
+/** Read-only text row: same outer box as modal `<input>`. */
+function ReadOnlyTextBox({
+  children,
+  emphasis = "normal",
 }: {
-  label: ReactNode;
-  value: string;
-  required?: boolean;
-  valueEmphasis?: "normal" | "medium";
-  isEditing: boolean;
-  onChange?: (v: string) => void;
+  children: React.ReactNode;
+  emphasis?: "normal" | "semibold";
 }) {
-  const valueCls =
-    valueEmphasis === "medium" ? `${valueClass} font-medium` : valueClass;
   return (
-    <div>
-      <FieldLabel required={required}>{label}</FieldLabel>
-      <dd className="mt-0">
-        {isEditing ? (
-          <input
-            type="text"
-            className={inputClass}
-            value={value}
-            onChange={(e) => onChange?.(e.target.value)}
-          />
-        ) : (
-          <span className={`block ${valueCls}`}>{value || "—"}</span>
-        )}
-      </dd>
+    <div
+      className={`flex h-11 min-h-[44px] w-full items-center rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black sm:min-h-11 sm:text-sm ${emphasis === "semibold" ? "font-semibold" : ""}`}
+    >
+      <span className="min-w-0 flex-1 truncate">{children}</span>
     </div>
   );
 }
 
-function AmountRow({
-  currencyCode,
+/** Matches ThemedSelect split trigger (contact / account) — non-interactive. */
+function ReadOnlySelectShell({ value }: { value: string }) {
+  return (
+    <div
+      className="box-border flex h-11 min-h-[44px] min-w-0 w-full cursor-default overflow-hidden rounded-lg border border-[#EDEDED] bg-white p-0 text-left text-base font-medium text-black sm:min-h-11 sm:text-sm"
+      aria-readonly="true"
+    >
+      <span className="flex min-h-[44px] min-w-0 flex-1 items-center py-0 pl-3 pr-2 sm:min-h-11">
+        <span className="min-w-0 flex-1 truncate">{value || "—"}</span>
+      </span>
+      <span
+        className="flex w-11 min-w-[44px] shrink-0 items-center justify-center border-l border-[#EDEDED] bg-[#EDEDED] sm:min-h-11"
+        aria-hidden
+      >
+        <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary">
+          expand_more
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/** Same layout as amount row in modal: gray #EDEDED currency cell + white amount cell. */
+function ReadOnlyAmountRow({
+  currencyDisplayLabel,
   amount,
-  isEditing,
-  onPatchChange,
-  disabled,
 }: {
-  currencyCode: string;
+  currencyDisplayLabel: string;
   amount: string;
-  isEditing: boolean;
-  onPatchChange?: (patch: Partial<PaymentRequestDetailedInfoData>) => void;
-  disabled?: boolean;
 }) {
-  const pillLabel = currencyLabelForCode(currencyCode);
   return (
-    <div>
-      <dt className={amountLabelClass}>
-        Amount <span className="text-rose-500">*</span>
-      </dt>
-      <dd className="mt-1 flex flex-wrap items-center gap-2">
-        {isEditing ? (
-          <>
-            <input
-              type="text"
-              className={`${inputClass} mt-0 w-[5.5rem] shrink-0 uppercase`}
-              value={currencyCode}
-              onChange={(e) =>
-                onPatchChange?.({ currencyCode: e.target.value.trim().toUpperCase() })
-              }
-              maxLength={8}
-              aria-label="Currency code"
-              disabled={disabled}
-            />
-            <input
-              type="text"
-              inputMode="decimal"
-              className={`${inputClass} mt-0 min-w-0 flex-1`}
-              value={amount}
-              onChange={(e) => onPatchChange?.({ amount: e.target.value })}
-              aria-label="Amount"
-              disabled={disabled}
-            />
-          </>
-        ) : (
-          <>
-            <span className="inline-flex items-center justify-center rounded-md bg-[#F2F2F2] px-2.5 py-1 text-xs font-semibold uppercase text-[#666666]">
-              {pillLabel}
-            </span>
-            <span className="text-sm font-semibold text-primary sm:text-base">{amount}</span>
-          </>
-        )}
-      </dd>
+    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-0">
+      <div
+        className="box-border flex h-11 min-h-[44px] w-full shrink-0 items-center justify-between gap-2 rounded-lg border border-[#EDEDED] bg-[#EDEDED] px-2 pl-3 pr-2 text-base font-medium text-[#656565] sm:w-24 sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3 sm:text-sm"
+        aria-label="Currency"
+      >
+        <span className="min-w-0 flex-1 truncate">{currencyDisplayLabel}</span>
+        <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary" aria-hidden>
+          expand_more
+        </span>
+      </div>
+      <div
+        className={`${amountValueInputClass} flex items-center font-semibold`}
+        aria-readonly="true"
+      >
+        <span className="min-w-0 flex-1 truncate">{amount || "—"}</span>
+      </div>
     </div>
   );
 }
 
-function DateRow({
-  label,
-  isoDate,
-  required,
-  isEditing,
-  onChange,
-  disabled,
-}: {
-  label: ReactNode;
-  isoDate: string;
-  required?: boolean;
-  isEditing: boolean;
-  onChange?: (iso: string) => void;
-  disabled?: boolean;
-}) {
+/** Same chrome as date field + calendar strip in modal; read-only text. */
+function ReadOnlyDateRow({ display }: { display: string }) {
   return (
-    <div>
-      <FieldLabel required={required}>{label}</FieldLabel>
-      <dd className="mt-1 flex flex-wrap items-center gap-2">
-        {isEditing ? (
-          <input
-            type="date"
-            className={`${inputClass} mt-0 max-w-full`}
-            value={isoDate}
-            onChange={(e) => onChange?.(e.target.value)}
-            disabled={disabled}
-          />
-        ) : (
-          <span className={`${valueClass} font-medium`}>{formatLongDate(isoDate)}</span>
-        )}
-      </dd>
+    <div className="relative">
+      <div className="flex h-11 min-h-[44px] w-full items-center rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black sm:min-h-11 sm:text-sm">
+        <span className="min-w-0 flex-1 truncate">{display}</span>
+      </div>
+      <div
+        className="pointer-events-none absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary sm:min-h-11"
+        aria-hidden
+      >
+        <span className="material-symbols-outlined text-[20px] leading-none">calendar_clock</span>
+      </div>
     </div>
   );
 }
@@ -219,6 +212,27 @@ export function PaymentRequestDetailedInfo({
 
   const patch = onPatchChange ?? (() => {});
 
+  const uid = useId();
+  const invoiceDateRef = useRef<HTMLInputElement>(null);
+  const dueDateRef = useRef<HTMLInputElement>(null);
+
+  const idBillNo = `detail-bill-no-${uid}`;
+  const idAmount = `detail-amount-${uid}`;
+  const idCurrency = `detail-currency-${uid}`;
+  const idDescription = `detail-desc-${uid}`;
+  const idContact = `detail-contact-${uid}`;
+  const idAccount = `detail-account-${uid}`;
+  const idInvoiceDate = `detail-inv-date-${uid}`;
+  const idDueDate = `detail-due-date-${uid}`;
+
+  const contactOptions = mergeSelectOption(BILL_CONTACT_SELECT_OPTIONS, contact);
+  const accountOptions = mergeSelectOption(BILL_ACCOUNT_SELECT_OPTIONS, accountCode);
+  const currencyOptions = currencyOptionsForEditing(currencyCode);
+  const currencyModalValue = isoCodeToModalCurrency(currencyCode);
+  const currencyDisplayLabel =
+    currencyOptions.find((o) => o.value === currencyModalValue)?.label ??
+    currencyLabelForCode(currencyCode);
+
   return (
     <section
       className={`rounded-xl border border-gray-200/90 bg-white p-4 sm:p-5 md:p-6 ${className}`}
@@ -227,101 +241,213 @@ export function PaymentRequestDetailedInfo({
         <h2 className="min-w-0 text-base font-medium leading-snug text-[#5c5c5c] sm:text-lg">
           Detailed Information
         </h2>
-        {isEditing ? (
-          <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:justify-end">
+        <div className={headerActionsClass}>
+          {isEditing ? (
+            <>
+              <button
+                type="button"
+                onClick={onCancel}
+                className={cancelButtonClass}
+                disabled={disabled || isSaving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onSave}
+                className={saveButtonClass}
+                disabled={disabled || isSaving}
+              >
+                {isSaving ? "Saving…" : "Save Changes"}
+              </button>
+            </>
+          ) : (
             <button
               type="button"
-              onClick={onCancel}
-              className={cancelButtonClass}
-              disabled={disabled || isSaving}
+              onClick={onEdit}
+              className={editToggleButtonClass}
+              disabled={disabled}
             >
-              Cancel
+              Edit
+              <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>
+                edit_document
+              </span>
             </button>
-            <button
-              type="button"
-              onClick={onSave}
-              className={saveButtonClass}
-              disabled={disabled || isSaving}
-            >
-              {isSaving ? "Saving…" : "Save Changes"}
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={onEdit}
-            className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg bg-secondary px-3.5 py-2 text-sm font-semibold text-white transition-[filter] hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:opacity-50"
-            disabled={disabled}
-          >
-            Edit
-            <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>
-              edit_document
-            </span>
-          </button>
-        )}
+          )}
+        </div>
       </div>
 
-      <dl className="flex flex-col gap-5 sm:gap-6">
-        <TextRow
-          label="Bill No."
-          value={billNo}
-          valueEmphasis="medium"
-          isEditing={isEditing}
-          onChange={(v) => patch({ billNo: v })}
-        />
-
-        <AmountRow
-          currencyCode={currencyCode}
-          amount={amount}
-          isEditing={isEditing}
-          onPatchChange={patch}
-          disabled={disabled}
-        />
-
-        <TextRow
-          label="Description (Optional)"
-          value={description}
-          isEditing={isEditing}
-          onChange={(v) => patch({ description: v })}
-        />
-
-        <TextRow
-          label="Contact"
-          value={contact}
-          required
-          valueEmphasis="medium"
-          isEditing={isEditing}
-          onChange={(v) => patch({ contact: v })}
-        />
-
-        <TextRow
-          label="Account Code"
-          value={accountCode}
-          required
-          valueEmphasis="medium"
-          isEditing={isEditing}
-          onChange={(v) => patch({ accountCode: v })}
-        />
-
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-8">
-          <DateRow
-            label="Invoice Date"
-            isoDate={invoiceDate}
-            required
-            isEditing={isEditing}
-            onChange={(iso) => patch({ invoiceDate: iso })}
-            disabled={disabled}
-          />
-          <DateRow
-            label="Due Date"
-            isoDate={dueDate}
-            required
-            isEditing={isEditing}
-            onChange={(iso) => patch({ dueDate: iso })}
-            disabled={disabled}
-          />
+      <div className="flex flex-col gap-5">
+        <div>
+          <FieldLabel htmlFor={idBillNo} editing={isEditing}>
+            Bill No.
+          </FieldLabel>
+          {isEditing ? (
+            <input
+              id={idBillNo}
+              type="text"
+              value={billNo}
+              onChange={(e) => patch({ billNo: e.target.value })}
+              className={modalTextInputClass}
+              placeholder="MBIDAN-115803031626"
+              disabled={disabled}
+            />
+          ) : (
+            <ReadOnlyTextBox emphasis="semibold">{billNo}</ReadOnlyTextBox>
+          )}
         </div>
-      </dl>
+
+        <div>
+          <FieldLabel htmlFor={idAmount} editing={isEditing}>
+            Amount<span className="text-red-500"> *</span>
+          </FieldLabel>
+          {isEditing ? (
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-0">
+              <ThemedSelect
+                id={idCurrency}
+                ariaLabel="Currency"
+                value={currencyModalValue}
+                onChange={(v) => patch({ currencyCode: modalCurrencyToIsoCode(v) })}
+                options={currencyOptions}
+                className="w-full shrink-0 sm:w-24"
+                fullWidth
+                uniformFill
+                triggerClassName="w-full px-2 sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3"
+                disabled={disabled}
+              />
+              <input
+                id={idAmount}
+                type="text"
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => patch({ amount: e.target.value })}
+                className={amountValueInputClass}
+                disabled={disabled}
+              />
+            </div>
+          ) : (
+            <ReadOnlyAmountRow currencyDisplayLabel={currencyDisplayLabel} amount={amount} />
+          )}
+        </div>
+
+        <div>
+          <FieldLabel htmlFor={idDescription} editing={isEditing}>
+            Description (Optional)
+          </FieldLabel>
+          {isEditing ? (
+            <input
+              id={idDescription}
+              type="text"
+              value={description}
+              onChange={(e) => patch({ description: e.target.value })}
+              placeholder="Lorem ipsum Dolor"
+              className={modalTextInputClass}
+              disabled={disabled}
+            />
+          ) : (
+            <ReadOnlyTextBox>{description}</ReadOnlyTextBox>
+          )}
+        </div>
+
+        <div>
+          <FieldLabel htmlFor={idContact} editing={isEditing}>
+            Contact<span className="text-red-500"> *</span>
+          </FieldLabel>
+          {isEditing ? (
+            <ThemedSelect
+              id={idContact}
+              value={contact}
+              onChange={(v) => patch({ contact: v })}
+              options={contactOptions}
+              disabled={disabled}
+            />
+          ) : (
+            <ReadOnlySelectShell value={contact} />
+          )}
+        </div>
+
+        <div>
+          <FieldLabel htmlFor={idAccount} editing={isEditing}>
+            Account Code<span className="text-red-500"> *</span>
+          </FieldLabel>
+          {isEditing ? (
+            <ThemedSelect
+              id={idAccount}
+              value={accountCode}
+              onChange={(v) => patch({ accountCode: v })}
+              options={accountOptions}
+              disabled={disabled}
+            />
+          ) : (
+            <ReadOnlySelectShell value={accountCode} />
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
+          <div>
+            <FieldLabel htmlFor={idInvoiceDate} editing={isEditing}>
+              Invoice Date<span className="text-red-500"> *</span>
+            </FieldLabel>
+            {isEditing ? (
+              <div className="relative">
+                <input
+                  ref={invoiceDateRef}
+                  id={idInvoiceDate}
+                  type="date"
+                  value={invoiceDate}
+                  onChange={(e) => patch({ invoiceDate: e.target.value })}
+                  className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm"
+                  disabled={disabled}
+                />
+                <button
+                  type="button"
+                  onClick={() => openDatePicker(invoiceDateRef.current)}
+                  className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                  aria-label="Open calendar for invoice date"
+                  disabled={disabled}
+                >
+                  <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+                    calendar_clock
+                  </span>
+                </button>
+              </div>
+            ) : (
+              <ReadOnlyDateRow display={formatLongDate(invoiceDate)} />
+            )}
+          </div>
+          <div>
+            <FieldLabel htmlFor={idDueDate} editing={isEditing}>
+              Due Date<span className="text-red-500"> *</span>
+            </FieldLabel>
+            {isEditing ? (
+              <div className="relative">
+                <input
+                  ref={dueDateRef}
+                  id={idDueDate}
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => patch({ dueDate: e.target.value })}
+                  className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm"
+                  disabled={disabled}
+                />
+                <button
+                  type="button"
+                  onClick={() => openDatePicker(dueDateRef.current)}
+                  className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                  aria-label="Open calendar for due date"
+                  disabled={disabled}
+                >
+                  <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+                    calendar_clock
+                  </span>
+                </button>
+              </div>
+            ) : (
+              <ReadOnlyDateRow display={formatLongDate(dueDate)} />
+            )}
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
