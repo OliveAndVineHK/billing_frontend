@@ -8,7 +8,7 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { setAuth } from "@/lib/auth";
 
 const MODULE1_URL =
-  process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://192.168.1.60:5001";
+  process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
 const MIN_LOADING_MS = 800;
 
 function ModuleSelectionContent() {

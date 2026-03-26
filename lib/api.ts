@@ -1,7 +1,7 @@
 import { getAuth } from "./auth";
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://127.0.0.1:8000";
+  process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://localhost:8000";
 
 // ── Error ────────────────────────────────────────────────────────────
 
