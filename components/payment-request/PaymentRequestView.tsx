@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { PaymentRequestTable, type PaymentRequestRow } from "./PaymentRequestTable";
 import { PaymentRequestToolbar, type PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { RecordPaymentModal } from "./RecordPaymentModal";
@@ -64,6 +65,7 @@ function mapBillToRow(bill: BillListItem): PaymentRequestRow {
 }
 
 export function PaymentRequestView() {
+  const router = useRouter();
   const [statusFilter, setStatusFilter] =
     useState<PaymentRequestStatusFilter>("All");
   const [bills, setBills] = useState<PaymentRequestRow[]>([]);
@@ -109,6 +111,7 @@ export function PaymentRequestView() {
             statusFilter={statusFilter}
             loading={loading}
             onRecordPayment={() => setRecordPaymentOpen(true)}
+            onRowClick={(rowId) => router.push(`/payment-request/${rowId}`)}
             onRowDelete={async (rowId) => {
               try {
                 await deleteBill(rowId);

@@ -217,6 +217,7 @@ type PaymentRequestTableProps = {
   onRowDelete?: (rowId: string) => void;
   onRowPublish?: (rowId: string) => void;
   onRowRepublish?: (rowId: string) => void;
+  onRowClick?: (rowId: string) => void;
   loading?: boolean;
 };
 
@@ -233,6 +234,7 @@ export function PaymentRequestTable({
   onRowDelete,
   onRowPublish,
   onRowRepublish,
+  onRowClick,
   loading = false,
 }: PaymentRequestTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -378,9 +380,9 @@ export function PaymentRequestTable({
                 const isReturned = row.status === "Returned";
                 const xeroConnected = !isDraft && row.xeroActive;
                 return (
-                  <tr key={row.id} className="cursor-pointer transition-colors duration-150 ease-out hover:bg-gray-50">
+                  <tr key={row.id} className="cursor-pointer transition-colors duration-150 ease-out hover:bg-gray-50" onClick={() => onRowClick?.(row.id)}>
                     <td className="border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3">
-                      <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleRow(row.id)} className={HEADER_CHECKBOX_CLASS} aria-label={`Select row ${row.contactTitle}`} suppressHydrationWarning />
+                      <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleRow(row.id)} onClick={(e) => e.stopPropagation()} className={HEADER_CHECKBOX_CLASS} aria-label={`Select row ${row.contactTitle}`} suppressHydrationWarning />
                     </td>
                     <td className={contactCellClass}>
                       <div className="flex min-w-0 flex-col gap-0.5">
@@ -402,7 +404,7 @@ export function PaymentRequestTable({
                       ) : null}
                     </td>
                     <td className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}>
-                      <button type="button" disabled={isPaid} aria-label={isPaid ? `Already paid — ${row.contactTitle}` : `Record payment for ${row.contactTitle}`} onClick={() => { if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button>
+                      <button type="button" disabled={isPaid} aria-label={isPaid ? `Already paid — ${row.contactTitle}` : `Record payment for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button>
                     </td>
                     <td className={`${singleLineDateCellClass} ${actionBodyCellBg}`}>{row.paidDate.trim() ? row.paidDate : <span className="text-primary/40 tabular-nums" aria-label="No paid date">-</span>}</td>
                     <td className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>
