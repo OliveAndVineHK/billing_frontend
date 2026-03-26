@@ -111,6 +111,7 @@ export function ThemedSelect({
       ref={menuRef}
       id={listboxId}
       role="listbox"
+      data-themed-select-menu
       className="fixed z-[400] max-h-60 overflow-auto rounded-lg border border-[#EDEDED] bg-white py-1 shadow-lg ring-1 ring-black/5"
       style={{
         top: menuPos.top,
@@ -155,36 +156,12 @@ export function ThemedSelect({
   return (
     <div className={`relative ${className}`}>
       {uniformFill ? (
-        <button
-          ref={triggerRef}
-          type="button"
-          id={id}
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-          aria-controls={isOpen ? listboxId : undefined}
-          aria-label={ariaLabel}
-          aria-invalid={error}
-          disabled={disabled}
-          onClick={() => !disabled && setIsOpen((o) => !o)}
-          className={`${uniformBase} ${triggerClassName}`}
-        >
+        <button ref={triggerRef} type="button" id={id} aria-haspopup="listbox" aria-expanded={isOpen} aria-controls={isOpen ? listboxId : undefined} aria-label={ariaLabel} aria-invalid={error} disabled={disabled} onClick={() => !disabled && setIsOpen((o) => !o)} className={`${uniformBase} ${triggerClassName}`}>
           <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
           {chevron}
         </button>
       ) : (
-        <button
-          ref={triggerRef}
-          type="button"
-          id={id}
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-          aria-controls={isOpen ? listboxId : undefined}
-          aria-label={ariaLabel}
-          aria-invalid={error}
-          disabled={disabled}
-          onClick={() => !disabled && setIsOpen((o) => !o)}
-          className={`${splitBase} ${triggerClassName}`}
-        >
+        <button ref={triggerRef} type="button" id={id} aria-haspopup="listbox" aria-expanded={isOpen} aria-controls={isOpen ? listboxId : undefined} aria-label={ariaLabel} aria-invalid={error} disabled={disabled} onClick={() => !disabled && setIsOpen((o) => !o)} className={`${splitBase} ${triggerClassName}`}>
           <span className="flex min-h-[44px] min-w-0 flex-1 items-center py-0 pl-3 pr-2 sm:min-h-11">
             <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
           </span>
