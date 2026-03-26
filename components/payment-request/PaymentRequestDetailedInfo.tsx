@@ -112,9 +112,7 @@ function ReadOnlyTextBox({
   emphasis?: "normal" | "semibold";
 }) {
   return (
-    <div
-      className={`flex h-11 min-h-[44px] w-full items-center rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black sm:min-h-11 sm:text-sm ${emphasis === "semibold" ? "font-semibold" : ""}`}
-    >
+    <div className={`flex h-11 min-h-[44px] w-full items-center rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black sm:min-h-11 sm:text-sm ${emphasis === "semibold" ? "font-semibold" : ""}`}>
       <span className="min-w-0 flex-1 truncate">{children}</span>
     </div>
   );
