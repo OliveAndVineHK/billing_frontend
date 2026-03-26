@@ -62,7 +62,7 @@ const headerActionsClass =
   "flex min-h-[44px] w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end";
 
 const editToggleButtonClass =
-  "inline-flex h-11 min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-4 text-sm font-semibold text-white transition-[filter] hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:opacity-50";
+  "inline-flex h-11 min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-4 text-sm font-semibold text-white transition-[filter] hover:brightness-95 focus-visible:outline-none disabled:opacity-50";
 
 function FieldLabel({
   htmlFor,
@@ -106,13 +106,13 @@ function openDatePicker(input: HTMLInputElement | null) {
 /** Read-only text row: same outer box as modal `<input>`. */
 function ReadOnlyTextBox({
   children,
-  emphasis = "normal",
+  emphasis = "semibold",
 }: {
   children: React.ReactNode;
   emphasis?: "normal" | "semibold";
 }) {
   return (
-    <div className={`flex h-11 min-h-[44px] w-full items-center rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black sm:min-h-11 sm:text-sm ${emphasis === "semibold" ? "font-semibold" : ""}`}>
+    <div className={`flex h-11 min-h-[44px] w-full items-center rounded-lg bg-transparent px-3 text-base text-black sm:min-h-11 sm:text-sm ${emphasis === "semibold" ? "font-semibold" : ""}`}>
       <span className="min-w-0 flex-1 truncate">{children}</span>
     </div>
   );
@@ -122,19 +122,11 @@ function ReadOnlyTextBox({
 function ReadOnlySelectShell({ value }: { value: string }) {
   return (
     <div
-      className="box-border flex h-11 min-h-[44px] min-w-0 w-full cursor-default overflow-hidden rounded-lg border border-[#EDEDED] bg-white p-0 text-left text-base font-medium text-black sm:min-h-11 sm:text-sm"
+      className="box-border flex h-11 min-h-[44px] min-w-0 w-full cursor-default overflow-hidden rounded-lg bg-transparent p-0 text-left text-base font-semibold text-black sm:min-h-11 sm:text-sm"
       aria-readonly="true"
     >
-      <span className="flex min-h-[44px] min-w-0 flex-1 items-center py-0 pl-3 pr-2 sm:min-h-11">
+      <span className="flex min-h-[44px] min-w-0 flex-1 items-center py-0 pl-3 pr-3 sm:min-h-11">
         <span className="min-w-0 flex-1 truncate">{value || "—"}</span>
-      </span>
-      <span
-        className="flex w-11 min-w-[44px] shrink-0 items-center justify-center border-l border-[#EDEDED] bg-[#EDEDED] sm:min-h-11"
-        aria-hidden
-      >
-        <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary">
-          expand_more
-        </span>
       </span>
     </div>
   );
@@ -151,16 +143,13 @@ function ReadOnlyAmountRow({
   return (
     <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-0">
       <div
-        className="box-border flex h-11 min-h-[44px] w-full shrink-0 items-center justify-between gap-2 rounded-lg border border-[#EDEDED] bg-[#EDEDED] px-2 pl-3 pr-2 text-base font-medium text-[#656565] sm:w-24 sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3 sm:text-sm"
+        className="box-border flex h-11 min-h-[44px] w-full shrink-0 items-center justify-between gap-2 rounded-lg bg-transparent px-2 pl-3 pr-2 text-base font-semibold text-[#656565] sm:w-24 sm:rounded-l-lg sm:rounded-r-none sm:px-3 sm:text-sm"
         aria-label="Currency"
       >
         <span className="min-w-0 flex-1 truncate">{currencyDisplayLabel}</span>
-        <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary" aria-hidden>
-          expand_more
-        </span>
       </div>
       <div
-        className={`${amountValueInputClass} flex items-center font-semibold`}
+        className="box-border flex h-11 min-h-[44px] min-w-0 w-full items-center rounded-lg bg-transparent px-3 text-base font-semibold text-black sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:text-sm"
         aria-readonly="true"
       >
         <span className="min-w-0 flex-1 truncate">{amount || "—"}</span>
@@ -173,11 +162,11 @@ function ReadOnlyAmountRow({
 function ReadOnlyDateRow({ display }: { display: string }) {
   return (
     <div className="relative">
-      <div className="flex h-11 min-h-[44px] w-full items-center rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black sm:min-h-11 sm:text-sm">
+      <div className="flex h-11 min-h-[44px] w-full items-center rounded-lg bg-transparent py-0 pl-3 pr-11 text-base font-semibold text-black sm:min-h-11 sm:text-sm">
         <span className="min-w-0 flex-1 truncate">{display}</span>
       </div>
       <div
-        className="pointer-events-none absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary sm:min-h-11"
+        className="pointer-events-none absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-r-lg text-primary sm:min-h-11"
         aria-hidden
       >
         <span className="material-symbols-outlined text-[20px] leading-none">calendar_clock</span>

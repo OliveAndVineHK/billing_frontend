@@ -249,6 +249,7 @@ export function RecordPaymentModal({
               {payments.map((p) => {
                 const amt = parseFloat(p.amount || "0");
                 const isPending = p.payment_status === "pending";
+                const isPartialPayment = amt > 0 && amt + 1e-9 < invoiceAmount;
                 return (
                   <li key={p.id} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-3 sm:gap-3 sm:px-4">
                     <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${isPending ? "bg-amber-100 text-amber-600" : "bg-secondary/15 text-secondary"}`} aria-hidden>
@@ -256,7 +257,11 @@ export function RecordPaymentModal({
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-primary">
-                        {isPending ? "Pending" : "Paid"} — {formatShortDayMonth(p.payment_date)}
+                        {isPending
+                          ? `Pending on ${formatShortDayMonth(p.payment_date)}`
+                          : isPartialPayment
+                            ? `Partial Pay on ${formatShortDayMonth(p.payment_date)}`
+                            : `Paid on ${formatShortDayMonth(p.payment_date)}`}
                       </p>
                       {isPending && (
                         <p className="text-[11px] text-amber-600">Pending</p>
