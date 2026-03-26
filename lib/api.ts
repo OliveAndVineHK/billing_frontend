@@ -195,6 +195,73 @@ export function uploadBillAttachment(billId: string, file: File): Promise<BillAt
   });
 }
 
+// ── Payments ─────────────────────────────────────────────────────
+
+export type PaymentItem = {
+  id: string;
+  bill_id: string;
+  payment_date: string | null;
+  amount: string;
+  currency_code: string;
+  payment_method: string;
+  payment_status: string;
+  reference_no: string;
+  note: string;
+  xero_payment_id: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PaymentListResponse = {
+  paid_total: string;
+  payments: PaymentItem[];
+};
+
+export type PaymentCreatePayload = {
+  payment_date?: string | null;
+  amount?: number;
+  currency_code?: string;
+  payment_method?: string;
+  payment_status?: string;
+  reference_no?: string;
+  note?: string;
+};
+
+export function fetchPayments(billId: string): Promise<PaymentListResponse> {
+  return apiFetch(`/bills/${billId}/payments`);
+}
+
+export function createPayment(
+  billId: string,
+  payload: PaymentCreatePayload,
+): Promise<PaymentItem> {
+  return apiFetch(`/bills/${billId}/payments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updatePayment(
+  billId: string,
+  paymentId: string,
+  payload: Partial<PaymentCreatePayload>,
+): Promise<PaymentItem> {
+  return apiFetch(`/bills/${billId}/payments/${paymentId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deletePayment(
+  billId: string,
+  paymentId: string,
+): Promise<{ message: string }> {
+  return apiFetch(`/bills/${billId}/payments/${paymentId}`, {
+    method: "DELETE",
+  });
+}
+
 // ── Config ───────────────────────────────────────────────────────────
 
 export function fetchEntityBillAccounts(): Promise<EntityBillAccount[]> {

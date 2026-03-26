@@ -68,16 +68,18 @@ export function PaymentRequestView() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] =
     useState<PaymentRequestStatusFilter>("All");
+  const [rawBills, setRawBills] = useState<BillListItem[]>([]);
   const [bills, setBills] = useState<PaymentRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [recordPaymentBillId, setRecordPaymentBillId] = useState<string | null>(null);
 
   const loadBills = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await fetchBills({ page_size: 100 });
+      setRawBills(data);
       setBills(data.map(mapBillToRow));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load bills");
@@ -110,7 +112,7 @@ export function PaymentRequestView() {
             rows={bills}
             statusFilter={statusFilter}
             loading={loading}
-            onRecordPayment={() => setRecordPaymentOpen(true)}
+            onRecordPayment={(rowId) => setRecordPaymentBillId(rowId)}
             onRowClick={(rowId) => router.push(`/payment-request/${rowId}`)}
             onRowDelete={async (rowId) => {
               try {
@@ -123,7 +125,22 @@ export function PaymentRequestView() {
           />
         )}
       </main>
-      <RecordPaymentModal open={recordPaymentOpen} onClose={() => setRecordPaymentOpen(false)} />
+      <RecordPaymentModal
+        open={recordPaymentBillId != null}
+        onClose={() => setRecordPaymentBillId(null)}
+        billId={recordPaymentBillId ?? ""}
+        invoiceAmount={
+          recordPaymentBillId
+            ? parseFloat(rawBills.find((b) => b.id === recordPaymentBillId)?.amount ?? "0")
+            : 0
+        }
+        currencyLabel={
+          recordPaymentBillId
+            ? rawBills.find((b) => b.id === recordPaymentBillId)?.currency_code || "HK$"
+            : "HK$"
+        }
+        onPaymentSaved={loadBills}
+      />
     </>
   );
 }

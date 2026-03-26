@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, deleteBill, fetchBill, updateBill, type BillDetail } from "@/lib/api";
+import { ApiError, deleteBill, fetchBill, fetchPayments, deletePayment as apiDeletePayment, updateBill, type BillDetail, type PaymentItem } from "@/lib/api";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
 import { loadAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
@@ -33,6 +33,30 @@ export function PaymentRequestDetailBody() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [payments, setPayments] = useState<PaymentItem[]>([]);
+
+  const loadPayments = useCallback(async () => {
+    if (!requestId) return;
+    try {
+      const data = await fetchPayments(requestId);
+      setPayments(data.payments);
+    } catch {
+      setPayments([]);
+    }
+  }, [requestId]);
+
+  const reloadBill = useCallback(async () => {
+    if (!requestId) return;
+    try {
+      const b = await fetchBill(requestId);
+      setBill(b);
+    } catch { /* ignore */ }
+  }, [requestId]);
+
+  useEffect(() => {
+    if (requestId) loadPayments();
+  }, [requestId, loadPayments]);
+
   const [fullscreen, setFullscreen] = useState(false);
   const [attachments, setAttachments] = useState<InvoiceAttachmentPreviewItem[]>([]);
   const [attachmentsReady, setAttachmentsReady] = useState(false);
@@ -232,15 +256,36 @@ export function PaymentRequestDetailBody() {
               add
             </span>
           </button>
-          <PaymentHistoryCard />
+          <PaymentHistoryCard
+            rows={payments.map((p) => ({
+              id: p.id,
+              date: p.payment_date
+                ? new Date(p.payment_date + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                : "—",
+              amountLabel: `(${currencyLabel} ${parseFloat(p.amount || "0").toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
+              invoiceNo: p.reference_no || p.id.slice(0, 18).toUpperCase(),
+            }))}
+            onDeleteRow={async (id) => {
+              try {
+                await apiDeletePayment(requestId, id);
+                await loadPayments();
+                await reloadBill();
+              } catch { /* ignore */ }
+            }}
+          />
           <ActivityHistoryAccordion />
         </div>
       </div>
       <RecordPaymentModal
         open={recordPaymentOpen}
         onClose={() => setRecordPaymentOpen(false)}
+        billId={requestId}
         invoiceAmount={invoiceTotalMajor}
         currencyLabel={currencyLabel}
+        onPaymentSaved={async () => {
+          await loadPayments();
+          await reloadBill();
+        }}
       />
     </>
   );
