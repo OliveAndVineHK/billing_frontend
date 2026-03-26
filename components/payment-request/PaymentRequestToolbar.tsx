@@ -135,6 +135,13 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBi
           <input id="payment-request-search" type="search" name="q" placeholder="Search by contact or description" className="box-border h-11 min-h-[44px] w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-3 text-base leading-normal text-primary placeholder:text-primary/50 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:h-[42px] sm:min-h-[42px] sm:text-sm" suppressHydrationWarning />
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            aria-label="Bulk actions"
+            className="box-border inline-flex h-11 min-h-[44px] cursor-pointer items-center justify-center rounded-lg border border-primary/25 px-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:px-4"
+          >
+            Bulk Actions
+          </button>
           <div ref={filterWrapRef} className="relative">
             <button
               ref={filterButtonRef}
