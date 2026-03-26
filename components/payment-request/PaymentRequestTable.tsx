@@ -262,6 +262,8 @@ type PaymentRequestTableProps = {
   onRowDelete?: (rowId: string) => void;
   onRowPublish?: (rowId: string) => void;
   onRowRepublish?: (rowId: string) => void;
+  onRowClick?: (rowId: string) => void;
+  loading?: boolean;
 };
 
 const ROW_MENU_MIN_WIDTH_PX = 160;
@@ -325,6 +327,8 @@ export function PaymentRequestTable({
   onRowDelete,
   onRowPublish,
   onRowRepublish,
+  onRowClick,
+  loading = false,
 }: PaymentRequestTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bankslipModalRowId, setBankslipModalRowId] = useState<string | null>(null);
@@ -519,7 +523,16 @@ export function PaymentRequestTable({
               </tr>
             </thead>
             <tbody className="bg-white">
-              {visibleRows.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={TABLE_COL_COUNT} className="border-b border-gray-100 px-4 py-10 text-center text-sm text-primary/60 sm:px-5">
+                    <span className="inline-flex items-center gap-2">
+                      <span className="material-symbols-outlined animate-spin text-secondary text-[22px]">progress_activity</span>
+                      Loading bills…
+                    </span>
+                  </td>
+                </tr>
+              ) : visibleRows.length === 0 ? (
                 <tr>
                   <td colSpan={tableColCount} className="border-b border-gray-100 px-4 py-8 text-center text-sm text-primary/70 sm:px-5">No payment requests match this status.</td>
                 </tr>
@@ -531,23 +544,40 @@ export function PaymentRequestTable({
                 const isReturned = row.status === "Returned";
                 const xeroConnected = !isDraft && row.xeroActive;
                 return (
-                  <tr key={row.id} className="cursor-pointer transition-colors duration-150 ease-out hover:bg-gray-50">
+                  <tr key={row.id} className="cursor-pointer transition-colors duration-150 ease-out hover:bg-gray-50" onClick={() => onRowClick?.(row.id)}>
                     <td className="border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3">
-                      <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleRow(row.id)} className={HEADER_CHECKBOX_CLASS} aria-label={`Select row ${row.contactTitle}`} suppressHydrationWarning />
+                      <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleRow(row.id)} onClick={(e) => e.stopPropagation()} className={HEADER_CHECKBOX_CLASS} aria-label={`Select row ${row.contactTitle}`} suppressHydrationWarning />
                     </td>
-                    {orderedTableTitles.map((title) => {
-                      const selectorKey = TITLE_SELECTOR_KEY[title];
-                      if (selectorKey && !columnVisibility[selectorKey]) return null;
-                      if (title === "Contact / Description") return <td key={`${row.id}-${title}`} className={contactCellClass}><div className="flex min-w-0 flex-col gap-0.5"><span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>{row.contactCaption ? <span className="text-xs text-primary/65 sm:text-sm">{row.contactCaption}</span> : null}</div></td>;
-                      if (title === "Invoice Date") return <td key={`${row.id}-${title}`} className={singleLineDateCellClass}>{row.invoiceDate}</td>;
-                      if (title === "Status") return <td key={`${row.id}-${title}`} className={singleLineStatusCellClass}>{row.status ? <span className={isPaid ? statusTagPaidClass : isPaymentRequested ? statusTagPaymentRequestedClass : isReturned ? statusTagReturnedClass : statusTagClass}>{row.status}</span> : null}</td>;
-                      if (title === "Submitted Date") return <td key={`${row.id}-${title}`} className={invoiceDateCellClass}>{row.submittedDate}</td>;
-                      if (title === "Unpaid Amount") return <td key={`${row.id}-${title}`} className={unpaidAmountCellClass}>{row.unpaidAmount || row.invoiceTotal ? (<div className="flex min-w-0 flex-col gap-0.5">{row.unpaidAmount ? <span className={"whitespace-nowrap text-sm font-semibold sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span> : null}{row.invoiceTotal ? <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span> : null}</div>) : null}</td>;
-                      if (title === "Payment") return <td key={`${row.id}-${title}`} className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}><button type="button" disabled={isPaid} aria-label={isPaid ? `Already paid — ${row.contactTitle}` : `Record payment for ${row.contactTitle}`} onClick={() => { if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button></td>;
-                      if (title === "Paid Date") return <td key={`${row.id}-${title}`} className={`${singleLineDateCellClass} ${actionBodyCellBg}`}>{row.paidDate.trim() ? row.paidDate : <span className="text-primary/40 tabular-nums" aria-label="No paid date">-</span>}</td>;
-                      if (title === "Bankslip") return <td key={`${row.id}-${title}`} className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>{row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (<button type="button" className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-transparent p-1 text-left text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:gap-2" aria-label={`View ${row.bankslipFileCount} uploaded bank slip file${row.bankslipFileCount === 1 ? "" : "s"}`} onClick={(e) => { e.stopPropagation(); setBankSlipDetailsRowId(row.id); }}><span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span></button>) : (<button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>)}</td>;
-                      return null;
-                    })}
+                    <td className={contactCellClass}>
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>
+                        {row.contactCaption ? <span className="text-xs text-primary/65 sm:text-sm">{row.contactCaption}</span> : null}
+                      </div>
+                    </td>
+                    <td className={singleLineDateCellClass}>{row.invoiceDate}</td>
+                    <td className={singleLineStatusCellClass}>
+                      {row.status ? <span className={isPaid ? statusTagPaidClass : isPaymentRequested ? statusTagPaymentRequestedClass : isReturned ? statusTagReturnedClass : statusTagClass}>{row.status}</span> : null}
+                    </td>
+                    <td className={invoiceDateCellClass}>{row.submittedDate}</td>
+                    <td className={unpaidAmountCellClass}>
+                      {row.unpaidAmount || row.invoiceTotal ? (
+                        <div className="flex min-w-0 flex-col gap-0.5">
+                          {row.unpaidAmount ? <span className={"whitespace-nowrap text-sm font-semibold sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span> : null}
+                          {row.invoiceTotal ? <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span> : null}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}>
+                      <button type="button" disabled={isPaid} aria-label={isPaid ? `Already paid — ${row.contactTitle}` : `Record payment for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button>
+                    </td>
+                    <td className={`${singleLineDateCellClass} ${actionBodyCellBg}`}>{row.paidDate.trim() ? row.paidDate : <span className="text-primary/40 tabular-nums" aria-label="No paid date">-</span>}</td>
+                    <td className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>
+                      {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
+                        <div className="inline-flex items-center gap-1.5 text-secondary sm:gap-2" role="status" aria-label={`${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`}><span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span></div>
+                      ) : (
+                        <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>
+                      )}
+                    </td>
                     <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
                       <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={24} height={24} className="mx-auto h-6 w-6 max-h-6 max-w-6 object-contain" />
                     </td>

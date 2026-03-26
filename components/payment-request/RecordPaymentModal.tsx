@@ -1,34 +1,36 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
+import {
+  fetchPayments,
+  createPayment,
+  updatePayment,
+  deletePayment,
+  type PaymentItem,
+} from "@/lib/api";
 
 export type RecordPaymentModalProps = {
   open: boolean;
   onClose: () => void;
+  billId: string;
   invoiceAmount?: number;
   currencyLabel?: string;
-  /** Called when the user confirms; modal closes after this runs. */
-  onSavePayment?: () => void;
+  onPaymentSaved?: () => void;
 };
 
 type PayMode = "full" | "partial";
-
-type PaymentEntry = {
-  id: string;
-  dateISO: string;
-  amount: number;
-};
 
 function formatMoney(amount: number, currencyLabel: string) {
   const n = Math.round(amount * 100) / 100;
   return `${currencyLabel} ${n.toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function formatShortDayMonth(iso: string) {
-  const d = new Date(iso + "T12:00:00");
-  if (Number.isNaN(d.getTime())) return iso;
+function formatShortDayMonth(dateStr: string | null) {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr + "T12:00:00");
+  if (Number.isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 }
 
@@ -52,17 +54,17 @@ function openDatePicker(input: HTMLInputElement | null) {
   input.focus();
 }
 
-const defaultInitialEntries: PaymentEntry[] = [
-  { id: "p1", dateISO: "2026-03-01", amount: 700 },
-  { id: "p2", dateISO: "2026-03-02", amount: 300 },
-];
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export function RecordPaymentModal({
   open,
   onClose,
-  invoiceAmount = 1500,
+  billId,
+  invoiceAmount = 0,
   currencyLabel = "HK$",
-  onSavePayment,
+  onPaymentSaved,
 }: RecordPaymentModalProps) {
   const titleId = useId();
   const dateFieldId = useId();
@@ -70,23 +72,51 @@ export function RecordPaymentModal({
   const dateRef = useRef<HTMLInputElement>(null);
 
   const [payMode, setPayMode] = useState<PayMode>("partial");
-  const [entries, setEntries] = useState<PaymentEntry[]>(() => [...defaultInitialEntries]);
-  const [draftDate, setDraftDate] = useState("2026-03-03");
+  const [payments, setPayments] = useState<PaymentItem[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [draftDate, setDraftDate] = useState(todayISO);
   const [draftAmount, setDraftAmount] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const totalPaid = useMemo(() => entries.reduce((s, e) => s + e.amount, 0), [entries]);
+  const totalPaid = useMemo(
+    () => payments.reduce((s, p) => s + parseFloat(p.amount || "0"), 0),
+    [payments],
+  );
   const remaining = Math.max(0, Math.round((invoiceAmount - totalPaid) * 100) / 100);
 
+  const pendingPayments = useMemo(
+    () => payments.filter((p) => p.payment_status === "pending"),
+    [payments],
+  );
+
+  const loadPayments = useCallback(async () => {
+    if (!billId) return;
+    setLoadingPayments(true);
+    try {
+      const data = await fetchPayments(billId);
+      setPayments(data.payments);
+    } catch {
+      setPayments([]);
+    } finally {
+      setLoadingPayments(false);
+    }
+  }, [billId]);
+
   useEffect(() => {
-    if (!open) {
+    if (open && billId) {
+      loadPayments();
       setPayMode("partial");
-      setEntries([...defaultInitialEntries]);
-      setDraftDate("2026-03-03");
+      setDraftDate(todayISO());
       setDraftAmount("");
       setFormError(null);
     }
-  }, [open]);
+    if (!open) {
+      setPayments([]);
+    }
+  }, [open, billId, loadPayments]);
 
   useEffect(() => {
     if (!open) return;
@@ -107,7 +137,7 @@ export function RecordPaymentModal({
     setDraftAmount(remaining > 0 ? remaining.toFixed(2) : "");
   }, [open, payMode, remaining]);
 
-  const handleAddPayment = () => {
+  const handleAddPayment = async () => {
     setFormError(null);
     const amount = payMode === "full" ? remaining : parseAmount(draftAmount);
     if (amount === null || amount <= 0) {
@@ -122,21 +152,51 @@ export function RecordPaymentModal({
       setFormError("Payment date is required.");
       return;
     }
-    const id =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `pay-${Date.now()}-${Math.random()}`;
-    setEntries((prev) => [...prev, { id, dateISO: draftDate, amount }]);
-    if (payMode === "partial") setDraftAmount("");
+
+    setAdding(true);
+    try {
+      await createPayment(billId, {
+        payment_date: draftDate,
+        amount,
+        currency_code: currencyLabel,
+        payment_status: "pending",
+      });
+      await loadPayments();
+      if (payMode === "partial") setDraftAmount("");
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Failed to add payment.");
+    } finally {
+      setAdding(false);
+    }
   };
 
-  const removeEntry = (id: string) => {
-    setEntries((prev) => prev.filter((e) => e.id !== id));
+  const handleDeletePayment = async (paymentId: string) => {
+    setDeletingId(paymentId);
+    try {
+      await deletePayment(billId, paymentId);
+      await loadPayments();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Failed to delete payment.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
-  const handleSavePayment = () => {
-    onSavePayment?.();
-    onClose();
+  const handleSavePayment = async () => {
+    setSaving(true);
+    try {
+      await Promise.all(
+        pendingPayments.map((p) =>
+          updatePayment(billId, p.id, { payment_status: "completed" }),
+        ),
+      );
+      onPaymentSaved?.();
+      onClose();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Failed to save payments.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!open) return null;
@@ -177,16 +237,48 @@ export function RecordPaymentModal({
             <div className="h-px flex-1 bg-gray-200" aria-hidden />
           </div>
 
-          <ul className="flex flex-col gap-2.5">
-            {entries.map((e) => (
-              <li key={e.id} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-3 sm:gap-3 sm:px-4">
-                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-secondary" aria-hidden><span className="material-symbols-outlined text-[20px]">history</span></span>
-                <p className="min-w-0 flex-1 truncate text-sm font-medium text-primary">Partial Pay on {formatShortDayMonth(e.dateISO)}</p>
-                <span className="shrink-0 text-sm font-bold text-primary tabular-nums">({formatMoney(e.amount, currencyLabel)})</span>
-                <button type="button" onClick={() => removeEntry(e.id)} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-rose-500 transition-colors hover:bg-rose-100 hover:text-rose-600" aria-label="Remove this payment"><span className="material-symbols-outlined text-[22px]">delete</span></button>
-              </li>
-            ))}
-          </ul>
+          {loadingPayments ? (
+            <div className="flex items-center justify-center gap-2 py-6 text-sm text-primary/60">
+              <span className="material-symbols-outlined animate-spin text-secondary text-[20px]">progress_activity</span>
+              Loading payments…
+            </div>
+          ) : payments.length === 0 ? (
+            <p className="py-4 text-center text-sm text-primary/50">No payments recorded yet.</p>
+          ) : (
+            <ul className="flex flex-col gap-2.5">
+              {payments.map((p) => {
+                const amt = parseFloat(p.amount || "0");
+                const isPending = p.payment_status === "pending";
+                return (
+                  <li key={p.id} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-3 sm:gap-3 sm:px-4">
+                    <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${isPending ? "bg-amber-100 text-amber-600" : "bg-secondary/15 text-secondary"}`} aria-hidden>
+                      <span className="material-symbols-outlined text-[20px]">{isPending ? "schedule" : "history"}</span>
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-primary">
+                        {isPending ? "Pending" : "Paid"} — {formatShortDayMonth(p.payment_date)}
+                      </p>
+                      {isPending && (
+                        <p className="text-[11px] text-amber-600">Pending</p>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-sm font-bold text-primary tabular-nums">({formatMoney(amt, currencyLabel)})</span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePayment(p.id)}
+                      disabled={deletingId === p.id}
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-rose-500 transition-colors hover:bg-rose-100 hover:text-rose-600 disabled:opacity-50"
+                      aria-label="Remove this payment"
+                    >
+                      <span className="material-symbols-outlined text-[22px]">
+                        {deletingId === p.id ? "progress_activity" : "delete"}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
 
           <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3">
             <div className="relative w-full min-w-0">
@@ -203,7 +295,10 @@ export function RecordPaymentModal({
           {formError ? <p className="mt-2 text-sm text-red-600" role="alert">{formError}</p> : null}
 
           <div className="mt-4 flex justify-end">
-            <button type="button" onClick={handleAddPayment} disabled={remaining <= 0} className="inline-flex items-center gap-1.5 rounded-lg bg-[#00C896]/10 px-4 py-2.5 text-sm font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00C896] disabled:cursor-not-allowed disabled:opacity-50">Add Payment<span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>add</span></button>
+            <button type="button" onClick={handleAddPayment} disabled={remaining <= 0 || adding} className="inline-flex items-center gap-1.5 rounded-lg bg-[#00C896]/10 px-4 py-2.5 text-sm font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00C896] disabled:cursor-not-allowed disabled:opacity-50">
+              {adding ? "Adding…" : "Add Payment"}
+              <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>{adding ? "progress_activity" : "add"}</span>
+            </button>
           </div>
         </div>
 
@@ -213,7 +308,14 @@ export function RecordPaymentModal({
               <span className="text-sm font-medium text-primary">Amount to be Paid</span>
               <span className="text-2xl font-bold text-secondary sm:text-3xl">{formatMoney(remaining, currencyLabel)}</span>
             </div>
-            <button type="button" onClick={handleSavePayment} className="box-border h-12 min-h-[48px] w-full rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px]">Save payment</button>
+            <button
+              type="button"
+              onClick={handleSavePayment}
+              disabled={pendingPayments.length === 0 || saving}
+              className="box-border h-12 min-h-[48px] w-full rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px]"
+            >
+              {saving ? "Saving…" : "Save payment"}
+            </button>
           </div>
         </div>
       </div>
