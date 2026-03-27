@@ -2,7 +2,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, deleteBill, fetchBill, fetchPayments, deletePayment as apiDeletePayment, updateBill, type BillDetail, type PaymentItem } from "@/lib/api";
+import { ApiError, deleteBill, fetchBill, fetchEntityBillAccounts, fetchEntityBillContacts, fetchPayments, deletePayment as apiDeletePayment, updateBill, type BillDetail, type PaymentItem } from "@/lib/api";
+import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
 import { loadAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
@@ -36,6 +37,47 @@ export function PaymentRequestDetailBody() {
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [auditRefresh, setAuditRefresh] = useState(0);
   const bumpAudit = useCallback(() => setAuditRefresh((n) => n + 1), []);
+
+  const [accountOptions, setAccountOptions] = useState<ThemedSelectOption[]>([
+    { value: "", label: "Select account code" },
+  ]);
+  const [contactOptions, setContactOptions] = useState<ThemedSelectOption[]>([
+    { value: "", label: "Select contact" },
+  ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchEntityBillAccounts()
+      .then((accounts) => {
+        if (cancelled) return;
+        setAccountOptions([
+          { value: "", label: "Select account code" },
+          ...accounts
+            .filter((a) => a.is_active)
+            .map((a) => ({
+              value: `${a.account_code} - ${a.account_name}`,
+              label: `${a.account_code} - ${a.account_name}`,
+            })),
+        ]);
+      })
+      .catch(() => {});
+    fetchEntityBillContacts()
+      .then((contacts) => {
+        if (cancelled) return;
+        const seen = new Set<string>();
+        const unique = contacts.filter((c) => {
+          if (seen.has(c.name)) return false;
+          seen.add(c.name);
+          return true;
+        });
+        setContactOptions([
+          { value: "", label: "Select contact" },
+          ...unique.map((c) => ({ value: c.name, label: c.name })),
+        ]);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const loadPayments = useCallback(async () => {
     if (!requestId) return;
@@ -237,6 +279,8 @@ export function PaymentRequestDetailBody() {
               isEditing={isEditing}
               isSaving={isSaving}
               disabled={!bill}
+              accountOptions={accountOptions}
+              contactOptions={contactOptions}
               onPatchChange={isEditing ? handlePatch : undefined}
               onEdit={handleEdit}
               onCancel={handleCancel}
