@@ -121,10 +121,7 @@ function ReadOnlyTextBox({
 /** Matches ThemedSelect split trigger (contact / account) — non-interactive. */
 function ReadOnlySelectShell({ value }: { value: string }) {
   return (
-    <div
-      className="box-border flex h-11 min-h-[44px] min-w-0 w-full cursor-default overflow-hidden rounded-lg bg-transparent p-0 text-left text-base font-semibold text-black sm:min-h-11 sm:text-sm"
-      aria-readonly="true"
-    >
+    <div className="box-border flex h-11 min-h-[44px] min-w-0 w-full cursor-default overflow-hidden rounded-lg bg-transparent p-0 text-left text-base font-semibold text-black sm:min-h-11 sm:text-sm" aria-readonly="true">
       <span className="flex min-h-[44px] min-w-0 flex-1 items-center py-0 pl-3 pr-3 sm:min-h-11">
         <span className="min-w-0 flex-1 truncate">{value || "—"}</span>
       </span>
