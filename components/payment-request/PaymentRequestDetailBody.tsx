@@ -2,7 +2,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, deleteBill, fetchBill, fetchPayments, deletePayment as apiDeletePayment, updateBill, type BillDetail, type PaymentItem } from "@/lib/api";
+import { ApiError, deleteBill, fetchBill, fetchEntityBillAccounts, fetchPayments, deletePayment as apiDeletePayment, updateBill, type BillDetail, type PaymentItem } from "@/lib/api";
+import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
 import { loadAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
@@ -36,6 +37,29 @@ export function PaymentRequestDetailBody() {
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [auditRefresh, setAuditRefresh] = useState(0);
   const bumpAudit = useCallback(() => setAuditRefresh((n) => n + 1), []);
+
+  const [accountOptions, setAccountOptions] = useState<ThemedSelectOption[]>([
+    { value: "", label: "Select account code" },
+  ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchEntityBillAccounts()
+      .then((accounts) => {
+        if (cancelled) return;
+        setAccountOptions([
+          { value: "", label: "Select account code" },
+          ...accounts
+            .filter((a) => a.is_active)
+            .map((a) => ({
+              value: `${a.account_code} - ${a.account_name}`,
+              label: `${a.account_code} - ${a.account_name}`,
+            })),
+        ]);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const loadPayments = useCallback(async () => {
     if (!requestId) return;
@@ -237,6 +261,7 @@ export function PaymentRequestDetailBody() {
               isEditing={isEditing}
               isSaving={isSaving}
               disabled={!bill}
+              accountOptions={accountOptions}
               onPatchChange={isEditing ? handlePatch : undefined}
               onEdit={handleEdit}
               onCancel={handleCancel}

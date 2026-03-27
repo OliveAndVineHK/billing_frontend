@@ -5,11 +5,10 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
-import { ThemedSelect } from "@/components/ThemedSelect";
+import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
 
-import { saveBillDraft, submitBill, uploadBillAttachment } from "@/lib/api";
+import { fetchEntityBillAccounts, saveBillDraft, submitBill, uploadBillAttachment } from "@/lib/api";
 import {
-  BILL_ACCOUNT_SELECT_OPTIONS,
   BILL_CONTACT_SELECT_OPTIONS,
   BILL_CURRENCY_SELECT_OPTIONS,
   modalCurrencyToIsoCode,
@@ -134,12 +133,42 @@ export function PaymentRequestModal({
   const [amount, setAmount] = useState("1,500.00");
   const [description, setDescription] = useState("");
   const [contact, setContact] = useState("Young Bros Transport");
-  const [accountCode, setAccountCode] = useState("425 - Transport");
+  const [accountCode, setAccountCode] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<ValidatedField, string>>>({});
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
   const [draftSubmitting, setDraftSubmitting] = useState(false);
+
+  const [accountOptions, setAccountOptions] = useState<ThemedSelectOption[]>([
+    { value: "", label: "Select account code" },
+  ]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetchEntityBillAccounts()
+      .then((accounts) => {
+        if (cancelled) return;
+        const opts: ThemedSelectOption[] = [
+          { value: "", label: "Select account code" },
+          ...accounts
+            .filter((a) => a.is_active)
+            .map((a) => ({
+              value: `${a.account_code} - ${a.account_name}`,
+              label: `${a.account_code} - ${a.account_name}`,
+            })),
+        ];
+        setAccountOptions(opts);
+        const defaultAcct = accounts.find((a) => a.is_default && a.is_active);
+        if (defaultAcct) {
+          const defaultVal = `${defaultAcct.account_code} - ${defaultAcct.account_name}`;
+          setAccountCode((prev) => prev || defaultVal);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [open]);
 
   const clearFieldError = (key: ValidatedField) => {
     setFieldErrors((prev) => {
@@ -167,6 +196,7 @@ export function PaymentRequestModal({
   useEffect(() => {
     if (!open) return;
     setFieldErrors({});
+    setAccountCode("");
     setInvoiceDate("");
     setDueDate("");
   }, [open]);
@@ -524,7 +554,7 @@ export function PaymentRequestModal({
                   setAccountCode(v);
                   clearFieldError("accountCode");
                 }}
-                options={BILL_ACCOUNT_SELECT_OPTIONS}
+                options={accountOptions}
                 error={!!fieldErrors.accountCode}
               />
               {fieldErrors.accountCode ? (

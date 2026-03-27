@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import { useId, useRef } from "react";
 import { ThemedSelect } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import {
-  BILL_ACCOUNT_SELECT_OPTIONS,
   BILL_CONTACT_SELECT_OPTIONS,
   currencyOptionsForEditing,
   isoCodeToModalCurrency,
@@ -33,6 +33,7 @@ export type PaymentRequestDetailedInfoProps = {
   isEditing?: boolean;
   isSaving?: boolean;
   disabled?: boolean;
+  accountOptions?: ThemedSelectOption[];
   onPatchChange?: (patch: Partial<PaymentRequestDetailedInfoData>) => void;
   onEdit?: () => void;
   onCancel?: () => void;
@@ -183,6 +184,7 @@ export function PaymentRequestDetailedInfo({
   onCancel,
   onSave,
   className = "",
+  accountOptions: accountOptionsProp,
 }: PaymentRequestDetailedInfoProps) {
   const {
     billNo,
@@ -211,7 +213,8 @@ export function PaymentRequestDetailedInfo({
   const idDueDate = `detail-due-date-${uid}`;
 
   const contactOptions = mergeSelectOption(BILL_CONTACT_SELECT_OPTIONS, contact);
-  const accountOptions = mergeSelectOption(BILL_ACCOUNT_SELECT_OPTIONS, accountCode);
+  const fallbackAccountOptions: ThemedSelectOption[] = [{ value: "", label: "Select account code" }];
+  const accountOptions = mergeSelectOption(accountOptionsProp ?? fallbackAccountOptions, accountCode);
   const currencyOptions = currencyOptionsForEditing(currencyCode);
   const currencyModalValue = isoCodeToModalCurrency(currencyCode);
   const currencyDisplayLabel =
