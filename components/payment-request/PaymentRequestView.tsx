@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PaymentRequestTable, type PaymentRequestRow } from "./PaymentRequestTable";
+import { PaymentRequestTable, type PaymentRequestRow, type PaymentRequestTableHandle } from "./PaymentRequestTable";
 import { PaymentRequestToolbar, type PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { RecordPaymentModal } from "./RecordPaymentModal";
-import { deleteBill, fetchBills, type BillListItem } from "@/lib/api";
+import { deleteBill, fetchBills, publishBill, type BillListItem } from "@/lib/api";
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return "";
@@ -75,6 +75,13 @@ export function PaymentRequestView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [recordPaymentBillId, setRecordPaymentBillId] = useState<string | null>(null);
+  const [selectedBillIds, setSelectedBillIds] = useState<string[]>([]);
+  const tableRef = useRef<PaymentRequestTableHandle>(null);
+  const bulkActionsEnabled = selectedBillIds.length >= 2;
+
+  const onTableSelectionChange = useCallback((ids: string[]) => {
+    setSelectedBillIds(ids);
+  }, []);
 
   useEffect(() => {
     const trimmed = searchQuery.trim();
@@ -107,6 +114,32 @@ export function PaymentRequestView() {
     loadBills();
   }, [loadBills]);
 
+  const runBulkDeleteSelected = useCallback(async () => {
+    if (selectedBillIds.length < 2) return;
+    if (!window.confirm(`Delete ${selectedBillIds.length} selected bills? This cannot be undone.`)) return;
+    setError(null);
+    try {
+      await Promise.all(selectedBillIds.map((id) => deleteBill(id)));
+      setBills((prev) => prev.filter((b) => !selectedBillIds.includes(b.id)));
+      setRawBills((prev) => prev.filter((b) => !selectedBillIds.includes(b.id)));
+      tableRef.current?.clearSelection();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete bills");
+    }
+  }, [selectedBillIds]);
+
+  const runBulkPublishSelected = useCallback(async () => {
+    if (selectedBillIds.length < 2) return;
+    setError(null);
+    try {
+      await Promise.all(selectedBillIds.map((id) => publishBill(id)));
+      await loadBills();
+      tableRef.current?.clearSelection();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to publish bills");
+    }
+  }, [selectedBillIds, loadBills]);
+
   return (
     <>
       <PaymentRequestToolbar
@@ -115,6 +148,9 @@ export function PaymentRequestView() {
         onBillCreated={loadBills}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        bulkActionsEnabled={bulkActionsEnabled}
+        onBulkDeleteSelected={runBulkDeleteSelected}
+        onBulkPublishSelected={runBulkPublishSelected}
       />
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3">
         {error ? (
@@ -126,17 +162,28 @@ export function PaymentRequestView() {
           </div>
         ) : (
           <PaymentRequestTable
+            ref={tableRef}
             rows={bills}
             statusFilter={statusFilter}
             loading={loading}
+            onSelectionChange={onTableSelectionChange}
             onRecordPayment={(rowId) => setRecordPaymentBillId(rowId)}
             onRowClick={(rowId) => router.push(`/payment-request/${rowId}`)}
             onRowDelete={async (rowId) => {
               try {
                 await deleteBill(rowId);
                 setBills((prev) => prev.filter((b) => b.id !== rowId));
+                setRawBills((prev) => prev.filter((b) => b.id !== rowId));
               } catch (err) {
                 setError(err instanceof Error ? err.message : "Failed to delete bill");
+              }
+            }}
+            onRowPublish={async (rowId) => {
+              try {
+                await publishBill(rowId);
+                await loadBills();
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Failed to publish bill");
               }
             }}
           />

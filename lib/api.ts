@@ -198,6 +198,13 @@ export function deleteBill(billId: string): Promise<{ message: string }> {
   });
 }
 
+/** Publish a bill to Xero (single bill). */
+export function publishBill(billId: string): Promise<BillDetail> {
+  return apiFetch<BillDetail>(`/bills/${billId}/publish/`, {
+    method: "POST",
+  });
+}
+
 // ── Attachments ──────────────────────────────────────────────────────
 
 export function uploadBillAttachment(billId: string, file: File): Promise<BillAttachment> {

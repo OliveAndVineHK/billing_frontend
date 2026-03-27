@@ -28,8 +28,15 @@ type PaymentRequestToolbarProps = {
   onBillCreated?: () => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
+  /** When fewer than two rows are selected, bulk actions stay disabled. */
+  bulkActionsEnabled: boolean;
+  onBulkDeleteSelected?: () => void;
+  onBulkPublishSelected?: () => void;
 };
 type FilterMenuState = { top: number; left: number; width: number };
+type BulkMenuState = { top: number; left: number; minWidth: number };
+
+const BULK_MENU_MIN_WIDTH_PX = 200;
 
 export function PaymentRequestToolbar({
   activeStatus,
@@ -37,14 +44,21 @@ export function PaymentRequestToolbar({
   onBillCreated,
   searchQuery,
   onSearchChange,
+  bulkActionsEnabled,
+  onBulkDeleteSelected,
+  onBulkPublishSelected,
 }: PaymentRequestToolbarProps) {
   const filterFieldIds = useId();
   const [billModalOpen, setBillModalOpen] = useState(false);
   const [billModalMounted, setBillModalMounted] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterMenu, setFilterMenu] = useState<FilterMenuState | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkMenu, setBulkMenu] = useState<BulkMenuState | null>(null);
   const filterWrapRef = useRef<HTMLDivElement | null>(null);
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const bulkWrapRef = useRef<HTMLDivElement | null>(null);
+  const bulkButtonRef = useRef<HTMLButtonElement | null>(null);
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
   const [minAmount, setMinAmount] = useState("");
@@ -99,6 +113,59 @@ export function PaymentRequestToolbar({
     };
   }, [filterOpen]);
 
+  useEffect(() => {
+    if (!bulkOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      const t = event.target;
+      if (bulkWrapRef.current?.contains(t as Node)) return;
+      if (t instanceof Element && t.closest("[data-bulk-menu-panel]")) return;
+      setBulkOpen(false);
+      setBulkMenu(null);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setBulkOpen(false);
+        setBulkMenu(null);
+      }
+    };
+    const onResizeOrScroll = () => {
+      setBulkOpen(false);
+      setBulkMenu(null);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    window.addEventListener("resize", onResizeOrScroll);
+    window.addEventListener("scroll", onResizeOrScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("resize", onResizeOrScroll);
+      window.removeEventListener("scroll", onResizeOrScroll, true);
+    };
+  }, [bulkOpen]);
+
+  useEffect(() => {
+    if (!bulkActionsEnabled && bulkOpen) {
+      setBulkOpen(false);
+      setBulkMenu(null);
+    }
+  }, [bulkActionsEnabled, bulkOpen]);
+
+  const toggleBulkMenu = (trigger: HTMLButtonElement) => {
+    if (!bulkActionsEnabled) return;
+    setBulkOpen((open) => {
+      if (open) {
+        setBulkMenu(null);
+        return false;
+      }
+      const rect = trigger.getBoundingClientRect();
+      const left = Math.max(8, rect.right - BULK_MENU_MIN_WIDTH_PX);
+      const top = rect.bottom + 8;
+      setBulkMenu({ top, left, minWidth: BULK_MENU_MIN_WIDTH_PX });
+      return true;
+    });
+  };
+
   const onResetFilters = () => {
     setMinAmount("");
     setMaxAmount("");
@@ -140,50 +207,26 @@ export function PaymentRequestToolbar({
           Search by contact or description
         </label>
         <div className="relative min-w-0 flex-1">
-          <input
-            id="payment-request-search"
-            type="search"
-            name="q"
-            value={searchQuery ?? ""}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search by contact or description"
-            autoComplete="off"
-            className="box-border h-11 min-h-[44px] w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-3 text-base leading-normal text-black placeholder:text-primary/50 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:h-[42px] sm:min-h-[42px] sm:text-sm"
-            suppressHydrationWarning
-          />
+          <input id="payment-request-search" type="search" name="q" value={searchQuery ?? ""} onChange={(e) => onSearchChange(e.target.value)} placeholder="Search by contact or description" autoComplete="off" className="box-border h-11 min-h-[44px] w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-3 text-base leading-normal text-black placeholder:text-primary/50 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:h-[42px] sm:min-h-[42px] sm:text-sm" suppressHydrationWarning />
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            aria-label="Bulk actions"
-            className="box-border inline-flex h-11 min-h-[44px] cursor-pointer items-center justify-center rounded-lg border border-primary/25 px-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:px-4"
-          >
-            Bulk Actions
-          </button>
+          <div ref={bulkWrapRef} className="relative">
+            <button ref={bulkButtonRef} type="button" aria-label="Bulk actions" aria-expanded={bulkOpen ? "true" : "false"} aria-haspopup="menu" disabled={!bulkActionsEnabled} onClick={() => { if (!bulkButtonRef.current) return; toggleBulkMenu(bulkButtonRef.current); }} className={`box-border inline-flex h-11 min-h-[44px] items-center justify-center rounded-lg border px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:px-4 ${bulkActionsEnabled ? "cursor-pointer border-primary/25 text-primary hover:bg-primary/10" : "cursor-not-allowed border-primary/20 bg-[#F5F5F5] text-primary/45"}`}>Bulk Actions</button>
+            {bulkOpen && bulkMenu && bulkActionsEnabled && typeof document !== "undefined"
+              ? createPortal(
+                  <div data-bulk-menu-panel role="menu" aria-label="Bulk actions" className="fixed z-[400] rounded-lg border border-gray-200 bg-white py-1 shadow-lg" style={{ top: bulkMenu.top, left: bulkMenu.left, minWidth: bulkMenu.minWidth }}>
+                    <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50" onClick={() => { onBulkDeleteSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Delete Selected</button>
+                    <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onBulkPublishSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Publish Selected</button>
+                  </div>,
+                  document.body,
+                )
+              : null}
+          </div>
           <div ref={filterWrapRef} className="relative">
-            <button
-              ref={filterButtonRef}
-              type="button"
-              aria-label="Filter"
-              aria-expanded={filterOpen ? "true" : "false"}
-              aria-haspopup="dialog"
-              onClick={() => {
-                if (!filterButtonRef.current) return;
-                toggleFilterMenu(filterButtonRef.current);
-              }}
-              className="box-border inline-flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-lg border border-primary/25 text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:w-[42px] sm:min-w-[42px]"
-            >
-              <span className="material-symbols-outlined text-[22px] leading-none">filter_alt</span>
-            </button>
+            <button ref={filterButtonRef} type="button" aria-label="Filter" aria-expanded={filterOpen ? "true" : "false"} aria-haspopup="dialog" onClick={() => { if (!filterButtonRef.current) return; toggleFilterMenu(filterButtonRef.current); }} className="box-border inline-flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-lg border border-primary/25 text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:w-[42px] sm:min-w-[42px]"><span className="material-symbols-outlined text-[22px] leading-none">filter_alt</span></button>
             {filterOpen && filterMenu && typeof document !== "undefined"
               ? createPortal(
-              <div
-                data-filter-menu-panel
-                role="dialog"
-                aria-label="Filters"
-                className="fixed z-[400] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
-                style={{ top: filterMenu.top, left: filterMenu.left, width: filterMenu.width }}
-              >
+              <div data-filter-menu-panel role="dialog" aria-label="Filters" className="fixed z-[400] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg" style={{ top: filterMenu.top, left: filterMenu.left, width: filterMenu.width }}>
                 <div className="border-b border-gray-200 px-3 py-2">
                   <h3 className="text-sm font-semibold text-primary">Filters</h3>
                   <p className="mt-1 text-xs leading-snug text-primary/65">Set amount and date criteria, then apply to narrow the list.</p>
@@ -195,38 +238,16 @@ export function PaymentRequestToolbar({
                         Amount
                       </label>
                       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
-                        <input
-                          id={`${filterFieldIds}-min-amount`}
-                          type="text"
-                          inputMode="decimal"
-                          value={minAmount ?? ""}
-                          onChange={(e) => setMinAmount(e.target.value)}
-                          placeholder="0.00"
-                          className={textInputClass}
-                        />
+                        <input id={`${filterFieldIds}-min-amount`} type="text" inputMode="decimal" value={minAmount ?? ""} onChange={(e) => setMinAmount(e.target.value)} placeholder="0.00" className={textInputClass} />
                         <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-primary sm:text-xs">To</span>
-                        <input
-                          id={`${filterFieldIds}-max-amount`}
-                          type="text"
-                          inputMode="decimal"
-                          value={maxAmount}
-                          onChange={(e) => setMaxAmount(e.target.value)}
-                          placeholder="0.00"
-                          className={textInputClass}
-                        />
+                        <input id={`${filterFieldIds}-max-amount`} type="text" inputMode="decimal" value={maxAmount ?? ""} onChange={(e) => setMaxAmount(e.target.value)} placeholder="0.00" className={textInputClass} />
                       </div>
                     </div>
                     <div>
                       <label htmlFor={`${filterFieldIds}-date-type`} className={fieldLabelClass}>
                         Date Type
                       </label>
-                      <ThemedSelect
-                        id={`${filterFieldIds}-date-type`}
-                        value={dateType ?? ""}
-                        onChange={setDateType}
-                        options={[...FILTER_DATE_TYPE_OPTIONS]}
-                        ariaLabel="Date type"
-                      />
+                      <ThemedSelect id={`${filterFieldIds}-date-type`} value={dateType ?? ""} onChange={setDateType} options={[...FILTER_DATE_TYPE_OPTIONS]} ariaLabel="Date type" />
                     </div>
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
                       <div>
@@ -234,35 +255,9 @@ export function PaymentRequestToolbar({
                           Start Date
                         </label>
                         <div className="relative">
-                          <input
-                            ref={startDateRef}
-                            id={`${filterFieldIds}-start-date`}
-                            type="date"
-                            value={startDate ?? ""}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            className={
-                              `${dateInputClass} relative z-[1] ` +
-                              (startDate ? "text-black " : "text-transparent ")
-                            }
-                          />
-                          {!startDate ? (
-                            <span
-                              className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45"
-                              aria-hidden
-                            >
-                              mm/dd/yyyy
-                            </span>
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() => openDatePicker(startDateRef.current)}
-                            className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
-                            aria-label="Open calendar for start date"
-                          >
-                            <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                              calendar_clock
-                            </span>
-                          </button>
+                          <input ref={startDateRef} id={`${filterFieldIds}-start-date`} type="date" value={startDate ?? ""} onChange={(e) => setStartDate(e.target.value)} className={`${dateInputClass} relative z-[1] ${startDate ? "text-black " : "text-transparent "}`} />
+                          {!startDate ? <span className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45" aria-hidden>mm/dd/yyyy</span> : null}
+                          <button type="button" onClick={() => openDatePicker(startDateRef.current)} className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for start date"><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>calendar_clock</span></button>
                         </div>
                       </div>
                       <div>
@@ -270,35 +265,9 @@ export function PaymentRequestToolbar({
                           End Date
                         </label>
                         <div className="relative">
-                          <input
-                            ref={endDateRef}
-                            id={`${filterFieldIds}-end-date`}
-                            type="date"
-                            value={endDate ?? ""}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className={
-                              `${dateInputClass} relative z-[1] ` +
-                              (endDate ? "text-black " : "text-transparent ")
-                            }
-                          />
-                          {!endDate ? (
-                            <span
-                              className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45"
-                              aria-hidden
-                            >
-                              mm/dd/yyyy
-                            </span>
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() => openDatePicker(endDateRef.current)}
-                            className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
-                            aria-label="Open calendar for end date"
-                          >
-                            <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                              calendar_clock
-                            </span>
-                          </button>
+                          <input ref={endDateRef} id={`${filterFieldIds}-end-date`} type="date" value={endDate ?? ""} onChange={(e) => setEndDate(e.target.value)} className={`${dateInputClass} relative z-[1] ${endDate ? "text-black " : "text-transparent "}`} />
+                          {!endDate ? <span className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45" aria-hidden>mm/dd/yyyy</span> : null}
+                          <button type="button" onClick={() => openDatePicker(endDateRef.current)} className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for end date"><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>calendar_clock</span></button>
                         </div>
                       </div>
                     </div>
@@ -306,20 +275,8 @@ export function PaymentRequestToolbar({
                 </div>
                 <div className="border-t border-gray-200 px-3 py-2 sm:px-4">
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={onResetFilters}
-                      className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px]"
-                    >
-                      Reset
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFilterOpen(false)}
-                      className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px]"
-                    >
-                      Apply Filter
-                    </button>
+                    <button type="button" onClick={onResetFilters} className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px]">Reset</button>
+                    <button type="button" onClick={() => setFilterOpen(false)} className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px]">Apply Filter</button>
                   </div>
                 </div>
               </div>,

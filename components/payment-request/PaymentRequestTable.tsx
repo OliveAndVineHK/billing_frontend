@@ -1,7 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsModal";
 import { UploadBankslipModal } from "./UploadBankslipModal";
@@ -264,6 +264,12 @@ type PaymentRequestTableProps = {
   onRowRepublish?: (rowId: string) => void;
   onRowClick?: (rowId: string) => void;
   loading?: boolean;
+  /** Called whenever the set of selected row ids changes (for toolbar bulk actions). */
+  onSelectionChange?: (selectedIds: string[]) => void;
+};
+
+export type PaymentRequestTableHandle = {
+  clearSelection: () => void;
 };
 
 const ROW_MENU_MIN_WIDTH_PX = 160;
@@ -320,16 +326,20 @@ function getBankSlipDetailsForRow(row: PaymentRequestRow): BankSlipDetails {
   };
 }
 
-export function PaymentRequestTable({
-  rows = DEMO_ROWS,
-  onRecordPayment,
-  statusFilter = "All",
-  onRowDelete,
-  onRowPublish,
-  onRowRepublish,
-  onRowClick,
-  loading = false,
-}: PaymentRequestTableProps) {
+export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, PaymentRequestTableProps>(function PaymentRequestTable(
+  {
+    rows = DEMO_ROWS,
+    onRecordPayment,
+    statusFilter = "All",
+    onRowDelete,
+    onRowPublish,
+    onRowRepublish,
+    onRowClick,
+    loading = false,
+    onSelectionChange,
+  },
+  ref,
+) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bankslipModalRowId, setBankslipModalRowId] = useState<string | null>(null);
   const [bankSlipDetailsRowId, setBankSlipDetailsRowId] = useState<string | null>(null);
@@ -346,6 +356,24 @@ export function PaymentRequestTable({
   const [columnOrder, setColumnOrder] = useState<ColumnSelectorKey[]>(() => COLUMN_SELECTOR_ITEMS.map((item) => item.key));
   const [draggingColumnKey, setDraggingColumnKey] = useState<ColumnSelectorKey | null>(null);
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
+
+  const rowIdSet = useMemo(() => new Set(rows.map((r) => r.id)), [rows]);
+
+  useImperativeHandle(ref, () => ({
+    clearSelection: () => setSelectedIds(new Set()),
+  }));
+
+  useEffect(() => {
+    onSelectionChange?.([...selectedIds]);
+  }, [selectedIds, onSelectionChange]);
+
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const next = new Set([...prev].filter((id) => rowIdSet.has(id)));
+      if (next.size === prev.size && [...prev].every((id) => next.has(id))) return prev;
+      return next;
+    });
+  }, [rowIdSet]);
 
   const visibleRows = useMemo(
     () => (statusFilter === "All" ? rows : rows.filter((r) => r.status === statusFilter)),
@@ -630,6 +658,6 @@ export function PaymentRequestTable({
         : null}
     </div>
   );
-}
+});
 
 export { COLUMN_TITLES };
