@@ -60,7 +60,7 @@ function auditToItem(audit: AuditItem, billRef: string): ActivityHistoryItem {
 }
 
 export function ActivityHistoryAccordion({ billId, billRef, refreshSignal = 0 }: ActivityHistoryAccordionProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [items, setItems] = useState<ActivityHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
 
