@@ -29,7 +29,7 @@ export function InvoiceAttachmentToolbar({ onDelete, onDownloadPdf, onExpand }: 
       </div>
       <button
         type="button"
-        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-primary/25 bg-white text-primary transition-colors hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-10 sm:w-10"
+        className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-primary/25 bg-white text-primary transition-colors hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-10 sm:w-10"
         onClick={onExpand}
         aria-label="Expand preview"
       >

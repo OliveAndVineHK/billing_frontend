@@ -244,7 +244,7 @@ export function PaymentRequestDetailBody() {
             />
           ) : null}
 
-          <button type="button" onClick={() => setRecordPaymentOpen(true)} className="box-border inline-flex h-12 w-full min-w-0 shrink-0 items-center justify-between gap-2 rounded-md border border-transparent bg-[#00C896]/10 px-4 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none sm:h-[46px] sm:w-[199px] sm:self-start">
+          <button type="button" onClick={() => setRecordPaymentOpen(true)} className="box-border inline-flex h-12 w-full min-w-0 shrink-0 cursor-pointer items-center justify-between gap-2 rounded-md border border-transparent bg-[#00C896]/10 px-4 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none sm:h-[46px] sm:w-[199px] sm:self-start">
             Add Payment
             <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
               add
