@@ -24,7 +24,9 @@ export default function PaymentRequestDetailPage() {
         backLabel="Bills"
         companyName="Minty Bills Incorporated"
         statusBadge={
-          <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700 sm:text-sm">Payment Requested</span>
+          <span className="rounded-md bg-[#FFF0F0] px-3 py-1 text-xs font-semibold text-[#FF6B6B] sm:text-sm">
+            Payment Requested
+          </span>
         }
       />
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3 lg:pt-4">

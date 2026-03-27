@@ -31,7 +31,7 @@ export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow }: PaymentH
     <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left sm:px-5 sm:py-4"
+        className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-left sm:px-5 sm:py-4"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >

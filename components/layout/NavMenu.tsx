@@ -91,7 +91,7 @@ export function NavMenu({ items = defaultItems, menuSections = DEFAULT_MENU_SECT
 
   const drawer = (
     <div className={`fixed inset-0 z-[200] overflow-x-hidden overscroll-x-none ${open ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!open}>
-      <button type="button" className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ease-out ${open ? "opacity-100" : "opacity-0"}`} onClick={() => setOpen(false)} tabIndex={open ? 0 : -1} aria-label="Close menu" />
+      <button type="button" className={`absolute inset-0 cursor-pointer bg-black/40 transition-opacity duration-300 ease-out ${open ? "opacity-100" : "opacity-0"}`} onClick={() => setOpen(false)} tabIndex={open ? 0 : -1} aria-label="Close menu" />
       <nav
         id={panelId}
         className={`absolute right-0 top-0 flex h-full w-[min(100%,18rem)] max-w-[calc(100%-env(safe-area-inset-left)-env(safe-area-inset-right))] flex-col bg-white pt-[env(safe-area-inset-top,0px)] shadow-xl transition-transform duration-300 ease-out ${open ? "translate-x-0" : "translate-x-full"}`}
@@ -102,7 +102,7 @@ export function NavMenu({ items = defaultItems, menuSections = DEFAULT_MENU_SECT
               <span className="min-w-0 truncate text-sm font-semibold tracking-wide text-primary sm:text-base" title={companyAbbreviation}>
                 {companyAbbreviation}
               </span>
-              <button type="button" onClick={() => setOpen(false)} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" aria-label="Close menu">
+              <button type="button" onClick={() => setOpen(false)} className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" aria-label="Close menu">
                 <span className="material-symbols-outlined text-[26px] leading-none">close</span>
               </button>
             </div>
@@ -146,7 +146,7 @@ export function NavMenu({ items = defaultItems, menuSections = DEFAULT_MENU_SECT
 
   return (
     <div className="flex shrink-0 items-center">
-      <button type="button" onClick={() => setOpen(true)} className="inline-flex h-10 w-10 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" aria-expanded={open} aria-controls={panelId} aria-label="Open navigation menu">
+      <button type="button" onClick={() => setOpen(true)} className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" aria-expanded={open} aria-controls={panelId} aria-label="Open navigation menu">
         <span className="material-symbols-outlined text-[26px] leading-none">menu</span>
       </button>
       {portalReady ? createPortal(drawer, document.body) : null}

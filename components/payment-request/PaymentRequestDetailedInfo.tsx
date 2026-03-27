@@ -52,17 +52,17 @@ const amountValueInputClass =
   "box-border h-11 min-h-[44px] min-w-0 w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:border-l-0 sm:text-sm focus:border-secondary focus:ring-secondary/25";
 
 const cancelButtonClass =
-  "box-border h-11 min-h-[44px] shrink-0 rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[44px] sm:px-5";
+  "box-border h-11 min-h-[44px] shrink-0 cursor-pointer rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[44px] sm:px-5";
 
 const saveButtonClass =
-  "box-border h-11 min-h-[44px] shrink-0 rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[44px] sm:px-6";
+  "box-border h-11 min-h-[44px] shrink-0 cursor-pointer rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[44px] sm:px-6";
 
 /** Header actions row: same min-height in view (Edit) and edit (Cancel + Save) to avoid vertical jump. */
 const headerActionsClass =
   "flex min-h-[44px] w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end";
 
 const editToggleButtonClass =
-  "inline-flex h-11 min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-4 text-sm font-semibold text-white transition-[filter] hover:brightness-95 focus-visible:outline-none disabled:opacity-50";
+  "inline-flex h-11 min-h-[44px] shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-secondary px-4 text-sm font-semibold text-white transition-[filter] hover:brightness-95 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50";
 
 function FieldLabel({
   htmlFor,
