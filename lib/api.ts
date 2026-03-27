@@ -307,6 +307,16 @@ export function fetchEntityBillAccounts(): Promise<EntityBillAccount[]> {
   return apiFetch("/entity-bill-accounts/");
 }
 
+export function updateEntityBillAccount(
+  accountId: string,
+  payload: Partial<Pick<EntityBillAccount, "is_active" | "is_default" | "sort_order">>,
+): Promise<EntityBillAccount> {
+  return apiFetch(`/entity-bill-accounts/${accountId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export type EntityBillContact = {
   id: string;
   entity_id: string;
