@@ -7,7 +7,7 @@ import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ThemedSelect } from "@/components/ThemedSelect";
 
-import { createBill, uploadBillAttachment } from "@/lib/api";
+import { createBill, saveBillDraft, uploadBillAttachment } from "@/lib/api";
 import {
   BILL_ACCOUNT_SELECT_OPTIONS,
   BILL_CONTACT_SELECT_OPTIONS,
@@ -135,6 +135,7 @@ export function PaymentRequestModal({
   const [dueDate, setDueDate] = useState("2026-03-03");
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<ValidatedField, string>>>({});
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
+  const [draftSubmitting, setDraftSubmitting] = useState(false);
 
   const clearFieldError = (key: ValidatedField) => {
     setFieldErrors((prev) => {
@@ -164,7 +165,10 @@ export function PaymentRequestModal({
   }, [open]);
 
   useEffect(() => {
-    if (!open) setConfirmSubmitting(false);
+    if (!open) {
+      setConfirmSubmitting(false);
+      setDraftSubmitting(false);
+    }
   }, [open]);
 
   const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,8 +186,62 @@ export function PaymentRequestModal({
     setUploadedFiles((prev) => prev.filter((x) => x.id !== entryId));
   };
 
-  const handleSaveDraft = () => {
-    onSaveDraft?.();
+  const handleSaveDraft = async () => {
+    if (draftSubmitting) return;
+    setDraftSubmitting(true);
+    setFieldErrors({});
+    try {
+      const parsedAmount = parseAmountValue(amount);
+      const acctCode = accountCode.split(" - ")[0]?.trim() ?? "";
+
+      const bill = await saveBillDraft({
+        contact: contact || undefined,
+        description: description || undefined,
+        amount: parsedAmount ?? undefined,
+        currency_code: modalCurrencyToIsoCode(currency) || undefined,
+        invoice_date: invoiceDate || undefined,
+        due_date: dueDate || undefined,
+        reference: billNo || undefined,
+        line_items: acctCode || description || (parsedAmount && parsedAmount > 0)
+          ? [
+              {
+                description: description || undefined,
+                quantity: 1,
+                unit_amount: parsedAmount ?? undefined,
+                line_amount: parsedAmount ?? undefined,
+                account_code: acctCode || undefined,
+              },
+            ]
+          : undefined,
+      });
+
+      for (const entry of uploadedFiles) {
+        try {
+          await uploadBillAttachment(bill.id, entry.file);
+        } catch (e) {
+          console.error("Failed to upload attachment:", e);
+        }
+      }
+
+      try {
+        await saveAttachmentBlobs(
+          bill.id,
+          uploadedFiles.map((x) => x.file),
+        );
+      } catch (e) {
+        console.error("Could not store attachments for preview:", e);
+      }
+
+      onSaveDraft?.();
+      onClose();
+    } catch (err) {
+      console.error("Failed to save draft:", err);
+      setFieldErrors({
+        amount: err instanceof Error ? err.message : "Failed to save draft. Please try again.",
+      });
+    } finally {
+      setDraftSubmitting(false);
+    }
   };
 
   const handleCancel = () => {
@@ -565,10 +623,11 @@ export function PaymentRequestModal({
           </div>
           <button
             type="button"
-            onClick={handleSaveDraft}
-            className="order-2 box-border h-12 min-h-[48px] w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-semibold text-primary transition-colors hover:bg-gray-50 sm:order-1 sm:h-11 sm:min-h-[44px] sm:w-auto"
+            onClick={() => void handleSaveDraft()}
+            disabled={draftSubmitting}
+            className="order-2 box-border h-12 min-h-[48px] w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-semibold text-primary transition-colors hover:bg-gray-50 enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 sm:order-1 sm:h-11 sm:min-h-[44px] sm:w-auto"
           >
-            Save as Draft
+            {draftSubmitting ? "Saving…" : "Save as Draft"}
           </button>
         </div>
       </div>

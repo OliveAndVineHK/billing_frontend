@@ -292,7 +292,7 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBi
       </div>
     </div>
     {billModalMounted ? (
-      <PaymentRequestModal open={billModalOpen} onClose={() => setBillModalOpen(false)} onConfirm={onBillCreated} />
+      <PaymentRequestModal open={billModalOpen} onClose={() => setBillModalOpen(false)} onConfirm={onBillCreated} onSaveDraft={onBillCreated} />
     ) : null}
     </>
   );
