@@ -120,12 +120,7 @@ export function AccountCodeSettings() {
   return (
     <div className="mx-auto w-full max-w-[40rem] px-4 pb-8 pt-2 sm:px-6 sm:pt-3">
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        <button
-          type="button"
-          onClick={() => setExpanded((e) => !e)}
-          className="flex w-full items-start justify-between gap-3 border-b border-gray-100 px-4 py-4 text-left transition-colors hover:bg-gray-50 sm:px-5"
-          aria-expanded={expanded}
-        >
+        <button type="button" onClick={() => setExpanded((e) => !e)} className="flex w-full items-start justify-between gap-3 border-b border-gray-100 px-4 py-4 text-left transition-colors hover:bg-gray-50 sm:px-5" aria-expanded={expanded}>
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-black sm:text-lg">Account Code</h2>
             <p className="mt-1 text-sm text-primary/65">Only ticked codes will appear in the Account Code dropdown when adding a bill</p>
@@ -141,15 +136,7 @@ export function AccountCodeSettings() {
               <label htmlFor="settings-account-search" className="sr-only">
                 Search account code
               </label>
-              <input
-                id="settings-account-search"
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search account code"
-                autoComplete="off"
-                className="box-border h-11 w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-11 text-sm text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25"
-              />
+              <input id="settings-account-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search account code" autoComplete="off" className="box-border h-11 w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-11 text-sm text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25" />
               <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center justify-center text-primary/55" aria-hidden>
                 <span className="material-symbols-outlined inline-flex text-[22px] leading-none">search</span>
               </span>
@@ -157,15 +144,7 @@ export function AccountCodeSettings() {
 
             <div className="flex items-center justify-end gap-2">
               <span className="text-sm font-medium text-primary">Select all</span>
-              <input
-                ref={selectAllRef}
-                type="checkbox"
-                checked={allFilteredSelected}
-                onChange={toggleSelectAllFiltered}
-                disabled={filtered.length === 0}
-                className={CHECKBOX_CLASS}
-                aria-label="Select all visible account codes"
-              />
+              <input ref={selectAllRef} type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAllFiltered} disabled={filtered.length === 0} className={CHECKBOX_CLASS} aria-label="Select all visible account codes" />
             </div>
 
             {loading ? (
@@ -182,10 +161,7 @@ export function AccountCodeSettings() {
             ) : filtered.length === 0 ? (
               <p className="text-center text-sm text-primary/60">No codes match your search.</p>
             ) : (
-              <ul
-                className="max-h-[min(24rem,50vh)] divide-y divide-gray-100 overflow-y-auto overscroll-contain rounded-lg border border-gray-100"
-                aria-label="Account codes"
-              >
+              <ul className="max-h-[min(24rem,50vh)] divide-y divide-gray-100 overflow-y-auto overscroll-contain rounded-lg border border-gray-100"aria-label="Account codes">
                 {filtered.map((row) => {
                   const isChecked = selectedIds.has(row.id);
                   const wasSaved = savedIds.has(row.id);
@@ -193,13 +169,7 @@ export function AccountCodeSettings() {
                   return (
                     <li key={row.id} className={`flex items-center justify-between gap-3 px-3 py-3 sm:px-4 ${changed ? "bg-secondary/5" : ""}`}>
                       <span className="min-w-0 flex-1 text-sm font-medium text-primary">{row.label}</span>
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleRow(row.id)}
-                        className={CHECKBOX_CLASS}
-                        aria-label={`Include ${row.label} in bill account dropdown`}
-                      />
+                      <input type="checkbox" checked={isChecked} onChange={() => toggleRow(row.id)} className={CHECKBOX_CLASS} aria-label={`Include ${row.label} in bill account dropdown`}/>
                     </li>
                   );
                 })}
@@ -212,12 +182,7 @@ export function AccountCodeSettings() {
               </p>
             ) : null}
 
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={!hasChanges || saving}
-              className="mt-1 box-border h-12 w-full rounded-lg bg-secondary text-base font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm"
-            >
+            <button type="button" onClick={handleSave} disabled={!hasChanges || saving} className="mt-1 box-border h-12 w-full rounded-lg bg-secondary text-base font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm">
               {saving ? "Saving…" : hasChanges ? `Save Changes (${changedIds.length})` : "No Changes"}
             </button>
           </div>
