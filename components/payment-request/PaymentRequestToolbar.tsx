@@ -26,10 +26,18 @@ type PaymentRequestToolbarProps = {
   activeStatus: PaymentRequestStatusFilter;
   onActiveStatusChange: (status: PaymentRequestStatusFilter) => void;
   onBillCreated?: () => void;
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
 };
 type FilterMenuState = { top: number; left: number; width: number };
 
-export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBillCreated }: PaymentRequestToolbarProps) {
+export function PaymentRequestToolbar({
+  activeStatus,
+  onActiveStatusChange,
+  onBillCreated,
+  searchQuery,
+  onSearchChange,
+}: PaymentRequestToolbarProps) {
   const filterFieldIds = useId();
   const [billModalOpen, setBillModalOpen] = useState(false);
   const [billModalMounted, setBillModalMounted] = useState(false);
@@ -132,7 +140,17 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBi
           Search by contact or description
         </label>
         <div className="relative min-w-0 flex-1">
-          <input id="payment-request-search" type="search" name="q" placeholder="Search by contact or description" className="box-border h-11 min-h-[44px] w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-3 text-base leading-normal text-black placeholder:text-primary/50 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:h-[42px] sm:min-h-[42px] sm:text-sm" suppressHydrationWarning />
+          <input
+            id="payment-request-search"
+            type="search"
+            name="q"
+            value={searchQuery ?? ""}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search by contact or description"
+            autoComplete="off"
+            className="box-border h-11 min-h-[44px] w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-3 text-base leading-normal text-black placeholder:text-primary/50 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:h-[42px] sm:min-h-[42px] sm:text-sm"
+            suppressHydrationWarning
+          />
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
@@ -181,7 +199,7 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBi
                           id={`${filterFieldIds}-min-amount`}
                           type="text"
                           inputMode="decimal"
-                          value={minAmount}
+                          value={minAmount ?? ""}
                           onChange={(e) => setMinAmount(e.target.value)}
                           placeholder="0.00"
                           className={textInputClass}
@@ -204,7 +222,7 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBi
                       </label>
                       <ThemedSelect
                         id={`${filterFieldIds}-date-type`}
-                        value={dateType}
+                        value={dateType ?? ""}
                         onChange={setDateType}
                         options={[...FILTER_DATE_TYPE_OPTIONS]}
                         ariaLabel="Date type"
@@ -220,7 +238,7 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBi
                             ref={startDateRef}
                             id={`${filterFieldIds}-start-date`}
                             type="date"
-                            value={startDate}
+                            value={startDate ?? ""}
                             onChange={(e) => setStartDate(e.target.value)}
                             className={
                               `${dateInputClass} relative z-[1] ` +
@@ -256,7 +274,7 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBi
                             ref={endDateRef}
                             id={`${filterFieldIds}-end-date`}
                             type="date"
-                            value={endDate}
+                            value={endDate ?? ""}
                             onChange={(e) => setEndDate(e.target.value)}
                             className={
                               `${dateInputClass} relative z-[1] ` +

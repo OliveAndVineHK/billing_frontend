@@ -119,11 +119,12 @@ function ReadOnlyTextBox({
 }
 
 /** Matches ThemedSelect split trigger (contact / account) — non-interactive. */
-function ReadOnlySelectShell({ value }: { value: string }) {
+function ReadOnlySelectShell({ value }: { value?: string | null }) {
+  const display = (value ?? "").trim() || "—";
   return (
     <div className="box-border flex h-11 min-h-[44px] min-w-0 w-full cursor-default overflow-hidden rounded-lg bg-transparent p-0 text-left text-base font-semibold text-black sm:min-h-11 sm:text-sm" aria-readonly="true">
       <span className="flex min-h-[44px] min-w-0 flex-1 items-center py-0 pl-3 pr-3 sm:min-h-11">
-        <span className="min-w-0 flex-1 truncate">{value || "—"}</span>
+        <span className="min-w-0 flex-1 truncate">{display}</span>
       </span>
     </div>
   );
@@ -270,7 +271,7 @@ export function PaymentRequestDetailedInfo({
             <input
               id={idBillNo}
               type="text"
-              value={billNo}
+              value={billNo ?? ""}
               onChange={(e) => patch({ billNo: e.target.value })}
               className={modalTextInputClass}
               placeholder="MBIDAN-115803031626"
@@ -290,7 +291,7 @@ export function PaymentRequestDetailedInfo({
               <ThemedSelect
                 id={idCurrency}
                 ariaLabel="Currency"
-                value={currencyModalValue}
+                value={currencyModalValue ?? ""}
                 onChange={(v) => patch({ currencyCode: modalCurrencyToIsoCode(v) })}
                 options={currencyOptions}
                 className="w-full shrink-0 sm:w-24"
@@ -303,7 +304,7 @@ export function PaymentRequestDetailedInfo({
                 id={idAmount}
                 type="text"
                 inputMode="decimal"
-                value={amount}
+                value={amount ?? ""}
                 onChange={(e) => patch({ amount: e.target.value })}
                 className={amountValueInputClass}
                 disabled={disabled}
@@ -322,7 +323,7 @@ export function PaymentRequestDetailedInfo({
             <input
               id={idDescription}
               type="text"
-              value={description}
+              value={description ?? ""}
               onChange={(e) => patch({ description: e.target.value })}
               placeholder="Lorem ipsum Dolor"
               className={modalTextInputClass}
@@ -357,7 +358,7 @@ export function PaymentRequestDetailedInfo({
           {isEditing ? (
             <ThemedSelect
               id={idAccount}
-              value={accountCode}
+              value={accountCode ?? ""}
               onChange={(v) => patch({ accountCode: v })}
               options={accountOptions}
               disabled={disabled}
@@ -378,7 +379,7 @@ export function PaymentRequestDetailedInfo({
                   ref={invoiceDateRef}
                   id={idInvoiceDate}
                   type="date"
-                  value={invoiceDate}
+                  value={invoiceDate ?? ""}
                   onChange={(e) => patch({ invoiceDate: e.target.value })}
                   className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm"
                   disabled={disabled}
@@ -409,7 +410,7 @@ export function PaymentRequestDetailedInfo({
                   ref={dueDateRef}
                   id={idDueDate}
                   type="date"
-                  value={dueDate}
+                  value={dueDate ?? ""}
                   onChange={(e) => patch({ dueDate: e.target.value })}
                   className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm"
                   disabled={disabled}
