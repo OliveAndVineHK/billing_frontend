@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, deleteBill, fetchBill, fetchEntityBillAccounts, fetchEntityBillContacts, fetchPayments, deletePayment as apiDeletePayment, updateBill, type BillDetail, type PaymentItem } from "@/lib/api";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
@@ -20,7 +20,6 @@ import {
 
 export function PaymentRequestDetailBody() {
   const params = useParams();
-  const router = useRouter();
   const requestId = typeof params?.id === "string" ? params.id : "";
 
   const [bill, setBill] = useState<BillDetail | null>(null);
@@ -221,13 +220,17 @@ export function PaymentRequestDetailBody() {
     setActionError(null);
     try {
       await deleteBill(requestId);
-      router.push("/");
+      // Deleting a bill voids it; keep the user on this page and refresh status.
+      setIsEditing(false);
+      setDraft(null);
+      await reloadBill();
+      bumpAudit();
     } catch (e) {
       setActionError(e instanceof ApiError ? e.message : "Could not delete bill.");
     } finally {
       setIsDeleting(false);
     }
-  }, [requestId, router]);
+  }, [requestId, reloadBill, bumpAudit]);
 
   const currencyLabel = formData ? currencyLabelForCode(formData.currencyCode) : "HK$";
 
@@ -246,7 +249,7 @@ export function PaymentRequestDetailBody() {
         <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:self-center">
           <BillActionBar
             onDeleteBill={handleDeleteBill}
-            deleteDisabled={loadingBill || !bill || isDeleting}
+            deleteDisabled={loadingBill || !bill || isDeleting || bill?.status === "voided"}
           />
         </div>
         <div className="flex min-h-0 min-w-0 flex-col lg:col-start-1 lg:row-start-2">

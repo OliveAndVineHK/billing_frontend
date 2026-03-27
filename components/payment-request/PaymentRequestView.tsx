@@ -172,8 +172,8 @@ export function PaymentRequestView() {
             onRowDelete={async (rowId) => {
               try {
                 await deleteBill(rowId);
-                setBills((prev) => prev.filter((b) => b.id !== rowId));
-                setRawBills((prev) => prev.filter((b) => b.id !== rowId));
+                // Deleting a bill voids it; reload the list so the row stays visible as "Voided".
+                await loadBills();
               } catch (err) {
                 setError(err instanceof Error ? err.message : "Failed to delete bill");
               }
