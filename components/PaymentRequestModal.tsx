@@ -7,9 +7,9 @@ import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
 
-import { fetchEntityBillAccounts, saveBillDraft, submitBill, uploadBillAttachment } from "@/lib/api";
+import { fetchEntityBillAccounts, fetchEntityBillContacts, saveBillDraft, submitBill, uploadBillAttachment } from "@/lib/api";
+import type { EntityBillContact } from "@/lib/api";
 import {
-  BILL_CONTACT_SELECT_OPTIONS,
   BILL_CURRENCY_SELECT_OPTIONS,
   modalCurrencyToIsoCode,
 } from "@/lib/billFormSelectOptions";
@@ -132,7 +132,7 @@ export function PaymentRequestModal({
   const [currency, setCurrency] = useState("HK$");
   const [amount, setAmount] = useState("1,500.00");
   const [description, setDescription] = useState("");
-  const [contact, setContact] = useState("Young Bros Transport");
+  const [contact, setContact] = useState("");
   const [accountCode, setAccountCode] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -144,9 +144,15 @@ export function PaymentRequestModal({
     { value: "", label: "Select account code" },
   ]);
 
+  const [contactOptions, setContactOptions] = useState<ThemedSelectOption[]>([
+    { value: "", label: "Select contact" },
+  ]);
+  const [contactsMap, setContactsMap] = useState<Map<string, EntityBillContact>>(new Map());
+
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
+
     fetchEntityBillAccounts()
       .then((accounts) => {
         if (cancelled) return;
@@ -167,6 +173,23 @@ export function PaymentRequestModal({
         }
       })
       .catch(() => {});
+
+    fetchEntityBillContacts()
+      .then((contacts) => {
+        if (cancelled) return;
+        const map = new Map<string, EntityBillContact>();
+        for (const c of contacts) {
+          if (!map.has(c.name)) map.set(c.name, c);
+        }
+        setContactsMap(map);
+        const opts: ThemedSelectOption[] = [
+          { value: "", label: "Select contact" },
+          ...Array.from(map.values()).map((c) => ({ value: c.name, label: c.name })),
+        ];
+        setContactOptions(opts);
+      })
+      .catch(() => {});
+
     return () => { cancelled = true; };
   }, [open]);
 
@@ -196,6 +219,7 @@ export function PaymentRequestModal({
   useEffect(() => {
     if (!open) return;
     setFieldErrors({});
+    setContact("");
     setAccountCode("");
     setInvoiceDate("");
     setDueDate("");
@@ -232,8 +256,10 @@ export function PaymentRequestModal({
       const parsedAmount = parseAmountValue(amount);
       const acctCode = accountCode.split(" - ")[0]?.trim() ?? "";
 
+      const selectedContact = contactsMap.get(contact);
       const bill = await saveBillDraft({
         contact: contact || undefined,
+        xero_contact_id: selectedContact?.xero_contact_id || undefined,
         description: description || undefined,
         amount: parsedAmount ?? undefined,
         currency_code: modalCurrencyToIsoCode(currency) || undefined,
@@ -307,8 +333,10 @@ export function PaymentRequestModal({
       const parsedAmount = parseAmountValue(amount) ?? 0;
       const acctCode = accountCode.split(" - ")[0]?.trim() ?? "";
 
+      const selectedContact = contactsMap.get(contact);
       const bill = await submitBill({
         contact,
+        xero_contact_id: selectedContact?.xero_contact_id || undefined,
         description,
         amount: parsedAmount,
         currency_code: modalCurrencyToIsoCode(currency),
@@ -533,7 +561,7 @@ export function PaymentRequestModal({
                   setContact(v);
                   clearFieldError("contact");
                 }}
-                options={BILL_CONTACT_SELECT_OPTIONS}
+                options={contactOptions}
                 error={!!fieldErrors.contact}
               />
               {fieldErrors.contact ? (

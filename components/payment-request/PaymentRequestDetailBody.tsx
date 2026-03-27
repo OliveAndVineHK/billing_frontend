@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, deleteBill, fetchBill, fetchEntityBillAccounts, fetchPayments, deletePayment as apiDeletePayment, updateBill, type BillDetail, type PaymentItem } from "@/lib/api";
+import { ApiError, deleteBill, fetchBill, fetchEntityBillAccounts, fetchEntityBillContacts, fetchPayments, deletePayment as apiDeletePayment, updateBill, type BillDetail, type PaymentItem } from "@/lib/api";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
@@ -41,6 +41,9 @@ export function PaymentRequestDetailBody() {
   const [accountOptions, setAccountOptions] = useState<ThemedSelectOption[]>([
     { value: "", label: "Select account code" },
   ]);
+  const [contactOptions, setContactOptions] = useState<ThemedSelectOption[]>([
+    { value: "", label: "Select contact" },
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,6 +58,21 @@ export function PaymentRequestDetailBody() {
               value: `${a.account_code} - ${a.account_name}`,
               label: `${a.account_code} - ${a.account_name}`,
             })),
+        ]);
+      })
+      .catch(() => {});
+    fetchEntityBillContacts()
+      .then((contacts) => {
+        if (cancelled) return;
+        const seen = new Set<string>();
+        const unique = contacts.filter((c) => {
+          if (seen.has(c.name)) return false;
+          seen.add(c.name);
+          return true;
+        });
+        setContactOptions([
+          { value: "", label: "Select contact" },
+          ...unique.map((c) => ({ value: c.name, label: c.name })),
         ]);
       })
       .catch(() => {});
@@ -262,6 +280,7 @@ export function PaymentRequestDetailBody() {
               isSaving={isSaving}
               disabled={!bill}
               accountOptions={accountOptions}
+              contactOptions={contactOptions}
               onPatchChange={isEditing ? handlePatch : undefined}
               onEdit={handleEdit}
               onCancel={handleCancel}

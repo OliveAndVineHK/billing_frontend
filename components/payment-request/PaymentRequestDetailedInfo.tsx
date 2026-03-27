@@ -6,7 +6,6 @@ import { ThemedSelect } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import {
-  BILL_CONTACT_SELECT_OPTIONS,
   currencyOptionsForEditing,
   isoCodeToModalCurrency,
   mergeSelectOption,
@@ -34,6 +33,7 @@ export type PaymentRequestDetailedInfoProps = {
   isSaving?: boolean;
   disabled?: boolean;
   accountOptions?: ThemedSelectOption[];
+  contactOptions?: ThemedSelectOption[];
   onPatchChange?: (patch: Partial<PaymentRequestDetailedInfoData>) => void;
   onEdit?: () => void;
   onCancel?: () => void;
@@ -185,6 +185,7 @@ export function PaymentRequestDetailedInfo({
   onSave,
   className = "",
   accountOptions: accountOptionsProp,
+  contactOptions: contactOptionsProp,
 }: PaymentRequestDetailedInfoProps) {
   const {
     billNo,
@@ -212,7 +213,8 @@ export function PaymentRequestDetailedInfo({
   const idInvoiceDate = `detail-inv-date-${uid}`;
   const idDueDate = `detail-due-date-${uid}`;
 
-  const contactOptions = mergeSelectOption(BILL_CONTACT_SELECT_OPTIONS, contact);
+  const fallbackContactOptions: ThemedSelectOption[] = [{ value: "", label: "Select contact" }];
+  const contactOptions = mergeSelectOption(contactOptionsProp ?? fallbackContactOptions, contact);
   const fallbackAccountOptions: ThemedSelectOption[] = [{ value: "", label: "Select account code" }];
   const accountOptions = mergeSelectOption(accountOptionsProp ?? fallbackAccountOptions, accountCode);
   const currencyOptions = currencyOptionsForEditing(currencyCode);

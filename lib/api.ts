@@ -102,6 +102,7 @@ export type BillAttachment = {
 
 export type BillCreatePayload = {
   contact?: string;
+  xero_contact_id?: string;
   description?: string;
   amount?: number;
   due_date?: string | null;
@@ -304,6 +305,19 @@ export function fetchAuditHistory(billId: string): Promise<AuditItem[]> {
 
 export function fetchEntityBillAccounts(): Promise<EntityBillAccount[]> {
   return apiFetch("/entity-bill-accounts/");
+}
+
+export type EntityBillContact = {
+  id: string;
+  entity_id: string;
+  xero_contact_id: string;
+  xero_org_id: string | null;
+  name: string;
+  category: string | null;
+};
+
+export function fetchEntityBillContacts(): Promise<EntityBillContact[]> {
+  return apiFetch("/entity-bill-contacts/");
 }
 
 export function fetchCurrencies(): Promise<CurrencyInfo[]> {
