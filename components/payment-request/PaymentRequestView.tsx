@@ -77,7 +77,12 @@ export function PaymentRequestView() {
   const [recordPaymentBillId, setRecordPaymentBillId] = useState<string | null>(null);
 
   useEffect(() => {
-    const id = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    const trimmed = searchQuery.trim();
+    if (trimmed === "") {
+      setDebouncedSearch("");
+      return;
+    }
+    const id = window.setTimeout(() => setDebouncedSearch(trimmed), 300);
     return () => window.clearTimeout(id);
   }, [searchQuery]);
 
