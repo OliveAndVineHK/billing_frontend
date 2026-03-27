@@ -3,38 +3,59 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
+import { getAuth } from "@/lib/auth";
+
+const MODULE1_URL =
+  process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
 
 function navItemIsActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-type NavMenuItem = { href: string; label: string; icon?: string };
+type NavMenuItem = { href: string; label: string; icon?: string; external?: boolean };
 
 type NavMenuSection = { title: string; items: NavMenuItem[] };
 
-const DEFAULT_MENU_SECTIONS: NavMenuSection[] = [
-  {
-    title: "Petty Cash",
-    items: [
-      { href: "/dashboard", label: "Dashboard", icon: "space_dashboard" },
-      { href: "/reports", label: "Reports", icon: "bar_chart" },
-    ],
-  },
-  {
-    title: "Payment Request",
-    items: [{ href: "/", label: "Bills", icon: "local_atm" }],
-  },
-];
+function buildModule1EntryUrl(path?: string): string {
+  const auth = getAuth();
+  if (auth?.entityId && auth?.token) {
+    const base = `${MODULE1_URL}/entity/${auth.entityId}/enter?token=${auth.token}`;
+    return path ? `${base}&next=${encodeURIComponent(path)}` : base;
+  }
+  return `${MODULE1_URL}/entity`;
+}
 
-const defaultItems: NavMenuItem[] = [
-  { href: "/select-entity", label: "Select entity", icon: "corporate_fare" },
-  ...DEFAULT_MENU_SECTIONS.flatMap((s) => s.items),
-  { href: "/settings", label: "Settings", icon: "settings" },
-  { href: "/module-selection", label: "Change Module", icon: "change_circle" },
-];
+function buildMenuSections(): NavMenuSection[] {
+  const auth = getAuth();
+  const dashboardHref = buildModule1EntryUrl();
+  const reportsPath = auth?.entityId ? `/entity/${auth.entityId}/reports` : undefined;
+  const reportsHref = buildModule1EntryUrl(reportsPath);
+  return [
+    {
+      title: "Petty Cash",
+      items: [
+        { href: dashboardHref, label: "Dashboard", icon: "space_dashboard", external: true },
+        { href: reportsHref, label: "Reports", icon: "bar_chart", external: true },
+      ],
+    },
+    {
+      title: "Payment Request",
+      items: [{ href: "/", label: "Bills", icon: "local_atm" }],
+    },
+  ];
+}
+
+function buildDefaultItems(sections: NavMenuSection[]): NavMenuItem[] {
+  return [
+    { href: `${MODULE1_URL}/entity`, label: "Select entity", icon: "corporate_fare", external: true },
+    ...sections.flatMap((s) => s.items),
+    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/module-selection", label: "Change Module", icon: "change_circle" },
+  ];
+}
 
 type NavMenuProps = {
   items?: NavMenuItem[];
@@ -54,23 +75,39 @@ function NavMenuItemLink({
   onNavigate: () => void;
   className?: string;
 }) {
-  const active = navItemIsActive(pathname, item.href);
+  const active = !item.external && navItemIsActive(pathname, item.href);
+  const classes = `flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-base font-medium transition-colors ${active ? "bg-secondary/15 text-secondary" : "text-primary hover:bg-primary/10"} ${className}`;
+  const iconEl = item.icon ? <span className={`material-symbols-outlined shrink-0 text-[22px] leading-none ${active ? "text-secondary" : "text-primary"}`} aria-hidden>{item.icon}</span> : null;
+
+  if (item.external) {
+    return (
+      <a href={item.href} onClick={onNavigate} className={classes}>
+        {iconEl}
+        {item.label}
+      </a>
+    );
+  }
+
   return (
-    <Link href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-base font-medium transition-colors ${active ? "bg-secondary/15 text-secondary" : "text-primary hover:bg-primary/10"} ${className}`}>
-      {item.icon ? <span className={`material-symbols-outlined shrink-0 text-[22px] leading-none ${active ? "text-secondary" : "text-primary"}`} aria-hidden>{item.icon}</span> : null}
+    <Link href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={classes}>
+      {iconEl}
       {item.label}
     </Link>
   );
 }
 
-export function NavMenu({ items = defaultItems, menuSections = DEFAULT_MENU_SECTIONS, companyAbbreviation = "ICH", onLogout }: NavMenuProps) {
+export function NavMenu({ items, menuSections, companyAbbreviation = "ICH", onLogout }: NavMenuProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
   const panelId = useId();
-  const selectEntityItem = items.find((i) => i.href === "/select-entity");
-  const settingsItem = items.find((i) => i.href === "/settings");
-  const changeModuleItem = items.find((i) => i.href === "/module-selection");
+
+  const resolvedSections = useMemo(() => menuSections ?? buildMenuSections(), [menuSections]);
+  const resolvedItems = useMemo(() => items ?? buildDefaultItems(resolvedSections), [items, resolvedSections]);
+
+  const selectEntityItem = resolvedItems.find((i) => i.label === "Select entity");
+  const settingsItem = resolvedItems.find((i) => i.href === "/settings");
+  const changeModuleItem = resolvedItems.find((i) => i.href === "/module-selection");
 
   useEffect(() => {
     setPortalReady(true);
@@ -112,12 +149,12 @@ export function NavMenu({ items = defaultItems, menuSections = DEFAULT_MENU_SECT
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">
             <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-              {menuSections.map((section) => (
+              {resolvedSections.map((section) => (
                 <div key={section.title} className={`flex flex-col ${section.title === "Payment Request" ? "mt-6 gap-3" : "gap-1"}`} role="group" aria-label={section.title}>
                   <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-primary/70">{section.title}</p>
                   <ul className="flex flex-col gap-1">
                     {section.items.map((item) => (
-                      <li key={item.href} className="w-full">
+                      <li key={item.label} className="w-full">
                         <NavMenuItemLink item={item} pathname={pathname} onNavigate={() => setOpen(false)} />
                       </li>
                     ))}
