@@ -10,6 +10,7 @@ type ActivityHistoryItem = {
   verb: string;
   subjectBold: string;
   timeLabel: string;
+  changes: string[];
 };
 
 type ActivityHistoryAccordionProps = {
@@ -41,6 +42,11 @@ function formatTimeLabel(iso: string): string {
   return `${day} \u2022 ${time}`;
 }
 
+function parseChanges(detail: string): string[] {
+  if (!detail || !detail.includes("→")) return [];
+  return detail.split("; ").filter((s) => s.includes("→"));
+}
+
 function auditToItem(audit: AuditItem, billRef: string): ActivityHistoryItem {
   const words = (audit.user_name || "Unknown").trim().split(/\s+/);
   const initials = words.map((w) => w[0]?.toUpperCase() ?? "").join("").slice(0, 2) || "?";
@@ -56,6 +62,7 @@ function auditToItem(audit: AuditItem, billRef: string): ActivityHistoryItem {
     verb,
     subjectBold: subject,
     timeLabel: formatTimeLabel(audit.date),
+    changes: parseChanges(audit.detail),
   };
 }
 
@@ -116,23 +123,36 @@ export function ActivityHistoryAccordion({ billId, billRef, refreshSignal = 0 }:
                       <div className="relative z-[1] flex w-4 shrink-0 justify-center pt-[18px]">
                         <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#9ca3af] ring-[3px] ring-white" aria-hidden />
                       </div>
-                      <div className="flex min-w-0 flex-1 flex-col gap-2 rounded-lg bg-[#f9f9f9] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-4">
-                        <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fef3c7] text-sm font-bold leading-none text-[#333333]">
-                            {item.initials}
+                      <div className="flex min-w-0 flex-1 flex-col rounded-lg bg-[#f9f9f9] px-4 py-3.5 sm:px-5 sm:py-4">
+                        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                          <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fef3c7] text-sm font-bold leading-none text-[#333333]">
+                              {item.initials}
+                            </div>
+                            <p className="min-w-0 flex-1 text-sm leading-snug">
+                              <span className="font-bold text-[#333333]">{item.userName}</span>
+                              <span className="font-normal text-[#666666]"> {item.verb} </span>
+                              <span className="font-bold text-[#666666]">{item.subjectBold}</span>
+                            </p>
                           </div>
-                          <p className="min-w-0 flex-1 text-sm leading-snug">
-                            <span className="font-bold text-[#333333]">{item.userName}</span>
-                            <span className="font-normal text-[#666666]"> {item.verb} </span>
-                            <span className="font-bold text-[#666666]">{item.subjectBold}</span>
-                          </p>
+                          <time
+                            className="shrink-0 pl-[3.25rem] text-xs font-normal tabular-nums text-[#999999] sm:pl-0 sm:text-right sm:text-sm"
+                            dateTime={item.timeLabel}
+                          >
+                            {item.timeLabel}
+                          </time>
                         </div>
-                        <time
-                          className="shrink-0 pl-[3.25rem] text-xs font-normal tabular-nums text-[#999999] sm:pl-0 sm:text-right sm:text-sm"
-                          dateTime={item.timeLabel}
-                        >
-                          {item.timeLabel}
-                        </time>
+                        {item.changes.length > 0 ? (
+                          <ul className="mt-2 flex flex-col gap-1 pl-[3.25rem]">
+                            {item.changes.map((c, i) => (
+                              <li key={i} className="text-xs leading-relaxed text-[#888888]">
+                                <span className="text-[#555555]">{c.split("→")[0]?.trim()}</span>
+                                <span className="mx-1">→</span>
+                                <span className="font-medium text-[#333333]">{c.split("→")[1]?.trim()}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
                       </div>
                     </li>
                   ))}
