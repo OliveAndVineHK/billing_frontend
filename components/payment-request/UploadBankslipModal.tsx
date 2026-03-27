@@ -268,9 +268,14 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
             </div>
           </div>
 
-          <p className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-wide text-primary/80">
-            Selected files ({uploadedFiles.length})
-          </p>
+          <div className="mb-2 mt-5 flex items-baseline justify-between gap-3">
+            <p className="min-w-0 text-[11px] font-semibold uppercase tracking-wide text-primary/80">
+              Selected files ({uploadedFiles.length})
+            </p>
+            {uploadedFiles.length > 0 ? (
+              <span className="shrink-0 text-[10px] font-medium text-primary/55 sm:text-[11px]">Click to preview</span>
+            ) : null}
+          </div>
           <ul className="flex flex-col gap-2">
             {uploadedFiles.map(({ id, file }) => {
               const { icon, iconClass } = getUploadedFileIconInfo(file.name);
