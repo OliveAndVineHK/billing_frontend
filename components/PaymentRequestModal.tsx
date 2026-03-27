@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
-import { FileAttachmentPreviewLayer } from "@/lib/fileAttachmentPreview";
+import { formatFileSize, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
 
@@ -111,6 +111,7 @@ export function PaymentRequestModal({
 }: PaymentRequestModalProps) {
   const router = useRouter();
   const titleId = useId();
+  const previewSubtitleId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const invoiceDateRef = useRef<HTMLInputElement>(null);
   const dueDateRef = useRef<HTMLInputElement>(null);
@@ -415,9 +416,7 @@ export function PaymentRequestModal({
 
   if (!open) return null;
 
-  return (
-    <>
-      {createPortal(
+  return createPortal(
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6"
       role="presentation"
@@ -432,7 +431,8 @@ export function PaymentRequestModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full min-w-0 max-w-[640px] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,880px)] sm:rounded-2xl"
+        aria-describedby={previewFile ? previewSubtitleId : undefined}
+        className="relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full min-w-0 max-w-[1080px] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,880px)] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-4 pb-3 pt-4 sm:gap-4 sm:px-6 sm:pb-4 sm:pt-6">
@@ -452,6 +452,8 @@ export function PaymentRequestModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
+            <div className="min-w-0">
           {/* Full-area file input overlay: avoids sr-only / display:none issues with native pickers on some browsers */}
           <div className="relative mb-3">
             <input
@@ -737,6 +739,26 @@ export function PaymentRequestModal({
               </div>
             </div>
           </div>
+            </div>
+            <div className="min-w-0">
+              {previewFile && previewObjectUrl ? (
+                <PaymentRequestInlinePreview
+                  file={previewFile}
+                  objectUrl={previewObjectUrl}
+                  previewSubtitleId={previewSubtitleId}
+                  getUploadedFileIconInfo={getUploadedFileIconInfo}
+                />
+              ) : previewFile && !previewObjectUrl ? (
+                <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-sm text-primary/60">
+                  Loading preview…
+                </div>
+              ) : (
+                <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-primary/60">
+                  Select a file to preview
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="flex shrink-0 flex-col gap-2 border-t border-gray-100 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-5 sm:pb-5">
@@ -769,15 +791,50 @@ export function PaymentRequestModal({
       </div>
     </div>,
     document.body,
-      )}
-      {previewFile && previewObjectUrl ? (
-        <FileAttachmentPreviewLayer
-          file={previewFile}
-          objectUrl={previewObjectUrl}
-          onClose={() => setPreviewFileId(null)}
-          getUploadedFileIconInfo={getUploadedFileIconInfo}
-        />
-      ) : null}
-    </>
+  );
+}
+
+function PaymentRequestInlinePreview({
+  file,
+  objectUrl,
+  previewSubtitleId,
+  getUploadedFileIconInfo,
+}: {
+  file: File;
+  objectUrl: string;
+  previewSubtitleId: string;
+  getUploadedFileIconInfo: (filename: string) => { icon: string; iconClass: string };
+}) {
+  const { icon, iconClass } = getUploadedFileIconInfo(file.name);
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex gap-3 pb-2">
+        <span className={`material-symbols-outlined mt-0.5 shrink-0 text-[28px] leading-none sm:text-[32px] ${iconClass}`} aria-hidden>
+          {icon}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-black sm:text-base">{file.name}</p>
+          <p id={previewSubtitleId} className="mt-1 text-[11px] font-medium uppercase tracking-wide text-primary/55 sm:text-xs">
+            Document preview<span className="text-primary/35"> • </span>
+            {formatFileSize(file.size)}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 min-h-[min(60dvh,420px)] overflow-auto rounded-lg bg-black/5 p-2 sm:p-3">
+        {isImageFile(file) ? (
+          <img
+            src={objectUrl}
+            alt={`Preview: ${file.name}`}
+            className="mx-auto max-h-[min(65dvh,620px)] w-auto max-w-full object-contain"
+          />
+        ) : null}
+        {isPdfFile(file) && !isImageFile(file) ? (
+          <iframe title={file.name} src={objectUrl} className="h-[min(65dvh,620px)] w-full rounded-lg border border-gray-200 bg-white" />
+        ) : null}
+        {!isImageFile(file) && !isPdfFile(file) ? (
+          <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>
+        ) : null}
+      </div>
+    </div>
   );
 }
