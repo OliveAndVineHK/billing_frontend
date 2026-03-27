@@ -131,8 +131,8 @@ export function PaymentRequestModal({
   const [description, setDescription] = useState("");
   const [contact, setContact] = useState("Young Bros Transport");
   const [accountCode, setAccountCode] = useState("425 - Transport");
-  const [invoiceDate, setInvoiceDate] = useState("2026-03-03");
-  const [dueDate, setDueDate] = useState("2026-03-03");
+  const [invoiceDate, setInvoiceDate] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<ValidatedField, string>>>({});
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
   const [draftSubmitting, setDraftSubmitting] = useState(false);
@@ -161,7 +161,10 @@ export function PaymentRequestModal({
   }, [open, onClose]);
 
   useEffect(() => {
-    if (open) setFieldErrors({});
+    if (!open) return;
+    setFieldErrors({});
+    setInvoiceDate("");
+    setDueDate("");
   }, [open]);
 
   useEffect(() => {
@@ -537,16 +540,25 @@ export function PaymentRequestModal({
                     }}
                     aria-invalid={!!fieldErrors.invoiceDate}
                     className={
-                      "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
+                      "pr-date-input relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
+                      (invoiceDate ? "text-black " : "text-transparent ") +
                       (fieldErrors.invoiceDate
                         ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
                         : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
                     }
                   />
+                  {!invoiceDate ? (
+                    <span
+                      className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45"
+                      aria-hidden
+                    >
+                      mm/dd/yyyy
+                    </span>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => openDatePicker(invoiceDateRef.current)}
-                    className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                    className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
                     aria-label="Open calendar for invoice date"
                   >
                     <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
@@ -576,16 +588,25 @@ export function PaymentRequestModal({
                     }}
                     aria-invalid={!!fieldErrors.dueDate}
                     className={
-                      "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
+                      "pr-date-input relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
+                      (dueDate ? "text-black " : "text-transparent ") +
                       (fieldErrors.dueDate
                         ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
                         : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
                     }
                   />
+                  {!dueDate ? (
+                    <span
+                      className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45"
+                      aria-hidden
+                    >
+                      mm/dd/yyyy
+                    </span>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => openDatePicker(dueDateRef.current)}
-                    className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                    className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
                     aria-label="Open calendar for due date"
                   >
                     <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>

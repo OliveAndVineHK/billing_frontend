@@ -17,7 +17,7 @@ const textInputClass =
   "box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm";
 
 const dateInputClass =
-  "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
+  "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
 
 export const PAYMENT_REQUEST_STATUS_FILTERS = ["All", "Draft", "Payment Requested", "Paid", "Voided"] as const;
 export type PaymentRequestStatusFilter = (typeof PAYMENT_REQUEST_STATUS_FILTERS)[number];
@@ -222,12 +222,23 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBi
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className={dateInputClass}
+                            className={
+                              `${dateInputClass} relative z-[1] ` +
+                              (startDate ? "text-black " : "text-transparent ")
+                            }
                           />
+                          {!startDate ? (
+                            <span
+                              className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45"
+                              aria-hidden
+                            >
+                              mm/dd/yyyy
+                            </span>
+                          ) : null}
                           <button
                             type="button"
                             onClick={() => openDatePicker(startDateRef.current)}
-                            className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                            className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
                             aria-label="Open calendar for start date"
                           >
                             <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
@@ -247,12 +258,23 @@ export function PaymentRequestToolbar({ activeStatus, onActiveStatusChange, onBi
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className={dateInputClass}
+                            className={
+                              `${dateInputClass} relative z-[1] ` +
+                              (endDate ? "text-black " : "text-transparent ")
+                            }
                           />
+                          {!endDate ? (
+                            <span
+                              className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45"
+                              aria-hidden
+                            >
+                              mm/dd/yyyy
+                            </span>
+                          ) : null}
                           <button
                             type="button"
                             onClick={() => openDatePicker(endDateRef.current)}
-                            className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                            className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
                             aria-label="Open calendar for end date"
                           >
                             <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
