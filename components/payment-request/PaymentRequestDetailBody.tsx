@@ -34,6 +34,8 @@ export function PaymentRequestDetailBody() {
 
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
+  const [auditRefresh, setAuditRefresh] = useState(0);
+  const bumpAudit = useCallback(() => setAuditRefresh((n) => n + 1), []);
 
   const loadPayments = useCallback(async () => {
     if (!requestId) return;
@@ -163,12 +165,13 @@ export function PaymentRequestDetailBody() {
       setBill(updated);
       setIsEditing(false);
       setDraft(null);
+      bumpAudit();
     } catch (e) {
       setActionError(e instanceof ApiError ? e.message : "Could not save changes.");
     } finally {
       setIsSaving(false);
     }
-  }, [requestId, bill, draft]);
+  }, [requestId, bill, draft, bumpAudit]);
 
   const handleDeleteBill = useCallback(async () => {
     if (!requestId) return;
@@ -267,10 +270,15 @@ export function PaymentRequestDetailBody() {
                 await apiDeletePayment(requestId, id);
                 await loadPayments();
                 await reloadBill();
+                bumpAudit();
               } catch { /* ignore */ }
             }}
           />
-          <ActivityHistoryAccordion />
+          <ActivityHistoryAccordion
+            billId={requestId}
+            billRef={bill?.reference ? `#${bill.reference}` : undefined}
+            refreshSignal={auditRefresh}
+          />
         </div>
       </div>
       <RecordPaymentModal
@@ -282,6 +290,7 @@ export function PaymentRequestDetailBody() {
         onPaymentSaved={async () => {
           await loadPayments();
           await reloadBill();
+          bumpAudit();
         }}
       />
     </>

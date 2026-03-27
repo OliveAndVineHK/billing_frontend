@@ -276,6 +276,23 @@ export function deletePayment(
   });
 }
 
+// ── Audit ─────────────────────────────────────────────────────────
+
+export type AuditItem = {
+  id: string;
+  bill_id: string;
+  action: string;
+  detail: string;
+  date: string;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+};
+
+export function fetchAuditHistory(billId: string): Promise<AuditItem[]> {
+  return apiFetch(`/bills/${billId}/audit`);
+}
+
 // ── Config ───────────────────────────────────────────────────────────
 
 export function fetchEntityBillAccounts(): Promise<EntityBillAccount[]> {
