@@ -22,6 +22,10 @@ function getUploadedFileIconInfo(filename: string): { icon: string; iconClass: s
   return { icon: "draft", iconClass: "text-primary" };
 }
 
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function openDatePicker(input: HTMLInputElement | null) {
   if (!input) return;
   if (typeof input.showPicker === "function") {
@@ -43,7 +47,7 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
   const fileInputRef = useRef<HTMLInputElement>(null);
   const paidDateRef = useRef<HTMLInputElement>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedEntry[]>([]);
-  const [paidDate, setPaidDate] = useState("2026-03-03");
+  const [paidDate, setPaidDate] = useState(todayISO);
   const [amount, setAmount] = useState("");
   const [paidDateError, setPaidDateError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
@@ -53,8 +57,9 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
       setUploadedFiles([]);
       setPaidDateError(null);
       setAmountError(null);
-      setPaidDate("2026-03-03");
       setAmount("");
+    } else {
+      setPaidDate(todayISO());
     }
   }, [open]);
 
