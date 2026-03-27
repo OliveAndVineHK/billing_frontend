@@ -101,7 +101,6 @@ export function PaymentRequestDetailBody() {
     if (requestId) loadPayments();
   }, [requestId, loadPayments]);
 
-  const [fullscreen, setFullscreen] = useState(false);
   const [attachments, setAttachments] = useState<InvoiceAttachmentPreviewItem[]>([]);
   const [attachmentsReady, setAttachmentsReady] = useState(false);
   const attachmentUrlsRef = useRef<string[]>([]);
@@ -242,7 +241,7 @@ export function PaymentRequestDetailBody() {
 
       <div className="mx-auto grid w-full min-w-0 max-w-[1920px] grid-cols-1 gap-4 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-1 sm:gap-5 sm:px-6 lg:grid-cols-2 lg:grid-rows-[auto_minmax(20rem,1fr)] lg:gap-x-6 lg:gap-y-4 lg:px-8 xl:gap-x-8 2xl:gap-x-10">
         <div className="min-w-0 lg:col-start-1 lg:row-start-1">
-          <InvoiceAttachmentToolbar onExpand={() => setFullscreen(true)} />
+          <InvoiceAttachmentToolbar deleteReadOnly={!isEditing} />
         </div>
         <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:self-center">
           <BillActionBar
@@ -250,12 +249,11 @@ export function PaymentRequestDetailBody() {
             deleteDisabled={loadingBill || !bill || isDeleting}
           />
         </div>
-        <div className={`flex min-h-0 min-w-0 flex-col lg:col-start-1 lg:row-start-2 ${fullscreen ? "min-h-[min(45dvh,22rem)] sm:min-h-[min(55dvh,30rem)] lg:min-h-[min(70vh,40rem)]" : ""}`}>
+        <div className="flex min-h-0 min-w-0 flex-col lg:col-start-1 lg:row-start-2">
           <InvoiceAttachmentPreview
             attachments={attachments}
             isLoadingAttachments={!attachmentsReady}
-            fullscreen={fullscreen}
-            onExitFullscreen={() => setFullscreen(false)}
+            editMode={isEditing}
             className="min-h-[min(45dvh,22rem)] sm:min-h-[min(55dvh,30rem)] lg:min-h-[min(70vh,40rem)]"
           />
         </div>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const MIN_SCALE = 0.6;
 const MAX_SCALE = 3;
+const ATTACHMENT_CHECKBOX_CLASS = "checkbox-secondary-white-tick h-4 w-4 rounded border border-primary/40";
 
 export type InvoiceAttachmentPreviewItem = {
   url: string;
@@ -21,6 +22,8 @@ type InvoiceAttachmentPreviewProps = {
   onExitFullscreen?: () => void;
   /** While blobs are loading from IndexedDB */
   isLoadingAttachments?: boolean;
+  /** Show attachment selection checkboxes (used in Edit mode). */
+  editMode?: boolean;
 };
 
 function PreviewBlock({ url, name, mime }: InvoiceAttachmentPreviewItem) {
@@ -67,10 +70,12 @@ export function InvoiceAttachmentPreview({
   fullscreen = false,
   onExitFullscreen,
   isLoadingAttachments = false,
+  editMode = false,
 }: InvoiceAttachmentPreviewProps) {
   const [scale, setScale] = useState(1);
   const pinchRef = useRef<{ initialDistance: number; initialScale: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
   const getDistance = (a: { clientX: number; clientY: number }, b: { clientX: number; clientY: number }) =>
     Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
@@ -130,10 +135,31 @@ export function InvoiceAttachmentPreview({
         items.map((item, i) => (
           <figure
             key={item ? `${item.url}-${i}` : `placeholder-${i}`}
-            className="mx-auto w-full min-w-0 max-w-full overflow-hidden rounded border border-gray-200 bg-white shadow-sm"
+            className="relative mx-auto w-full min-w-0 max-w-full overflow-hidden rounded border border-gray-200 bg-white shadow-sm"
           >
             {item ? (
-              <PreviewBlock {...item} />
+              <>
+                {editMode ? (
+                  <label className="absolute left-2 top-2 z-10 inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedKeys.has(`${item.url}-${i}`)}
+                      onChange={(e) => {
+                        const key = `${item.url}-${i}`;
+                        setSelectedKeys((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(key);
+                          else next.delete(key);
+                          return next;
+                        });
+                      }}
+                      className={`${ATTACHMENT_CHECKBOX_CLASS} cursor-pointer`}
+                      aria-label={`Select attachment ${item.name || i + 1}`}
+                    />
+                  </label>
+                ) : null}
+                <PreviewBlock {...item} />
+              </>
             ) : (
               <div className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 bg-gray-50 px-4 text-center text-sm text-primary/60">
                 <span className="material-symbols-outlined text-[40px] text-primary/35" aria-hidden>
