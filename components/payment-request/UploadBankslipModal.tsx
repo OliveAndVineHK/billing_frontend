@@ -3,6 +3,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
+import { FileAttachmentPreviewLayer } from "@/lib/fileAttachmentPreview";
 
 export type UploadBankslipModalProps = {
   open: boolean;
@@ -20,28 +21,6 @@ function getUploadedFileIconInfo(filename: string): { icon: string; iconClass: s
   if (ext === "pdf") return { icon: "picture_as_pdf", iconClass: "text-red-600" };
   if (ext === "jpg" || ext === "jpeg" || ext === "png") return { icon: "image", iconClass: "text-sky-600" };
   return { icon: "draft", iconClass: "text-primary" };
-}
-
-function isImageFile(file: File): boolean {
-  if (file.type.startsWith("image/")) return true;
-  const ext = file.name.trim().split(".").pop()?.toLowerCase() ?? "";
-  return ext === "jpg" || ext === "jpeg" || ext === "png";
-}
-
-function isPdfFile(file: File): boolean {
-  if (file.type === "application/pdf") return true;
-  return file.name.trim().toLowerCase().endsWith(".pdf");
-}
-
-function formatFileSize(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes < 0) return "—";
-  if (bytes < 1024) return `${bytes} B`;
-  const kb = bytes / 1024;
-  if (kb < 1024) return `${kb.toFixed(1)} KB`;
-  const mb = kb / 1024;
-  if (mb < 1024) return `${mb.toFixed(1)} MB`;
-  const gb = mb / 1024;
-  return `${gb.toFixed(1)} GB`;
 }
 
 function todayISO() {
@@ -360,91 +339,13 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
     document.body,
       )}
       {previewFile && previewObjectUrl ? (
-        <BankSlipFilePreviewLayer file={previewFile} objectUrl={previewObjectUrl} onClose={() => setPreviewFileId(null)} />
+        <FileAttachmentPreviewLayer
+          file={previewFile}
+          objectUrl={previewObjectUrl}
+          onClose={() => setPreviewFileId(null)}
+          getUploadedFileIconInfo={getUploadedFileIconInfo}
+        />
       ) : null}
     </>
-  );
-}
-
-function BankSlipFilePreviewLayer({
-  file,
-  objectUrl,
-  onClose,
-}: {
-  file: File;
-  objectUrl: string;
-  onClose: () => void;
-}) {
-  const previewId = useId();
-  const previewSubtitleId = useId();
-  const showImage = isImageFile(file);
-  const showPdf = isPdfFile(file);
-  const { icon, iconClass } = getUploadedFileIconInfo(file.name);
-  const sizeLabel = formatFileSize(file.size);
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[310] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4"
-      role="presentation"
-    >
-      <button type="button" aria-label="Close preview" className="absolute inset-0 bg-black/50 backdrop-blur-[1px]" onClick={onClose} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={previewId}
-        aria-describedby={previewSubtitleId}
-        className="relative z-[1] flex max-h-[min(92dvh,720px)] w-full max-w-[min(100%,720px)] flex-col overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-4 py-3 sm:px-5">
-          <div className="flex min-w-0 flex-1 gap-3 pr-2">
-            <span
-              className={`material-symbols-outlined mt-0.5 shrink-0 text-[28px] leading-none sm:mt-1 sm:text-[32px] ${iconClass}`}
-              aria-hidden
-            >
-              {icon}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p id={previewId} className="truncate text-sm font-medium text-black sm:text-base">
-                {file.name}
-              </p>
-              <p
-                id={previewSubtitleId}
-                className="mt-1 text-[11px] font-medium uppercase tracking-wide text-primary/55 sm:text-xs"
-              >
-                Document preview<span className="text-primary/35"> • </span>
-                {sizeLabel}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
-            aria-label="Close preview"
-          >
-            <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
-              close
-            </span>
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-auto bg-black/5 p-2 sm:p-4">
-          {showImage ? (
-            <img
-              src={objectUrl}
-              alt={`Preview: ${file.name}`}
-              className="mx-auto max-h-[min(75dvh,640px)] w-auto max-w-full object-contain"
-            />
-          ) : null}
-          {showPdf && !showImage ? (
-            <iframe title={file.name} src={objectUrl} className="h-[min(75dvh,640px)] w-full rounded-lg border border-gray-200 bg-white" />
-          ) : null}
-          {!showImage && !showPdf ? (
-            <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>
-          ) : null}
-        </div>
-      </div>
-    </div>,
-    document.body,
   );
 }

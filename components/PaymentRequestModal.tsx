@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
+import { FileAttachmentPreviewLayer } from "@/lib/fileAttachmentPreview";
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
 
@@ -128,6 +129,9 @@ export function PaymentRequestModal({
   };
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedEntry[]>([]);
+  const [previewFileId, setPreviewFileId] = useState<string | null>(null);
+  const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
+  const previewFile = previewFileId ? uploadedFiles.find((x) => x.id === previewFileId)?.file ?? null : null;
   const [billNo, setBillNo] = useState("MBIDAN-115803031626");
   const [currency, setCurrency] = useState("HK$");
   const [amount, setAmount] = useState("1,500.00");
@@ -208,13 +212,38 @@ export function PaymentRequestModal({
   }, [open]);
 
   useEffect(() => {
+    if (!previewFile) {
+      setPreviewObjectUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(previewFile);
+    setPreviewObjectUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [previewFile]);
+
+  useEffect(() => {
+    if (previewFileId && !uploadedFiles.some((x) => x.id === previewFileId)) {
+      setPreviewFileId(null);
+    }
+  }, [uploadedFiles, previewFileId]);
+
+  useEffect(() => {
+    if (!open) setPreviewFileId(null);
+  }, [open]);
+
+  useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      if (previewFileId) {
+        setPreviewFileId(null);
+        return;
+      }
+      onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, previewFileId]);
 
   useEffect(() => {
     if (!open) return;
@@ -386,7 +415,9 @@ export function PaymentRequestModal({
 
   if (!open) return null;
 
-  return createPortal(
+  return (
+    <>
+      {createPortal(
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6"
       role="presentation"
@@ -448,12 +479,22 @@ export function PaymentRequestModal({
           <ul className="flex flex-col gap-2">
             {uploadedFiles.map(({ id, file }) => {
               const { icon, iconClass } = getUploadedFileIconInfo(file.name);
+              const selected = previewFileId === id;
               return (
               <li
                 key={id}
-                className="relative flex items-center justify-start rounded-lg border border-[#EDEDED] bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3"
+                className={
+                  "relative flex items-center justify-start rounded-lg border bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3 " +
+                  (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-[#EDEDED]")
+                }
               >
-                <div className="flex min-w-0 items-center justify-start gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPreviewFileId(id)}
+                  className="flex min-w-0 flex-1 cursor-pointer items-center justify-start gap-2 rounded-md text-left"
+                  aria-pressed={selected}
+                  aria-label={`Preview ${file.name}`}
+                >
                   <span
                     className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`}
                     aria-hidden
@@ -463,7 +504,7 @@ export function PaymentRequestModal({
                   <span className="min-w-0 break-words text-left text-sm leading-snug text-black sm:flex-1 sm:truncate sm:leading-normal">
                     {file.name}
                   </span>
-                </div>
+                </button>
                 <button
                   type="button"
                   onClick={() => removeFile(id)}
@@ -723,5 +764,15 @@ export function PaymentRequestModal({
       </div>
     </div>,
     document.body,
+      )}
+      {previewFile && previewObjectUrl ? (
+        <FileAttachmentPreviewLayer
+          file={previewFile}
+          objectUrl={previewObjectUrl}
+          onClose={() => setPreviewFileId(null)}
+          getUploadedFileIconInfo={getUploadedFileIconInfo}
+        />
+      ) : null}
+    </>
   );
 }
