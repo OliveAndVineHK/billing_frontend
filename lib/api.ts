@@ -168,6 +168,13 @@ export function createBill(payload: BillCreatePayload): Promise<BillDetail> {
   });
 }
 
+export function submitBill(payload: BillCreatePayload): Promise<BillDetail> {
+  return apiFetch<BillDetail>("/bills/submit", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function saveBillDraft(payload: Partial<BillCreatePayload>): Promise<BillDetail> {
   return apiFetch<BillDetail>("/bills/draft", {
     method: "POST",

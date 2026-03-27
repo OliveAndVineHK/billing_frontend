@@ -7,7 +7,7 @@ import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ThemedSelect } from "@/components/ThemedSelect";
 
-import { createBill, saveBillDraft, uploadBillAttachment } from "@/lib/api";
+import { saveBillDraft, submitBill, uploadBillAttachment } from "@/lib/api";
 import {
   BILL_ACCOUNT_SELECT_OPTIONS,
   BILL_CONTACT_SELECT_OPTIONS,
@@ -268,7 +268,7 @@ export function PaymentRequestModal({
       const parsedAmount = parseAmountValue(amount) ?? 0;
       const acctCode = accountCode.split(" - ")[0]?.trim() ?? "";
 
-      const bill = await createBill({
+      const bill = await submitBill({
         contact,
         description,
         amount: parsedAmount,
