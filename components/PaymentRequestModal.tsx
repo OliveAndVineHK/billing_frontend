@@ -40,7 +40,7 @@ function getUploadedFileIconInfo(filename: string): { icon: string; iconClass: s
   return { icon: "draft", iconClass: "text-primary" };
 }
 
-type ValidatedField = "amount" | "contact" | "accountCode" | "invoiceDate" | "dueDate";
+type ValidatedField = "amount" | "contact" | "accountCode" | "invoiceDate" | "dueDate" | "attachments";
 
 function parseAmountValue(raw: string): number | null {
   const t = raw.trim().replace(/,/g, "");
@@ -55,6 +55,7 @@ function validatePaymentRequestForm(values: {
   accountCode: string;
   invoiceDate: string;
   dueDate: string;
+  attachmentCount: number;
 }): Partial<Record<ValidatedField, string>> {
   const e: Partial<Record<ValidatedField, string>> = {};
   const n = parseAmountValue(values.amount);
@@ -74,6 +75,9 @@ function validatePaymentRequestForm(values: {
   }
   if (!values.dueDate.trim()) {
     e.dueDate = "Due date is required.";
+  }
+  if (values.attachmentCount < 1) {
+    e.attachments = "At least one attachment is required.";
   }
   return e;
 }
@@ -182,6 +186,7 @@ export function PaymentRequestModal({
       file,
     }));
     setUploadedFiles((prev) => [...prev, ...added]);
+    clearFieldError("attachments");
     e.target.value = "";
   };
 
@@ -259,6 +264,7 @@ export function PaymentRequestModal({
       accountCode,
       invoiceDate,
       dueDate,
+      attachmentCount: uploadedFiles.length,
     });
     if (Object.keys(next).length > 0) {
       setFieldErrors(next);
@@ -414,6 +420,11 @@ export function PaymentRequestModal({
             );
             })}
           </ul>
+          {fieldErrors.attachments ? (
+            <p className="mt-2 text-xs text-red-600" role="alert">
+              {fieldErrors.attachments}
+            </p>
+          ) : null}
 
           <div className="mt-6 flex flex-col gap-5">
             <div>
