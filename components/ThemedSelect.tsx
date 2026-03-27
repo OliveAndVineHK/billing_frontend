@@ -41,6 +41,8 @@ export function ThemedSelect({
   error = false,
   disabled = false,
 }: ThemedSelectProps) {
+  /** Avoid uncontrolled→controlled warnings if parent ever passes undefined before data loads. */
+  const selectedValue = value ?? "";
   const [isOpen, setIsOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -89,7 +91,7 @@ export function ThemedSelect({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [isOpen]);
 
-  const selected = options.find((o) => o.value === value);
+  const selected = options.find((o) => o.value === selectedValue);
   const displayLabel = selected?.label ?? (options[0]?.label ?? "");
 
   const uniformBase =
@@ -120,7 +122,7 @@ export function ThemedSelect({
       }}
     >
       {options.map((opt) => {
-        const isSelected = value === opt.value;
+        const isSelected = selectedValue === opt.value;
         return (
           <li
             key={opt.value === "" ? "__empty" : opt.value}

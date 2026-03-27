@@ -288,12 +288,12 @@ export function RecordPaymentModal({
           <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3">
             <div className="relative w-full min-w-0">
               <label htmlFor={dateFieldId} className="sr-only">Payment date</label>
-              <input ref={dateRef} id={dateFieldId} type="date" value={draftDate} onChange={(e) => setDraftDate(e.target.value)} className={dateInputClass} />
+              <input ref={dateRef} id={dateFieldId} type="date" value={draftDate ?? ""} onChange={(e) => setDraftDate(e.target.value)} className={dateInputClass} />
               <button type="button" onClick={() => openDatePicker(dateRef.current)} className={calendarBtnClass} aria-label="Open calendar for payment date"><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>calendar_clock</span></button>
             </div>
             <div className="min-w-0">
               <label htmlFor={amountFieldId} className="sr-only">Payment amount</label>
-              <input id={amountFieldId} type="text" inputMode="decimal" placeholder="0.0" value={draftAmount} onChange={(e) => { if (payMode === "partial") setDraftAmount(e.target.value); }} readOnly={payMode === "full"} aria-readonly={payMode === "full"} className={`box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm ${payMode === "full" ? "cursor-default bg-gray-50 text-black/80" : "bg-white"}`} />
+              <input id={amountFieldId} type="text" inputMode="decimal" placeholder="0.0" value={draftAmount ?? ""} onChange={(e) => { if (payMode === "partial") setDraftAmount(e.target.value); }} readOnly={payMode === "full"} aria-readonly={payMode === "full"} className={`box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm ${payMode === "full" ? "cursor-default bg-gray-50 text-black/80" : "bg-white"}`} />
             </div>
           </div>
 
