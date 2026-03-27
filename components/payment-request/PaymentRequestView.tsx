@@ -68,17 +68,27 @@ export function PaymentRequestView() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] =
     useState<PaymentRequestStatusFilter>("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [rawBills, setRawBills] = useState<BillListItem[]>([]);
   const [bills, setBills] = useState<PaymentRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [recordPaymentBillId, setRecordPaymentBillId] = useState<string | null>(null);
 
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => window.clearTimeout(id);
+  }, [searchQuery]);
+
   const loadBills = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchBills({ page_size: 100 });
+      const data = await fetchBills({
+        page_size: 100,
+        ...(debouncedSearch ? { contact: debouncedSearch } : {}),
+      });
       setRawBills(data);
       setBills(data.map(mapBillToRow));
     } catch (err) {
@@ -86,7 +96,7 @@ export function PaymentRequestView() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     loadBills();
@@ -98,6 +108,8 @@ export function PaymentRequestView() {
         activeStatus={statusFilter}
         onActiveStatusChange={setStatusFilter}
         onBillCreated={loadBills}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       />
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3">
         {error ? (

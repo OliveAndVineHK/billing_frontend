@@ -432,7 +432,7 @@ export function PaymentRequestModal({
               <input
                 id="pr-bill-no"
                 type="text"
-                value={billNo}
+                value={billNo ?? ""}
                 onChange={(e) => setBillNo(e.target.value)}
                 className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
                 placeholder="MBIDAN-115803031626"
@@ -447,7 +447,7 @@ export function PaymentRequestModal({
                 <ThemedSelect
                   id="pr-currency"
                   ariaLabel="Currency"
-                  value={currency}
+                  value={currency ?? ""}
                   onChange={setCurrency}
                   options={BILL_CURRENCY_SELECT_OPTIONS}
                   className="w-full shrink-0 sm:w-24"
@@ -459,7 +459,7 @@ export function PaymentRequestModal({
                   id="pr-amount"
                   type="text"
                   inputMode="decimal"
-                  value={amount}
+                  value={amount ?? ""}
                   onChange={(e) => {
                     setAmount(e.target.value);
                     clearFieldError("amount");
@@ -485,7 +485,7 @@ export function PaymentRequestModal({
               <input
                 id="pr-description"
                 type="text"
-                value={description}
+                value={description ?? ""}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Lorem ipsum Dolor"
                 className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
@@ -498,7 +498,7 @@ export function PaymentRequestModal({
               </FieldLabel>
               <ThemedSelect
                 id="pr-contact"
-                value={contact}
+                value={contact ?? ""}
                 onChange={(v) => {
                   setContact(v);
                   clearFieldError("contact");
@@ -519,7 +519,7 @@ export function PaymentRequestModal({
               </FieldLabel>
               <ThemedSelect
                 id="pr-account"
-                value={accountCode}
+                value={accountCode ?? ""}
                 onChange={(v) => {
                   setAccountCode(v);
                   clearFieldError("accountCode");
@@ -544,7 +544,7 @@ export function PaymentRequestModal({
                     ref={invoiceDateRef}
                     id="pr-invoice-date"
                     type="date"
-                    value={invoiceDate}
+                    value={invoiceDate ?? ""}
                     onChange={(e) => {
                       setInvoiceDate(e.target.value);
                       clearFieldError("invoiceDate");
@@ -592,7 +592,7 @@ export function PaymentRequestModal({
                     ref={dueDateRef}
                     id="pr-due-date"
                     type="date"
-                    value={dueDate}
+                    value={dueDate ?? ""}
                     onChange={(e) => {
                       setDueDate(e.target.value);
                       clearFieldError("dueDate");

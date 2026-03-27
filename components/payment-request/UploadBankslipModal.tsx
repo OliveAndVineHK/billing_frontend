@@ -171,7 +171,7 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
                   ref={paidDateRef}
                   id={paidDateFieldId}
                   type="date"
-                  value={paidDate}
+                  value={paidDate ?? ""}
                   onChange={(e) => {
                     setPaidDate(e.target.value);
                     setPaidDateError(null);
@@ -211,7 +211,7 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
                 id={amountFieldId}
                 type="text"
                 inputMode="decimal"
-                value={amount}
+                value={amount ?? ""}
                 onChange={(e) => {
                   setAmount(e.target.value);
                   setAmountError(null);
