@@ -59,6 +59,7 @@ export function buildBillUpdatePayload(
     currency_code: draft.currencyCode,
     invoice_date: draft.invoiceDate || null,
     due_date: draft.dueDate || null,
+    xero_account_code: account_code || undefined,
   };
 
   const line0 = bill.line_items?.[0];

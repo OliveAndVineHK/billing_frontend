@@ -78,6 +78,7 @@ export type BillListItem = {
   invoice_date: string | null;
   reference: string;
   currency_code: string;
+  xero_account_code: string;
   published: string;
   created_at: string;
   uploaded_by: string;
@@ -136,6 +137,7 @@ export type BillCreatePayload = {
   invoice_date?: string | null;
   reference?: string;
   currency_code?: string;
+  xero_account_code?: string;
   line_items?: {
     description?: string;
     quantity?: number;

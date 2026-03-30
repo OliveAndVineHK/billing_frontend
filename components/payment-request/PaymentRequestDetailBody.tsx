@@ -11,6 +11,7 @@ import {
   fetchPayments,
   deletePayment as apiDeletePayment,
   isDuplicateBillReferenceError,
+  publishBill,
   updateBill,
   type BillDetail,
   type EntityBillContact,
@@ -55,6 +56,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [billNoError, setBillNoError] = useState<string | null>(null);
   const [accountCodeError, setAccountCodeError] = useState<string | null>(null);
 
+  const [isPublishing, setIsPublishing] = useState(false);
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [deleteBillConfirmOpen, setDeleteBillConfirmOpen] = useState(false);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
@@ -349,6 +351,22 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     }
   }, [requestId, bill, isEditing, draft, loadPayments, bumpAudit, onBillUpdated]);
 
+  const handlePublishToXero = useCallback(async () => {
+    if (!requestId || !bill || isPublishing) return;
+    setActionError(null);
+    setIsPublishing(true);
+    try {
+      const updated = await publishBill(requestId);
+      setBill(updated);
+      onBillUpdated?.();
+      bumpAudit();
+    } catch (e) {
+      setActionError(e instanceof ApiError ? e.message : "Failed to publish to Xero.");
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [requestId, bill, isPublishing, bumpAudit, onBillUpdated]);
+
   const currencyLabel = formData ? currencyLabelForCode(formData.currencyCode) : "HK$";
 
   const billIsDraft = (bill?.status ?? "").toLowerCase() === "draft";
@@ -368,7 +386,8 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:self-center">
           <BillActionBar
             onDeleteBill={handleRequestDeleteBill}
-            deleteDisabled={loadingBill || !bill || isDeleting || bill?.status === "voided"}
+            onPublishToXero={handlePublishToXero}
+            deleteDisabled={loadingBill || !bill || isDeleting || isPublishing || bill?.status === "voided"}
             draftSubmit={
               billIsDraft
                 ? {

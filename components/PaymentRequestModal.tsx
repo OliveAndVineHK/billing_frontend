@@ -315,6 +315,7 @@ export function PaymentRequestModal({
         invoice_date: invoiceDate || undefined,
         due_date: dueDate || undefined,
         reference: billNo || undefined,
+        xero_account_code: acctCode || undefined,
         line_items: acctCode || description || (parsedAmount && parsedAmount > 0)
           ? [
               {
@@ -399,6 +400,7 @@ export function PaymentRequestModal({
         invoice_date: invoiceDate || null,
         due_date: dueDate || null,
         reference: billNo,
+        xero_account_code: acctCode || undefined,
         line_items: [
           {
             description,
