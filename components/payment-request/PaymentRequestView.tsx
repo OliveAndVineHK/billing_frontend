@@ -6,6 +6,7 @@ import { PaymentRequestTable, type PaymentRequestRow, type PaymentRequestTableHa
 import { PaymentRequestToolbar, type PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { BulkDeleteConfirmModal } from "./BulkDeleteConfirmModal";
 import { RecordPaymentModal } from "./RecordPaymentModal";
+import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
 import { deleteBill, fetchBills, publishBill, type BillListItem } from "@/lib/api";
 
 function formatDate(dateStr: string): string {
@@ -32,18 +33,8 @@ function formatAmount(value: string | number): string {
   });
 }
 
-const STATUS_DISPLAY: Record<string, string> = {
-  draft: "Draft",
-  submitted: "Payment Requested",
-  paid: "Paid",
-  voided: "Voided",
-  returned: "Returned",
-};
-
 function mapBillToRow(bill: BillListItem): PaymentRequestRow {
-  const status =
-    STATUS_DISPLAY[bill.status.toLowerCase()] ??
-    bill.status.charAt(0).toUpperCase() + bill.status.slice(1);
+  const status = billStatusToDisplayLabel(bill.status);
   const symbol = bill.currency_code || "HK$";
 
   return {

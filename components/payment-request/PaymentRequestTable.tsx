@@ -471,6 +471,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   const bankslipModalRow = bankslipModalRowId ? rows.find((r) => r.id === bankslipModalRowId) : undefined;
   const rowMenuRow = rowMenu ? rows.find((r) => r.id === rowMenu.rowId) : undefined;
   const isRowMenuDeleteDisabled = rowMenuRow?.status === "Voided";
+  const isRowMenuPublishRepublishDisabled = rowMenuRow?.status === "Draft";
   const rowDeleteContactTitle = useMemo(() => {
     if (!rowDeleteConfirmId) return "";
     return rows.find((r) => r.id === rowDeleteConfirmId)?.contactTitle ?? "";
@@ -632,6 +633,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                 const isPaymentRequested = row.status === "Payment Requested";
                 const isDraft = row.status === "Draft";
                 const isReturned = row.status === "Returned";
+                const bankslipReadOnly = isVoided || isDraft;
                 const xeroConnected = !isDraft && row.xeroActive;
                 return (
                   <tr
@@ -694,17 +696,19 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             <td key={title} className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}>
                               <button
                                 type="button"
-                                disabled={isPaid || isVoided}
+                                disabled={isPaid || isVoided || isDraft}
                                 aria-label={
                                   isVoided
                                     ? `Voided — record payment not available for ${row.contactTitle}`
-                                    : isPaid
-                                      ? `Already paid — ${row.contactTitle}`
-                                      : `Record payment for ${row.contactTitle}`
+                                    : isDraft
+                                      ? `Draft — record payment not available for ${row.contactTitle}`
+                                      : isPaid
+                                        ? `Already paid — ${row.contactTitle}`
+                                        : `Record payment for ${row.contactTitle}`
                                 }
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (isPaid || isVoided) return;
+                                  if (isPaid || isVoided || isDraft) return;
                                   onRecordPayment?.(row.id);
                                 }}
                                 className={recordPaymentButtonClass}
@@ -725,19 +729,28 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             <td key={title} className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>
                               {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
                                 <div
-                                  className={`inline-flex items-center gap-1.5 sm:gap-2 ${isVoided ? "text-primary/40" : "text-secondary"}`}
+                                  className={`inline-flex items-center gap-1.5 sm:gap-2 ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`}
                                   role="status"
                                   aria-label={
                                     isVoided
                                       ? `Voided — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} (read only)`
-                                      : `${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`
+                                      : isDraft
+                                        ? `Draft — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} (read only)`
+                                        : `${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`
                                   }
                                 >
                                   <span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span>
                                   <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span>
                                 </div>
-                              ) : isVoided ? (
-                                <div className={uploadBankslipReadOnlyClass} aria-label={`Voided — upload not available for ${row.contactTitle}`}>
+                              ) : bankslipReadOnly ? (
+                                <div
+                                  className={uploadBankslipReadOnlyClass}
+                                  aria-label={
+                                    isVoided
+                                      ? `Voided — upload not available for ${row.contactTitle}`
+                                      : `Draft — upload not available for ${row.contactTitle}`
+                                  }
+                                >
                                   <span className="whitespace-nowrap">Upload</span>
                                   <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span>
                                 </div>
@@ -797,8 +810,32 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
               >
                 Delete
               </button>
-              <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onRowPublish?.(rowMenu.rowId); setRowMenu(null); }}>Publish</button>
-              <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onRowRepublish?.(rowMenu.rowId); setRowMenu(null); }}>Republish</button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={isRowMenuPublishRepublishDisabled}
+                className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                onClick={() => {
+                  if (isRowMenuPublishRepublishDisabled) return;
+                  onRowPublish?.(rowMenu.rowId);
+                  setRowMenu(null);
+                }}
+              >
+                Publish
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={isRowMenuPublishRepublishDisabled}
+                className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                onClick={() => {
+                  if (isRowMenuPublishRepublishDisabled) return;
+                  onRowRepublish?.(rowMenu.rowId);
+                  setRowMenu(null);
+                }}
+              >
+                Republish
+              </button>
             </div>,
             document.body,
           )
