@@ -23,6 +23,7 @@ export function billToDetailedInfo(bill: BillDetail): PaymentRequestDetailedInfo
     currencyCode: bill.currency_code,
     description: bill.description ?? "",
     contact: bill.contact,
+    xero_contact_id: bill.xero_contact_id ?? "",
     accountCode,
     invoiceDate: toIsoDateOnly(bill.invoice_date),
     dueDate: toIsoDateOnly(bill.due_date),
@@ -51,6 +52,7 @@ export function buildBillUpdatePayload(
 
   const payload: Partial<BillCreatePayload> = {
     contact: draft.contact,
+    xero_contact_id: draft.xero_contact_id ?? "",
     description: draft.description,
     reference: draft.billNo,
     amount: Number.isFinite(amount) ? amount : undefined,

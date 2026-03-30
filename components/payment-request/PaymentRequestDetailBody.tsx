@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, deleteBill, fetchBill, fetchEntityBillAccounts, fetchEntityBillContacts, fetchPayments, deletePayment as apiDeletePayment, updateBill, type BillDetail, type PaymentItem } from "@/lib/api";
+import { ApiError, deleteBill, fetchBill, fetchEntityBillAccounts, fetchEntityBillContacts, fetchPayments, deletePayment as apiDeletePayment, updateBill, type BillDetail, type EntityBillContact, type PaymentItem } from "@/lib/api";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
@@ -11,37 +11,12 @@ import { ActivityHistoryAccordion } from "./ActivityHistoryAccordion";
 import { BillActionBar } from "./BillActionBar";
 import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { InvoiceAttachmentToolbar } from "./InvoiceAttachmentToolbar";
-import { PaymentHistoryCard } from "./PaymentHistoryCard";
+import { PaymentHistoryCard, type PaymentHistoryRow } from "./PaymentHistoryCard";
 import { RecordPaymentModal } from "./RecordPaymentModal";
 import {
   PaymentRequestDetailedInfo,
   type PaymentRequestDetailedInfoData,
 } from "./PaymentRequestDetailedInfo";
-
-/** Builds the history date line: partial/paid only when the payment is for the open bill. */
-function paymentHistoryDateLabel(
-  p: PaymentItem,
-  currentBillId: string,
-  invoiceTotalMajor: number,
-): string {
-  const amt = Number.parseFloat(p.amount || "0");
-  const shortDate = p.payment_date
-    ? new Date(`${p.payment_date}T12:00:00`).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
-    : "—";
-  if (p.payment_status === "pending") return `Pending on ${shortDate}`;
-  if (p.bill_id !== currentBillId) return `Payment on ${shortDate}`;
-  if (amt > 0 && amt + 1e-9 < invoiceTotalMajor) return `Partial Pay on ${shortDate}`;
-  return `Paid on ${shortDate}`;
-}
-
-/** Invoice column: bill ref / short bill id, optional payment reference_no. */
-function paymentInvoiceNoDisplay(p: PaymentItem): string {
-  const shortBill =
-    p.bill_id.length >= 8 ? p.bill_id.slice(0, 8).toUpperCase() : p.bill_id.toUpperCase();
-  const base = p.bill_reference?.trim() || shortBill;
-  const ref = p.reference_no?.trim();
-  return ref ? `${base} · ${ref}` : base;
-}
 
 export function PaymentRequestDetailBody() {
   const params = useParams();
@@ -68,6 +43,7 @@ export function PaymentRequestDetailBody() {
   const [contactOptions, setContactOptions] = useState<ThemedSelectOption[]>([
     { value: "", label: "Select contact" },
   ]);
+  const [contactXeroByName, setContactXeroByName] = useState<Map<string, string>>(() => new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -86,8 +62,13 @@ export function PaymentRequestDetailBody() {
       })
       .catch(() => {});
     fetchEntityBillContacts()
-      .then((contacts) => {
+      .then((contacts: EntityBillContact[]) => {
         if (cancelled) return;
+        const byName = new Map<string, string>();
+        for (const c of contacts) {
+          byName.set(c.name, c.xero_contact_id);
+        }
+        setContactXeroByName(byName);
         const seen = new Set<string>();
         const unique = contacts.filter((c) => {
           if (seen.has(c.name)) return false;
@@ -228,6 +209,7 @@ export function PaymentRequestDetailBody() {
       const payload = buildBillUpdatePayload(bill, draft);
       const updated = await updateBill(requestId, payload);
       setBill(updated);
+      await loadPayments();
       setIsEditing(false);
       setDraft(null);
       bumpAudit();
@@ -236,7 +218,7 @@ export function PaymentRequestDetailBody() {
     } finally {
       setIsSaving(false);
     }
-  }, [requestId, bill, draft, bumpAudit]);
+  }, [requestId, bill, draft, bumpAudit, loadPayments]);
 
   const handleDeleteBill = useCallback(async () => {
     if (!requestId) return;
@@ -249,13 +231,14 @@ export function PaymentRequestDetailBody() {
       setIsEditing(false);
       setDraft(null);
       await reloadBill();
+      await loadPayments();
       bumpAudit();
     } catch (e) {
       setActionError(e instanceof ApiError ? e.message : "Could not delete bill.");
     } finally {
       setIsDeleting(false);
     }
-  }, [requestId, reloadBill, bumpAudit]);
+  }, [requestId, reloadBill, bumpAudit, loadPayments]);
 
   const currencyLabel = formData ? currencyLabelForCode(formData.currencyCode) : "HK$";
 
@@ -307,6 +290,7 @@ export function PaymentRequestDetailBody() {
               disabled={!bill}
               accountOptions={accountOptions}
               contactOptions={contactOptions}
+              contactXeroByName={contactXeroByName}
               onPatchChange={isEditing ? handlePatch : undefined}
               onEdit={handleEdit}
               onCancel={handleCancel}
@@ -321,16 +305,35 @@ export function PaymentRequestDetailBody() {
             </span>
           </button>
           <PaymentHistoryCard
-            rows={payments.map((p) => {
-              const isOther = p.bill_id !== requestId;
+            rows={payments.map((p): PaymentHistoryRow => {
+              const amt = parseFloat(p.amount || "0");
+              const shortDate = p.payment_date
+                ? new Date(p.payment_date + "T12:00:00").toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                  })
+                : "—";
+              const forThisBill = p.bill_id === requestId;
+              let dateLabel: string;
+              if (p.payment_status === "pending") {
+                dateLabel = `Pending on ${shortDate}`;
+              } else if (forThisBill && amt > 0 && amt + 1e-9 < invoiceTotalMajor) {
+                dateLabel = `Partial Pay on ${shortDate}`;
+              } else {
+                dateLabel = `Paid on ${shortDate}`;
+              }
+              const ref =
+                (p.bill_reference && p.bill_reference.trim()) ||
+                (p.reference_no && p.reference_no.trim()) ||
+                p.bill_id.slice(0, 13).toUpperCase();
               return {
                 id: p.id,
                 billId: p.bill_id,
-                date: paymentHistoryDateLabel(p, requestId, invoiceTotalMajor),
-                amountLabel: `(${currencyLabel} ${Number.parseFloat(p.amount || "0").toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
-                invoiceNo: paymentInvoiceNoDisplay(p),
-                invoiceHref: isOther ? `/payment-request/${p.bill_id}` : "#",
-                isOtherBill: isOther,
+                date: dateLabel,
+                amountLabel: `(${currencyLabel} ${parseFloat(p.amount || "0").toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
+                invoiceNo: ref,
+                invoiceHref: forThisBill ? "#" : `/payment-request/${p.bill_id}`,
+                isOtherBill: !forThisBill,
               };
             })}
             onDeleteRow={async (row) => {
@@ -339,7 +342,9 @@ export function PaymentRequestDetailBody() {
                 await loadPayments();
                 await reloadBill();
                 bumpAudit();
-              } catch { /* ignore */ }
+              } catch {
+                /* ignore */
+              }
             }}
           />
           <ActivityHistoryAccordion

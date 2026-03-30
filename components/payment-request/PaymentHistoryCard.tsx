@@ -76,7 +76,7 @@ export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow }: PaymentH
                   <span className="block w-full text-sm font-semibold text-primary text-left">{row.amountLabel}</span>
                   <Link
                     href={row.invoiceHref ?? "#"}
-                    className={`block w-full min-w-0 truncate text-left text-sm font-medium underline underline-offset-2 ${row.isOtherBill ? "text-amber-700 hover:text-amber-800" : "text-[#54D3DA] hover:text-[#3db9c2]"}`}
+                    className="block w-full min-w-0 truncate text-left text-sm font-medium text-[#54d3da] underline underline-offset-2 hover:text-[#54d3da]"
                   >
                     {row.invoiceNo}
                   </Link>

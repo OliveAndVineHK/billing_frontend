@@ -20,6 +20,8 @@ export type PaymentRequestDetailedInfoData = {
   currencyCode: string;
   description: string;
   contact: string;
+  /** Xero ContactID when supplier is chosen from synced contacts; empty if unknown. */
+  xero_contact_id: string;
   accountCode: string;
   /** ISO date YYYY-MM-DD */
   invoiceDate: string;
@@ -34,6 +36,8 @@ export type PaymentRequestDetailedInfoProps = {
   disabled?: boolean;
   accountOptions?: ThemedSelectOption[];
   contactOptions?: ThemedSelectOption[];
+  /** Maps contact display name (API `name`) → Xero contact UUID for supplier-scoped payment history. */
+  contactXeroByName?: Map<string, string>;
   onPatchChange?: (patch: Partial<PaymentRequestDetailedInfoData>) => void;
   onEdit?: () => void;
   onCancel?: () => void;
@@ -186,6 +190,7 @@ export function PaymentRequestDetailedInfo({
   className = "",
   accountOptions: accountOptionsProp,
   contactOptions: contactOptionsProp,
+  contactXeroByName,
 }: PaymentRequestDetailedInfoProps) {
   const {
     billNo,
@@ -347,7 +352,14 @@ export function PaymentRequestDetailedInfo({
             <ThemedSelect
               id={idContact}
               value={contact}
-              onChange={(v) => patch({ contact: v })}
+              onChange={(v) => {
+                const trimmed = v.trim();
+                const xid =
+                  trimmed && contactXeroByName?.has(trimmed)
+                    ? (contactXeroByName.get(trimmed) ?? "")
+                    : "";
+                patch({ contact: v, xero_contact_id: xid });
+              }}
               options={contactOptions}
               disabled={disabled}
             />
