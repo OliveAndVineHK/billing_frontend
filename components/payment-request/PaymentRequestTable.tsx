@@ -1,9 +1,10 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsModal";
+import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
 import { UploadBankslipModal } from "./UploadBankslipModal";
 
 const COLUMN_TITLES = [
@@ -75,6 +76,13 @@ function compareNullableNumber(a: number | null, b: number | null, dir: 1 | -1):
   return 0;
 }
 
+const STATUS_TABLE_ORDER = ["Payment Requested", "Returned", "Paid", "Draft", "Voided"] as const;
+
+function statusSortRank(label: string): number {
+  const i = (STATUS_TABLE_ORDER as readonly string[]).indexOf(label);
+  return i >= 0 ? i : STATUS_TABLE_ORDER.length;
+}
+
 function compareRows(a: PaymentRequestRow, b: PaymentRequestRow, key: SortKey, dir: "asc" | "desc"): number {
   const d = dir === "asc" ? 1 : -1;
   switch (key) {
@@ -89,8 +97,12 @@ function compareRows(a: PaymentRequestRow, b: PaymentRequestRow, key: SortKey, d
       return compareNullableNumber(dateSortValue(a.submittedDate), dateSortValue(b.submittedDate), d);
     case "paidDate":
       return compareNullableNumber(dateSortValue(a.paidDate), dateSortValue(b.paidDate), d);
-    case "status":
+    case "status": {
+      const ra = statusSortRank(a.status);
+      const rb = statusSortRank(b.status);
+      if (ra !== rb) return (ra - rb) * d;
       return a.status.localeCompare(b.status, undefined, { sensitivity: "base" }) * d;
+    }
     case "unpaidAmount":
       return compareNullableNumber(unpaidSortValue(a.unpaidAmount), unpaidSortValue(b.unpaidAmount), d);
     default:
@@ -244,8 +256,11 @@ const recordPaymentButtonClass =
 const uploadBankslipButtonClass =
   "box-border inline-flex h-10 min-h-10 w-max max-w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-secondary bg-white px-3 text-xs font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm";
 
+const uploadBankslipReadOnlyClass =
+  "box-border inline-flex h-10 min-h-10 w-max max-w-full cursor-default items-center justify-center gap-2 rounded-lg border-2 border-primary/15 bg-[#F5F5F5] px-3 text-xs font-semibold text-primary/40 sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm";
+
 const rowMenuButtonClass =
-  "box-border inline-flex h-9 min-h-9 w-9 min-w-9 cursor-pointer items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-10 sm:min-h-10 sm:w-10 sm:min-w-10";
+  "box-border inline-flex h-9 min-h-9 w-9 min-w-9 cursor-pointer items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:text-primary/35 disabled:hover:bg-transparent sm:h-10 sm:min-h-10 sm:w-10 sm:min-w-10";
 
 function unpaidAmountTextClass(status: string): string {
   if (status === "Paid") return "text-secondary";
@@ -344,8 +359,10 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   const [bankslipModalRowId, setBankslipModalRowId] = useState<string | null>(null);
   const [bankSlipDetailsRowId, setBankSlipDetailsRowId] = useState<string | null>(null);
   const [rowMenu, setRowMenu] = useState<RowMenuState | null>(null);
+  const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<string | null>(null);
+  const [rowDeletePending, setRowDeletePending] = useState(false);
   const [columnsMenu, setColumnsMenu] = useState<ColumnsMenuState | null>(null);
-  const [sort, setSort] = useState<{ key: SortKey | null; dir: "asc" | "desc" }>({ key: null, dir: "asc" });
+  const [sort, setSort] = useState<{ key: SortKey | null; dir: "asc" | "desc" }>({ key: "status", dir: "asc" });
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnSelectorKey, boolean>>({
     contact: true,
     submittedDate: true,
@@ -369,11 +386,17 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
 
   useEffect(() => {
     setSelectedIds((prev) => {
-      const next = new Set([...prev].filter((id) => rowIdSet.has(id)));
+      const next = new Set(
+        [...prev].filter((id) => {
+          if (!rowIdSet.has(id)) return false;
+          const r = rows.find((x) => x.id === id);
+          return r != null && r.status !== "Voided";
+        }),
+      );
       if (next.size === prev.size && [...prev].every((id) => next.has(id))) return prev;
       return next;
     });
-  }, [rowIdSet]);
+  }, [rowIdSet, rows]);
 
   const visibleRows = useMemo(
     () => (statusFilter === "All" ? rows : rows.filter((r) => r.status === statusFilter)),
@@ -387,8 +410,15 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
     return next;
   }, [visibleRows, sort.key, sort.dir]);
 
-  const allSelected = visibleRows.length > 0 && visibleRows.every((r) => selectedIds.has(r.id));
-  const someSelected = visibleRows.some((r) => selectedIds.has(r.id)) && !allSelected;
+  const selectableVisibleRows = useMemo(
+    () => visibleRows.filter((r) => r.status !== "Voided"),
+    [visibleRows],
+  );
+
+  const allSelected =
+    selectableVisibleRows.length > 0 && selectableVisibleRows.every((r) => selectedIds.has(r.id));
+  const someSelected =
+    selectableVisibleRows.some((r) => selectedIds.has(r.id)) && !allSelected;
   const visibleSelectorCount = COLUMN_SELECTOR_ITEMS.reduce((n, item) => n + (columnVisibility[item.key] ? 1 : 0), 0);
   const tableColCount = 1 + visibleSelectorCount + 2 + 2;
   const orderedTableTitles = useMemo(() => [...columnOrder.map((key) => SELECTOR_TITLE[key]), ...NON_SELECTOR_TITLES], [columnOrder]);
@@ -405,8 +435,9 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
 
   useEffect(() => {
     setSelectedIds(new Set());
-    setSort({ key: null, dir: "asc" });
+    setSort({ key: "status", dir: "asc" });
     setRowMenu(null);
+    setRowDeleteConfirmId(null);
     setColumnsMenu(null);
     setBankslipModalRowId(null);
     setBankSlipDetailsRowId(null);
@@ -423,10 +454,12 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
 
   const toggleAll = () => {
     if (allSelected) setSelectedIds(new Set());
-    else setSelectedIds(new Set(sortedVisibleRows.map((r) => r.id)));
+    else setSelectedIds(new Set(selectableVisibleRows.map((r) => r.id)));
   };
 
   const toggleRow = (id: string) => {
+    const r = rows.find((x) => x.id === id);
+    if (r?.status === "Voided") return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -438,6 +471,23 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   const bankslipModalRow = bankslipModalRowId ? rows.find((r) => r.id === bankslipModalRowId) : undefined;
   const rowMenuRow = rowMenu ? rows.find((r) => r.id === rowMenu.rowId) : undefined;
   const isRowMenuDeleteDisabled = rowMenuRow?.status === "Voided";
+  const rowDeleteContactTitle = useMemo(() => {
+    if (!rowDeleteConfirmId) return "";
+    return rows.find((r) => r.id === rowDeleteConfirmId)?.contactTitle ?? "";
+  }, [rowDeleteConfirmId, rows]);
+
+  const confirmRowDelete = useCallback(async () => {
+    if (!rowDeleteConfirmId) return;
+    setRowDeletePending(true);
+    try {
+      await Promise.resolve(onRowDelete?.(rowDeleteConfirmId));
+      setRowDeleteConfirmId(null);
+    } catch {
+      /* error surfaced by parent */
+    } finally {
+      setRowDeletePending(false);
+    }
+  }, [rowDeleteConfirmId, onRowDelete]);
 
   useEffect(() => {
     if (!rowMenu) return;
@@ -518,7 +568,16 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
             <thead>
               <tr>
                 <th scope="col" className="w-12 min-w-[2.75rem] border-b border-gray-200 bg-[#9CA3AF] px-2 py-3 text-center sm:px-3 sm:py-3.5">
-                  <input ref={headerCheckboxRef} type="checkbox" checked={allSelected} onChange={toggleAll} className={HEADER_CHECKBOX_CLASS} aria-label="Select all rows" suppressHydrationWarning />
+                  <input
+                    ref={headerCheckboxRef}
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    disabled={selectableVisibleRows.length === 0}
+                    className={`${HEADER_CHECKBOX_CLASS} disabled:cursor-not-allowed disabled:opacity-40`}
+                    aria-label="Select all rows"
+                    suppressHydrationWarning
+                  />
                 </th>
                 {orderedTableTitles.map((title) => {
                   const selectorKey = TITLE_SELECTOR_KEY[title];
@@ -569,50 +628,148 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
               ) : null}
               {sortedVisibleRows.map((row) => {
                 const isPaid = row.status === "Paid";
+                const isVoided = row.status === "Voided";
                 const isPaymentRequested = row.status === "Payment Requested";
                 const isDraft = row.status === "Draft";
                 const isReturned = row.status === "Returned";
                 const xeroConnected = !isDraft && row.xeroActive;
                 return (
-                  <tr key={row.id} className="cursor-pointer transition-colors duration-150 ease-out hover:bg-gray-50" onClick={() => onRowClick?.(row.id)}>
+                  <tr
+                    key={row.id}
+                    className={`transition-colors duration-150 ease-out ${isVoided ? "cursor-default" : "cursor-pointer hover:bg-gray-50"}`}
+                    onClick={() => {
+                      if (isVoided) return;
+                      onRowClick?.(row.id);
+                    }}
+                    aria-disabled={isVoided ? "true" : undefined}
+                  >
                     <td className="border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3">
-                      <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleRow(row.id)} onClick={(e) => e.stopPropagation()} className={HEADER_CHECKBOX_CLASS} aria-label={`Select row ${row.contactTitle}`} suppressHydrationWarning />
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(row.id)}
+                        disabled={isVoided}
+                        onChange={() => toggleRow(row.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`${HEADER_CHECKBOX_CLASS} disabled:cursor-not-allowed disabled:opacity-40`}
+                        aria-label={isVoided ? `Voided — cannot select ${row.contactTitle}` : `Select row ${row.contactTitle}`}
+                        suppressHydrationWarning
+                      />
                     </td>
-                    <td className={contactCellClass}>
-                      <div className="flex min-w-0 flex-col gap-0.5">
-                        <span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>
-                        {row.contactCaption ? <span className="text-xs text-primary/65 sm:text-sm">{row.contactCaption}</span> : null}
-                      </div>
-                    </td>
-                    <td className={singleLineDateCellClass}>{row.invoiceDate}</td>
-                    <td className={singleLineStatusCellClass}>
-                      {row.status ? <span className={isPaid ? statusTagPaidClass : isPaymentRequested ? statusTagPaymentRequestedClass : isReturned ? statusTagReturnedClass : statusTagClass}>{row.status}</span> : null}
-                    </td>
-                    <td className={invoiceDateCellClass}>{row.submittedDate}</td>
-                    <td className={unpaidAmountCellClass}>
-                      {row.unpaidAmount || row.invoiceTotal ? (
-                        <div className="flex min-w-0 flex-col gap-0.5">
-                          {row.unpaidAmount ? <span className={"whitespace-nowrap text-sm font-semibold sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span> : null}
-                          {row.invoiceTotal ? <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span> : null}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}>
-                      <button type="button" disabled={isPaid} aria-label={isPaid ? `Already paid — ${row.contactTitle}` : `Record payment for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button>
-                    </td>
-                    <td className={`${singleLineDateCellClass} ${actionBodyCellBg}`}>{row.paidDate.trim() ? row.paidDate : <span className="text-primary/40 tabular-nums" aria-label="No paid date">-</span>}</td>
-                    <td className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>
-                      {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
-                        <div className="inline-flex items-center gap-1.5 text-secondary sm:gap-2" role="status" aria-label={`${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`}><span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span></div>
-                      ) : (
-                        <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>
-                      )}
-                    </td>
+                    {orderedTableTitles.map((title) => {
+                      const selectorKey = TITLE_SELECTOR_KEY[title];
+                      if (selectorKey && !columnVisibility[selectorKey]) return null;
+                      switch (title) {
+                        case "Contact / Description":
+                          return (
+                            <td key={title} className={contactCellClass}>
+                              <div className="flex min-w-0 flex-col gap-0.5">
+                                <span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>
+                                {row.contactCaption ? <span className="text-xs text-primary/65 sm:text-sm">{row.contactCaption}</span> : null}
+                              </div>
+                            </td>
+                          );
+                        case "Invoice Date":
+                          return <td key={title} className={singleLineDateCellClass}>{row.invoiceDate}</td>;
+                        case "Status":
+                          return (
+                            <td key={title} className={singleLineStatusCellClass}>
+                              {row.status ? <span className={isPaid ? statusTagPaidClass : isPaymentRequested ? statusTagPaymentRequestedClass : isReturned ? statusTagReturnedClass : statusTagClass}>{row.status}</span> : null}
+                            </td>
+                          );
+                        case "Submitted Date":
+                          return <td key={title} className={invoiceDateCellClass}>{row.submittedDate}</td>;
+                        case "Unpaid Amount":
+                          return (
+                            <td key={title} className={unpaidAmountCellClass}>
+                              {row.unpaidAmount || row.invoiceTotal ? (
+                                <div className="flex min-w-0 flex-col gap-0.5">
+                                  {row.unpaidAmount ? <span className={"whitespace-nowrap text-sm font-semibold sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span> : null}
+                                  {row.invoiceTotal ? <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span> : null}
+                                </div>
+                              ) : null}
+                            </td>
+                          );
+                        case "Payment":
+                          return (
+                            <td key={title} className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}>
+                              <button
+                                type="button"
+                                disabled={isPaid || isVoided}
+                                aria-label={
+                                  isVoided
+                                    ? `Voided — record payment not available for ${row.contactTitle}`
+                                    : isPaid
+                                      ? `Already paid — ${row.contactTitle}`
+                                      : `Record payment for ${row.contactTitle}`
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isPaid || isVoided) return;
+                                  onRecordPayment?.(row.id);
+                                }}
+                                className={recordPaymentButtonClass}
+                              >
+                                <span className="whitespace-nowrap">Record Payment</span>
+                                <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span>
+                              </button>
+                            </td>
+                          );
+                        case "Paid Date":
+                          return (
+                            <td key={title} className={`${singleLineDateCellClass} ${actionBodyCellBg}`}>
+                              {row.paidDate.trim() ? row.paidDate : <span className="text-primary/40 tabular-nums" aria-label="No paid date">-</span>}
+                            </td>
+                          );
+                        case "Bankslip":
+                          return (
+                            <td key={title} className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>
+                              {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
+                                <div
+                                  className={`inline-flex items-center gap-1.5 sm:gap-2 ${isVoided ? "text-primary/40" : "text-secondary"}`}
+                                  role="status"
+                                  aria-label={
+                                    isVoided
+                                      ? `Voided — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} (read only)`
+                                      : `${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`
+                                  }
+                                >
+                                  <span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span>
+                                  <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span>
+                                </div>
+                              ) : isVoided ? (
+                                <div className={uploadBankslipReadOnlyClass} aria-label={`Voided — upload not available for ${row.contactTitle}`}>
+                                  <span className="whitespace-nowrap">Upload</span>
+                                  <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span>
+                                </div>
+                              ) : (
+                                <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>
+                              )}
+                            </td>
+                          );
+                        default:
+                          return null;
+                      }
+                    })}
                     <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
                       <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={24} height={24} className="mx-auto h-6 w-6 max-h-6 max-w-6 object-contain" />
                     </td>
                     <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
-                      <button type="button" data-row-menu-trigger className={rowMenuButtonClass} aria-label={`More options for ${row.contactTitle}`} aria-expanded={rowMenu?.rowId === row.id ? "true" : "false"} aria-haspopup="menu" onClick={(e) => { e.stopPropagation(); toggleRowMenu(row.id, e.currentTarget); }}><span className="material-symbols-outlined text-[22px] leading-none text-primary" aria-hidden>more_vert</span></button>
+                      <button
+                        type="button"
+                        data-row-menu-trigger
+                        disabled={isVoided}
+                        className={rowMenuButtonClass}
+                        aria-label={isVoided ? `Voided — row actions not available for ${row.contactTitle}` : `More options for ${row.contactTitle}`}
+                        aria-expanded={rowMenu?.rowId === row.id ? "true" : "false"}
+                        aria-haspopup={isVoided ? undefined : "menu"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isVoided) return;
+                          toggleRowMenu(row.id, e.currentTarget);
+                        }}
+                      >
+                        <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>more_vert</span>
+                      </button>
                     </td>
                   </tr>
                 );
@@ -633,8 +790,9 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                 className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => {
                   if (isRowMenuDeleteDisabled) return;
-                  onRowDelete?.(rowMenu.rowId);
+                  const id = rowMenu.rowId;
                   setRowMenu(null);
+                  setRowDeleteConfirmId(id);
                 }}
               >
                 Delete
@@ -670,6 +828,15 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
             document.body,
           )
         : null}
+      <RowDeleteConfirmModal
+        open={rowDeleteConfirmId != null}
+        contactTitle={rowDeleteContactTitle}
+        pending={rowDeletePending}
+        onClose={() => {
+          if (!rowDeletePending) setRowDeleteConfirmId(null);
+        }}
+        onConfirm={confirmRowDelete}
+      />
     </div>
   );
 });
