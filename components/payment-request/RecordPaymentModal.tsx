@@ -5,11 +5,15 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import {
   fetchPayments,
+  fetchBill,
   createPayment,
   updatePayment,
   deletePayment,
+  updateBill,
   type PaymentItem,
 } from "@/lib/api";
+import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
+import { PaymentDeleteConfirmModal } from "./PaymentDeleteConfirmModal";
 
 export type RecordPaymentModalProps = {
   open: boolean;
@@ -80,6 +84,7 @@ export function RecordPaymentModal({
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [paymentPendingDelete, setPaymentPendingDelete] = useState<PaymentItem | null>(null);
 
   const paymentsForBill = useMemo(
     () => payments.filter((p) => p.bill_id === billId),
@@ -97,18 +102,33 @@ export function RecordPaymentModal({
     [paymentsForBill],
   );
 
+  const syncSubmittedIfNoPaymentsLeft = useCallback(
+    async (paymentsList: PaymentItem[]): Promise<boolean> => {
+      if (!billId) return false;
+      const hasAny = paymentsList.some((x) => x.bill_id === billId);
+      if (hasAny) return false;
+      const b = await fetchBill(billId);
+      if (!billStatusShouldRollbackWhenNoPayments(b.status ?? "")) return false;
+      await updateBill(billId, { status: "submitted" });
+      return true;
+    },
+    [billId],
+  );
+
   const loadPayments = useCallback(async () => {
     if (!billId) return;
     setLoadingPayments(true);
     try {
       const data = await fetchPayments(billId);
       setPayments(data.payments);
+      const rolled = await syncSubmittedIfNoPaymentsLeft(data.payments);
+      if (rolled) onPaymentSaved?.();
     } catch {
       setPayments([]);
     } finally {
       setLoadingPayments(false);
     }
-  }, [billId]);
+  }, [billId, syncSubmittedIfNoPaymentsLeft, onPaymentSaved]);
 
   useEffect(() => {
     if (open && billId) {
@@ -120,6 +140,7 @@ export function RecordPaymentModal({
     }
     if (!open) {
       setPayments([]);
+      setPaymentPendingDelete(null);
     }
   }, [open, billId, loadPayments]);
 
@@ -175,11 +196,30 @@ export function RecordPaymentModal({
     }
   };
 
+  const deleteConfirmSummary = useMemo(() => {
+    const p = paymentPendingDelete;
+    if (!p) return "";
+    const amt = parseFloat(p.amount || "0");
+    const isPending = p.payment_status === "pending";
+    const isPartialPayment = amt > 0 && amt + 1e-9 < invoiceAmount;
+    const dateBit = formatShortDayMonth(p.payment_date);
+    const kind = isPending
+      ? `Pending on ${dateBit}`
+      : isPartialPayment
+        ? `Partial pay on ${dateBit}`
+        : `Paid on ${dateBit}`;
+    return `${kind} · ${formatMoney(amt, currencyLabel)}`;
+  }, [paymentPendingDelete, invoiceAmount, currencyLabel]);
+
   const handleDeletePayment = async (p: PaymentItem) => {
     setDeletingId(p.id);
     try {
       await deletePayment(p.bill_id, p.id);
-      await loadPayments();
+      const data = await fetchPayments(billId);
+      setPayments(data.payments);
+      await syncSubmittedIfNoPaymentsLeft(data.payments);
+
+      onPaymentSaved?.();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Failed to delete payment.");
     } finally {
@@ -211,7 +251,9 @@ export function RecordPaymentModal({
   const calendarBtnClass =
     "absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
 
-  return createPortal(
+  return (
+    <>
+      {createPortal(
     <div className="fixed inset-0 z-[300] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6" role="presentation">
       <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-black/35 backdrop-blur-[1px]" onClick={onClose} />
       <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full min-w-0 max-w-[480px] flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,880px)] sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
@@ -273,13 +315,7 @@ export function RecordPaymentModal({
                       )}
                     </div>
                     <span className="shrink-0 text-sm font-bold text-primary tabular-nums">({formatMoney(amt, currencyLabel)})</span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePayment(p)}
-                      disabled={deletingId === p.id}
-                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-rose-500 transition-colors hover:bg-rose-100 hover:text-rose-600 disabled:opacity-50"
-                      aria-label="Remove this payment"
-                    >
+                    <button type="button" onClick={() => setPaymentPendingDelete(p)} disabled={deletingId === p.id} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-rose-500 transition-colors hover:bg-rose-100 hover:text-rose-600 disabled:opacity-50" aria-label="Remove this payment">
                       <span className="material-symbols-outlined text-[22px]">
                         {deletingId === p.id ? "progress_activity" : "delete"}
                       </span>
@@ -331,5 +367,22 @@ export function RecordPaymentModal({
       </div>
     </div>,
     document.body,
+      )}
+      <PaymentDeleteConfirmModal
+        open={paymentPendingDelete != null}
+        summary={deleteConfirmSummary}
+        pending={paymentPendingDelete != null && deletingId === paymentPendingDelete.id}
+        onClose={() => {
+          if (deletingId) return;
+          setPaymentPendingDelete(null);
+        }}
+        onConfirm={async () => {
+          const p = paymentPendingDelete;
+          if (!p) return;
+          await handleDeletePayment(p);
+          setPaymentPendingDelete(null);
+        }}
+      />
+    </>
   );
 }

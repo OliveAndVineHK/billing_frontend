@@ -18,6 +18,7 @@ import {
 } from "@/lib/api";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
 import { loadAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ActivityHistoryAccordion } from "./ActivityHistoryAccordion";
@@ -31,7 +32,12 @@ import {
   type PaymentRequestDetailedInfoData,
 } from "./PaymentRequestDetailedInfo";
 
-export function PaymentRequestDetailBody() {
+export type PaymentRequestDetailBodyProps = {
+  /** Called after the bill is refreshed from the server so the header status badge can update. */
+  onBillUpdated?: () => void;
+};
+
+export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetailBodyProps) {
   const params = useParams();
   const requestId = typeof params?.id === "string" ? params.id : "";
 
@@ -98,23 +104,41 @@ export function PaymentRequestDetailBody() {
     return () => { cancelled = true; };
   }, []);
 
-  const loadPayments = useCallback(async () => {
-    if (!requestId) return;
-    try {
-      const data = await fetchPayments(requestId);
-      setPayments(data.payments);
-    } catch {
-      setPayments([]);
-    }
-  }, [requestId]);
+  const rollbackToPaymentRequestedIfNoPayments = useCallback(
+    async (nextPayments: PaymentItem[]): Promise<boolean> => {
+      if (!requestId) return false;
+      const hasAnyForThisBill = nextPayments.some((p) => p.bill_id === requestId);
+      if (hasAnyForThisBill) return false;
+
+      const b = await fetchBill(requestId);
+      if (!billStatusShouldRollbackWhenNoPayments(b.status ?? "")) return false;
+
+      await updateBill(requestId, { status: "submitted" });
+      return true;
+    },
+    [requestId],
+  );
 
   const reloadBill = useCallback(async () => {
     if (!requestId) return;
     try {
       const b = await fetchBill(requestId);
       setBill(b);
+      onBillUpdated?.();
     } catch { /* ignore */ }
-  }, [requestId]);
+  }, [requestId, onBillUpdated]);
+
+  const loadPayments = useCallback(async () => {
+    if (!requestId) return;
+    try {
+      const data = await fetchPayments(requestId);
+      setPayments(data.payments);
+      const rolled = await rollbackToPaymentRequestedIfNoPayments(data.payments);
+      if (rolled) await reloadBill();
+    } catch {
+      setPayments([]);
+    }
+  }, [requestId, rollbackToPaymentRequestedIfNoPayments, reloadBill]);
 
   useEffect(() => {
     if (requestId) loadPayments();
@@ -229,6 +253,7 @@ export function PaymentRequestDetailBody() {
       const payload = buildBillUpdatePayload(bill, draft);
       const updated = await updateBill(requestId, payload);
       setBill(updated);
+      onBillUpdated?.();
       await loadPayments();
       setIsEditing(false);
       setDraft(null);
@@ -243,7 +268,7 @@ export function PaymentRequestDetailBody() {
     } finally {
       setIsSaving(false);
     }
-  }, [requestId, bill, draft, bumpAudit, loadPayments]);
+  }, [requestId, bill, draft, bumpAudit, loadPayments, onBillUpdated]);
 
   const handleDeleteBill = useCallback(async () => {
     if (!requestId) return;
@@ -377,7 +402,9 @@ export function PaymentRequestDetailBody() {
             onDeleteRow={async (row) => {
               try {
                 await apiDeletePayment(row.billId, row.id);
-                await loadPayments();
+                const data = await fetchPayments(requestId);
+                setPayments(data.payments);
+                await rollbackToPaymentRequestedIfNoPayments(data.payments);
                 await reloadBill();
                 bumpAudit();
               } catch {
