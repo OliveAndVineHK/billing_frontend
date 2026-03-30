@@ -28,13 +28,14 @@ type PaymentRequestToolbarProps = {
   onBillCreated?: () => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
-  /** When fewer than two rows are selected, bulk actions stay disabled. */
   bulkActionsEnabled: boolean;
+  bulkSelectedCount?: number;
   onBulkDeleteSelected?: () => void;
   onBulkPublishSelected?: () => void;
 };
 type FilterMenuState = { top: number; left: number; width: number };
 type BulkMenuState = { top: number; left: number; minWidth: number };
+type StatusMenuState = { top: number; left: number; width: number };
 
 const BULK_MENU_MIN_WIDTH_PX = 200;
 
@@ -45,6 +46,7 @@ export function PaymentRequestToolbar({
   searchQuery,
   onSearchChange,
   bulkActionsEnabled,
+  bulkSelectedCount = 0,
   onBulkDeleteSelected,
   onBulkPublishSelected,
 }: PaymentRequestToolbarProps) {
@@ -55,10 +57,14 @@ export function PaymentRequestToolbar({
   const [filterMenu, setFilterMenu] = useState<FilterMenuState | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkMenu, setBulkMenu] = useState<BulkMenuState | null>(null);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [statusMenu, setStatusMenu] = useState<StatusMenuState | null>(null);
   const filterWrapRef = useRef<HTMLDivElement | null>(null);
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
   const bulkWrapRef = useRef<HTMLDivElement | null>(null);
   const bulkButtonRef = useRef<HTMLButtonElement | null>(null);
+  const statusWrapRef = useRef<HTMLDivElement | null>(null);
+  const statusButtonRef = useRef<HTMLButtonElement | null>(null);
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
   const [minAmount, setMinAmount] = useState("");
@@ -86,7 +92,6 @@ export function PaymentRequestToolbar({
       const t = event.target;
       if (filterWrapRef.current?.contains(t as Node)) return;
       if (t instanceof Element && t.closest("[data-filter-menu-panel]")) return;
-      /* ThemedSelect renders its listbox in a portal on document.body — not inside filterWrapRef */
       if (t instanceof Element && t.closest("[data-themed-select-menu]")) return;
       setFilterOpen(false);
       setFilterMenu(null);
@@ -145,6 +150,37 @@ export function PaymentRequestToolbar({
   }, [bulkOpen]);
 
   useEffect(() => {
+    if (!statusOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      const t = event.target;
+      if (statusWrapRef.current?.contains(t as Node)) return;
+      if (t instanceof Element && t.closest("[data-status-menu-panel]")) return;
+      setStatusOpen(false);
+      setStatusMenu(null);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setStatusOpen(false);
+        setStatusMenu(null);
+      }
+    };
+    const onResizeOrScroll = () => {
+      setStatusOpen(false);
+      setStatusMenu(null);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    window.addEventListener("resize", onResizeOrScroll);
+    window.addEventListener("scroll", onResizeOrScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("resize", onResizeOrScroll);
+      window.removeEventListener("scroll", onResizeOrScroll, true);
+    };
+  }, [statusOpen]);
+
+  useEffect(() => {
     if (!bulkActionsEnabled && bulkOpen) {
       setBulkOpen(false);
       setBulkMenu(null);
@@ -190,16 +226,56 @@ export function PaymentRequestToolbar({
     });
   };
 
+  const toggleStatusMenu = (trigger: HTMLButtonElement) => {
+    setStatusOpen((open) => {
+      if (open) {
+        setStatusMenu(null);
+        return false;
+      }
+      const rect = trigger.getBoundingClientRect();
+      const viewportPadding = 8;
+      const width = Math.min(Math.max(rect.width, 200), window.innerWidth - viewportPadding * 2);
+      const left = Math.max(viewportPadding, Math.min(rect.left, window.innerWidth - width - viewportPadding));
+      const top = rect.bottom + 8;
+      setStatusMenu({ top, left, width });
+      return true;
+    });
+  };
+
   return (
     <>
     <div className="flex w-full min-w-0 flex-col gap-3 bg-white px-4 py-3 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
-      <div className="-mx-4 flex min-w-0 touch-pan-x gap-2 overflow-x-auto overscroll-x-contain px-4 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:touch-auto sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Filter by status">
-        {PAYMENT_REQUEST_STATUS_FILTERS.map((label) => {
-          const isActive = activeStatus === label;
-          return (
-            <button key={label} type="button" role="tab" aria-selected={isActive ? "true" : "false"} onClick={() => onActiveStatusChange(label)} className={`box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm md:text-base ${isActive ? "border-secondary bg-secondary/15 text-secondary" : "border-primary/25 text-primary hover:bg-primary/10"}`}>{label}</button>
-          );
-        })}
+      <div className="-mx-4 flex min-w-0 flex-wrap items-center gap-2 px-4 sm:mx-0 sm:px-0">
+        <button type="button" onClick={() => { setBillModalMounted(true); setBillModalOpen(true); }} className="box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:px-4">Add Bill<span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>add</span></button>
+        <div ref={statusWrapRef} className="relative min-w-0 flex-1 sm:hidden">
+          <button ref={statusButtonRef} type="button" aria-label={`Status: ${activeStatus}`} aria-expanded={statusOpen ? "true" : "false"} aria-haspopup="menu" onClick={() => { if (!statusButtonRef.current) return; toggleStatusMenu(statusButtonRef.current); }} className="box-border flex h-10 min-h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-primary/25 bg-white px-3 text-left text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
+            <span className="min-w-0 truncate">{activeStatus}</span>
+            <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary/70" aria-hidden>{statusOpen ? "expand_less" : "expand_more"}</span>
+          </button>
+          {statusOpen && statusMenu && typeof document !== "undefined"
+            ? createPortal(
+                <div data-status-menu-panel role="menu" aria-label="Filter by status" className="fixed z-[400] max-h-[min(70vh,320px)] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg" style={{ top: statusMenu.top, left: statusMenu.left, width: statusMenu.width }}>
+                  {PAYMENT_REQUEST_STATUS_FILTERS.map((label) => {
+                    const isActive = activeStatus === label;
+                    return (
+                      <button key={label} type="button" role="menuitem" className={`block w-full px-3 py-2.5 text-left text-sm font-medium transition-colors ${isActive ? "bg-secondary/15 text-secondary" : "text-primary hover:bg-gray-100"}`} onClick={() => { onActiveStatusChange(label); setStatusOpen(false); setStatusMenu(null); }}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>,
+                document.body,
+              )
+            : null}
+        </div>
+        <div className="hidden min-w-0 flex-1 touch-pan-x gap-2 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] sm:flex sm:flex-wrap sm:touch-auto sm:overflow-visible [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Filter by status">
+          {PAYMENT_REQUEST_STATUS_FILTERS.map((label) => {
+            const isActive = activeStatus === label;
+            return (
+              <button key={label} type="button" role="tab" aria-selected={isActive ? "true" : "false"} onClick={() => onActiveStatusChange(label)} className={`box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm md:text-base ${isActive ? "border-secondary bg-secondary/15 text-secondary" : "border-primary/25 text-primary hover:bg-primary/10"}`}>{label}</button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="flex w-full min-w-0 flex-row items-center gap-2 sm:gap-2 lg:w-auto lg:max-w-2xl lg:flex-1 xl:max-w-3xl">
@@ -210,18 +286,6 @@ export function PaymentRequestToolbar({
           <input id="payment-request-search" type="search" name="q" value={searchQuery ?? ""} onChange={(e) => onSearchChange(e.target.value)} placeholder="Search by contact or description" autoComplete="off" className="box-border h-11 min-h-[44px] w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-3 text-base leading-normal text-black placeholder:text-primary/50 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:h-[42px] sm:min-h-[42px] sm:text-sm" suppressHydrationWarning />
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <div ref={bulkWrapRef} className="relative">
-            <button ref={bulkButtonRef} type="button" aria-label="Bulk actions" aria-expanded={bulkOpen ? "true" : "false"} aria-haspopup="menu" disabled={!bulkActionsEnabled} onClick={() => { if (!bulkButtonRef.current) return; toggleBulkMenu(bulkButtonRef.current); }} className={`box-border inline-flex h-11 min-h-[44px] items-center justify-center rounded-lg border px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:px-4 ${bulkActionsEnabled ? "cursor-pointer border-primary/25 text-primary hover:bg-primary/10" : "cursor-not-allowed border-primary/20 bg-[#F5F5F5] text-primary/45"}`}>Bulk Actions</button>
-            {bulkOpen && bulkMenu && bulkActionsEnabled && typeof document !== "undefined"
-              ? createPortal(
-                  <div data-bulk-menu-panel role="menu" aria-label="Bulk actions" className="fixed z-[400] rounded-lg border border-gray-200 bg-white py-1 shadow-lg" style={{ top: bulkMenu.top, left: bulkMenu.left, minWidth: bulkMenu.minWidth }}>
-                    <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50" onClick={() => { onBulkDeleteSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Delete Selected</button>
-                    <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onBulkPublishSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Publish Selected</button>
-                  </div>,
-                  document.body,
-                )
-              : null}
-          </div>
           <div ref={filterWrapRef} className="relative">
             <button ref={filterButtonRef} type="button" aria-label="Filter" aria-expanded={filterOpen ? "true" : "false"} aria-haspopup="dialog" onClick={() => { if (!filterButtonRef.current) return; toggleFilterMenu(filterButtonRef.current); }} className="box-border inline-flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-lg border border-primary/25 text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:w-[42px] sm:min-w-[42px]"><span className="material-symbols-outlined text-[22px] leading-none">filter_alt</span></button>
             {filterOpen && filterMenu && typeof document !== "undefined"
@@ -284,7 +348,18 @@ export function PaymentRequestToolbar({
             )
               : null}
           </div>
-          <button type="button" onClick={() => { setBillModalMounted(true); setBillModalOpen(true); }} className="box-border inline-flex h-11 min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:px-4">Add Bill<span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>add</span></button>
+          <div ref={bulkWrapRef} className="relative">
+            <button ref={bulkButtonRef} type="button" aria-label={bulkSelectedCount > 0 ? `Bulk actions, ${bulkSelectedCount} selected` : "Bulk actions"} aria-expanded={bulkOpen ? "true" : "false"} aria-haspopup="menu" disabled={!bulkActionsEnabled} onClick={() => { if (!bulkButtonRef.current) return; toggleBulkMenu(bulkButtonRef.current); }} className={`box-border inline-flex h-11 min-h-[44px] items-center justify-center rounded-lg border px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:px-4 ${bulkActionsEnabled ? "cursor-pointer border-primary/25 text-primary hover:bg-primary/10" : "cursor-not-allowed border-primary/20 bg-[#F5F5F5] text-primary/45"}`}>{bulkSelectedCount > 0 ? `Bulk Actions (${bulkSelectedCount})` : "Bulk Actions"}</button>
+            {bulkOpen && bulkMenu && bulkActionsEnabled && typeof document !== "undefined"
+              ? createPortal(
+                  <div data-bulk-menu-panel role="menu" aria-label="Bulk actions" className="fixed z-[400] rounded-lg border border-gray-200 bg-white py-1 shadow-lg" style={{ top: bulkMenu.top, left: bulkMenu.left, minWidth: bulkMenu.minWidth }}>
+                    <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50" onClick={() => { onBulkDeleteSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Delete</button>
+                    <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onBulkPublishSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Publish</button>
+                  </div>,
+                  document.body,
+                )
+              : null}
+          </div>
         </div>
       </div>
     </div>

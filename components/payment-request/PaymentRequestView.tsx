@@ -149,6 +149,7 @@ export function PaymentRequestView() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         bulkActionsEnabled={bulkActionsEnabled}
+        bulkSelectedCount={selectedBillIds.length}
         onBulkDeleteSelected={runBulkDeleteSelected}
         onBulkPublishSelected={runBulkPublishSelected}
       />
