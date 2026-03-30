@@ -27,6 +27,7 @@ import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./I
 import { InvoiceAttachmentToolbar } from "./InvoiceAttachmentToolbar";
 import { PaymentHistoryCard, type PaymentHistoryRow } from "./PaymentHistoryCard";
 import { RecordPaymentModal } from "./RecordPaymentModal";
+import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
 import {
   PaymentRequestDetailedInfo,
   type PaymentRequestDetailedInfoData,
@@ -49,10 +50,13 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [draft, setDraft] = useState<PaymentRequestDetailedInfoData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSubmittingDraft, setIsSubmittingDraft] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [billNoError, setBillNoError] = useState<string | null>(null);
+  const [accountCodeError, setAccountCodeError] = useState<string | null>(null);
 
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [deleteBillConfirmOpen, setDeleteBillConfirmOpen] = useState(false);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [auditRefresh, setAuditRefresh] = useState(0);
   const bumpAudit = useCallback(() => setAuditRefresh((n) => n + 1), []);
@@ -177,6 +181,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   }, [requestId]);
 
   useEffect(() => {
+    setDeleteBillConfirmOpen(false);
+  }, [requestId]);
+
+  useEffect(() => {
     attachmentUrlsRef.current = [];
     let cancelled = false;
 
@@ -228,6 +236,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     setIsEditing(true);
     setActionError(null);
     setBillNoError(null);
+    setAccountCodeError(null);
   }, [bill]);
 
   const handleCancel = useCallback(() => {
@@ -235,20 +244,29 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     setDraft(null);
     setActionError(null);
     setBillNoError(null);
+    setAccountCodeError(null);
   }, []);
 
   const handlePatch = useCallback((patch: Partial<PaymentRequestDetailedInfoData>) => {
     if (Object.prototype.hasOwnProperty.call(patch, "billNo")) {
       setBillNoError(null);
     }
+    if (Object.prototype.hasOwnProperty.call(patch, "accountCode")) {
+      setAccountCodeError(null);
+    }
     setDraft((d) => (d ? { ...d, ...patch } : null));
   }, []);
 
   const handleSave = useCallback(async () => {
     if (!requestId || !bill || !draft) return;
-    setIsSaving(true);
     setActionError(null);
     setBillNoError(null);
+    setAccountCodeError(null);
+    if (!draft.accountCode.trim()) {
+      setAccountCodeError("Please select an account code.");
+      return;
+    }
+    setIsSaving(true);
     try {
       const payload = buildBillUpdatePayload(bill, draft);
       const updated = await updateBill(requestId, payload);
@@ -258,6 +276,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       setIsEditing(false);
       setDraft(null);
       setBillNoError(null);
+      setAccountCodeError(null);
       bumpAudit();
     } catch (e) {
       if (isDuplicateBillReferenceError(e)) {
@@ -270,14 +289,17 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     }
   }, [requestId, bill, draft, bumpAudit, loadPayments, onBillUpdated]);
 
-  const handleDeleteBill = useCallback(async () => {
+  const handleRequestDeleteBill = useCallback(() => {
+    setDeleteBillConfirmOpen(true);
+  }, []);
+
+  const executeDeleteBill = useCallback(async () => {
     if (!requestId) return;
-    if (!window.confirm("Delete this bill? This cannot be undone.")) return;
     setIsDeleting(true);
     setActionError(null);
     try {
       await deleteBill(requestId);
-      // Deleting a bill voids it; keep the user on this page and refresh status.
+      setDeleteBillConfirmOpen(false);
       setIsEditing(false);
       setDraft(null);
       await reloadBill();
@@ -289,6 +311,43 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       setIsDeleting(false);
     }
   }, [requestId, reloadBill, bumpAudit, loadPayments]);
+
+  const handleSubmitDraft = useCallback(async () => {
+    if (!requestId || !bill) return;
+    const info = isEditing && draft ? draft : billToDetailedInfo(bill);
+    setActionError(null);
+    setBillNoError(null);
+    setAccountCodeError(null);
+    if (!info.accountCode.trim()) {
+      if (isEditing && draft) {
+        setAccountCodeError("Please select an account code.");
+      } else {
+        setActionError("Account code is required. Click Edit, choose an account code, then submit.");
+      }
+      return;
+    }
+    setIsSubmittingDraft(true);
+    try {
+      const payload = buildBillUpdatePayload(bill, info);
+      const updated = await updateBill(requestId, { ...payload, status: "submitted" });
+      setBill(updated);
+      onBillUpdated?.();
+      setIsEditing(false);
+      setDraft(null);
+      setAccountCodeError(null);
+      await loadPayments();
+      bumpAudit();
+    } catch (e) {
+      if (isDuplicateBillReferenceError(e)) {
+        setBillNoError(e.message);
+        setActionError(e.message);
+      } else {
+        setActionError(e instanceof ApiError ? e.message : "Could not submit this bill.");
+      }
+    } finally {
+      setIsSubmittingDraft(false);
+    }
+  }, [requestId, bill, isEditing, draft, loadPayments, bumpAudit, onBillUpdated]);
 
   const currencyLabel = formData ? currencyLabelForCode(formData.currencyCode) : "HK$";
 
@@ -308,8 +367,23 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         </div>
         <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:self-center">
           <BillActionBar
-            onDeleteBill={handleDeleteBill}
+            onDeleteBill={handleRequestDeleteBill}
             deleteDisabled={loadingBill || !bill || isDeleting || bill?.status === "voided"}
+            draftSubmit={
+              billIsDraft
+                ? {
+                    show: true,
+                    onClick: handleSubmitDraft,
+                    disabled:
+                      loadingBill ||
+                      !bill ||
+                      isSubmittingDraft ||
+                      isSaving ||
+                      isDeleting,
+                    pending: isSubmittingDraft,
+                  }
+                : undefined
+            }
           />
         </div>
         <div className="flex min-h-0 min-w-0 flex-col lg:col-start-1 lg:row-start-2">
@@ -341,6 +415,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               isSaving={isSaving}
               disabled={!bill}
               billNoError={isEditing ? billNoError : null}
+              accountCodeError={isEditing ? accountCodeError : null}
               accountOptions={accountOptions}
               contactOptions={contactOptions}
               contactXeroByName={contactXeroByName}
@@ -360,10 +435,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
                 ? "Draft — add payment not available"
                 : "Add payment"
             }
-            className="box-border inline-flex h-12 w-full min-w-0 shrink-0 items-center justify-between gap-2 rounded-md border border-transparent bg-[#00C896]/10 px-4 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:w-[199px] sm:self-start"
+            className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
           >
             Add Payment
-            <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
+            <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
               add
             </span>
           </button>
@@ -419,6 +494,15 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           />
         </div>
       </div>
+      <RowDeleteConfirmModal
+        open={deleteBillConfirmOpen}
+        contactTitle={bill?.contact ?? ""}
+        pending={isDeleting}
+        onClose={() => {
+          if (!isDeleting) setDeleteBillConfirmOpen(false);
+        }}
+        onConfirm={executeDeleteBill}
+      />
       <RecordPaymentModal
         open={recordPaymentOpen}
         onClose={() => setRecordPaymentOpen(false)}

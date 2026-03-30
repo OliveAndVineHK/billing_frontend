@@ -298,9 +298,9 @@ export function PaymentRequestModal({
 
   const handleSaveDraft = async () => {
     if (draftSubmitting) return;
-    setDraftSubmitting(true);
     setFieldErrors({});
     setFormError(null);
+    setDraftSubmitting(true);
     try {
       const parsedAmount = parseAmountValue(amount);
       const acctCode = accountCode.split(" - ")[0]?.trim() ?? "";
@@ -449,34 +449,14 @@ export function PaymentRequestModal({
   if (!open) return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[300] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6"
-      role="presentation"
-    >
-      <button
-        type="button"
-        aria-label="Close dialog"
-        className="absolute inset-0 bg-black/35 backdrop-blur-[1px]"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={previewFile ? previewSubtitleId : undefined}
-        className="relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full min-w-0 max-w-[1080px] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,880px)] sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-[300] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6" role="presentation">
+      <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-black/35 backdrop-blur-[1px]" onClick={onClose} />
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={previewFile ? previewSubtitleId : undefined} className="relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full min-w-0 max-w-[1080px] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,880px)] sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-4 pb-3 pt-4 sm:gap-4 sm:px-6 sm:pb-4 sm:pt-6">
           <h2 id={titleId} className="min-w-0 pr-2 text-lg font-bold leading-snug text-black sm:text-xl md:text-2xl">
             Add Payment Request
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
-            aria-label="Close"
-          >
+          <button type="button" onClick={onClose} className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary" aria-label="Close">
             <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
               close
             </span>
@@ -527,29 +507,15 @@ export function PaymentRequestModal({
                   (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-[#EDEDED]")
                 }
               >
-                <button
-                  type="button"
-                  onClick={() => setPreviewFileId(id)}
-                  className="flex min-w-0 flex-1 cursor-pointer items-center justify-start gap-2 rounded-md text-left"
-                  aria-pressed={selected}
-                  aria-label={`Preview ${file.name}`}
-                >
-                  <span
-                    className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`}
-                    aria-hidden
-                  >
+                <button type="button" onClick={() => setPreviewFileId(id)} className="flex min-w-0 flex-1 cursor-pointer items-center justify-start gap-2 rounded-md text-left" aria-pressed={selected} aria-label={`Preview ${file.name}`}>
+                  <span className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`} aria-hidden>
                     {icon}
                   </span>
                   <span className="min-w-0 break-words text-left text-sm leading-snug text-black sm:flex-1 sm:truncate sm:leading-normal">
                     {file.name}
                   </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => removeFile(id)}
-                  className="absolute right-2 top-1/2 flex h-8 w-8 shrink-0 -translate-y-1/2 items-center justify-center rounded-md text-primary/60 transition-colors hover:bg-gray-100 hover:text-primary sm:static sm:translate-y-0"
-                  aria-label={`Remove ${file.name}`}
-                >
+                <button type="button" onClick={() => removeFile(id)} className="absolute right-2 top-1/2 flex h-8 w-8 shrink-0 -translate-y-1/2 items-center justify-center rounded-md text-primary/60 transition-colors hover:bg-gray-100 hover:text-primary sm:static sm:translate-y-0" aria-label={`Remove ${file.name}`}>
                   <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
                     close
                   </span>
@@ -729,12 +695,7 @@ export function PaymentRequestModal({
                       mm/dd/yyyy
                     </span>
                   ) : null}
-                  <button
-                    type="button"
-                    onClick={() => openDatePicker(invoiceDateRef.current)}
-                    className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
-                    aria-label="Open calendar for invoice date"
-                  >
+                  <button type="button" onClick={() => openDatePicker(invoiceDateRef.current)} className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for invoice date">
                     <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
                       calendar_clock
                     </span>
@@ -777,12 +738,7 @@ export function PaymentRequestModal({
                       mm/dd/yyyy
                     </span>
                   ) : null}
-                  <button
-                    type="button"
-                    onClick={() => openDatePicker(dueDateRef.current)}
-                    className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
-                    aria-label="Open calendar for due date"
-                  >
+                  <button type="button" onClick={() => openDatePicker(dueDateRef.current)} className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for due date">
                     <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
                       calendar_clock
                     </span>
@@ -820,28 +776,14 @@ export function PaymentRequestModal({
 
         <div className="flex shrink-0 flex-col gap-2 border-t border-gray-100 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-5 sm:pb-5">
           <div className="order-1 flex w-full min-w-0 gap-2 sm:order-2 sm:ml-auto sm:w-auto">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="box-border h-12 min-h-[48px] min-w-0 flex-1 rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px] sm:flex-none sm:px-4"
-            >
+            <button type="button" onClick={handleCancel} className="box-border h-12 min-h-[48px] min-w-0 flex-1 rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px] sm:flex-none sm:px-4">
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={() => void handleConfirm()}
-              disabled={confirmSubmitting}
-              className="box-border h-12 min-h-[48px] min-w-0 flex-1 rounded-lg border border-transparent bg-secondary px-4 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px] sm:flex-none sm:px-5"
-            >
+            <button type="button" onClick={() => void handleConfirm()} disabled={confirmSubmitting} className="box-border h-12 min-h-[48px] min-w-0 flex-1 rounded-lg border border-transparent bg-secondary px-4 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px] sm:flex-none sm:px-5">
               {confirmSubmitting ? "Confirming…" : "Confirm"}
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => void handleSaveDraft()}
-            disabled={draftSubmitting}
-            className="order-2 box-border h-12 min-h-[48px] w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-semibold text-primary transition-colors hover:bg-gray-50 enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 sm:order-1 sm:h-11 sm:min-h-[44px] sm:w-auto"
-          >
+          <button type="button" onClick={() => void handleSaveDraft()} disabled={draftSubmitting} className="order-2 box-border h-12 min-h-[48px] w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-semibold text-primary transition-colors hover:bg-gray-50 enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 sm:order-1 sm:h-11 sm:min-h-[44px] sm:w-auto">
             {draftSubmitting ? "Saving…" : "Save as Draft"}
           </button>
         </div>
@@ -879,11 +821,7 @@ function PaymentRequestInlinePreview({
       </div>
       <div className="mt-3 min-h-[min(60dvh,420px)] overflow-auto rounded-lg bg-black/5 p-2 sm:p-3">
         {isImageFile(file) ? (
-          <img
-            src={objectUrl}
-            alt={`Preview: ${file.name}`}
-            className="mx-auto max-h-[min(65dvh,620px)] w-auto max-w-full object-contain"
-          />
+          <img src={objectUrl} alt={`Preview: ${file.name}`} className="mx-auto max-h-[min(65dvh,620px)] w-auto max-w-full object-contain"/>
         ) : null}
         {isPdfFile(file) && !isImageFile(file) ? (
           <iframe title={file.name} src={objectUrl} className="h-[min(65dvh,620px)] w-full rounded-lg border border-gray-200 bg-white" />

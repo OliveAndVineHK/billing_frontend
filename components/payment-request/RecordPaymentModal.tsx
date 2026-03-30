@@ -341,7 +341,7 @@ export function RecordPaymentModal({
           {formError ? <p className="mt-2 text-sm text-red-600" role="alert">{formError}</p> : null}
 
           <div className="mt-4 flex justify-end">
-            <button type="button" onClick={handleAddPayment} disabled={remaining <= 0 || adding} className="inline-flex items-center gap-1.5 rounded-lg bg-[#00C896]/10 px-4 py-2.5 text-sm font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00C896] disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" onClick={handleAddPayment} disabled={remaining <= 0 || adding} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#00C896]/10 px-4 py-2.5 text-sm font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00C896] disabled:cursor-not-allowed disabled:opacity-50">
               {adding ? "Adding…" : "Add Payment"}
               <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>{adding ? "progress_activity" : "add"}</span>
             </button>
