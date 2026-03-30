@@ -18,6 +18,31 @@ import {
   type PaymentRequestDetailedInfoData,
 } from "./PaymentRequestDetailedInfo";
 
+/** Builds the history date line: partial/paid only when the payment is for the open bill. */
+function paymentHistoryDateLabel(
+  p: PaymentItem,
+  currentBillId: string,
+  invoiceTotalMajor: number,
+): string {
+  const amt = Number.parseFloat(p.amount || "0");
+  const shortDate = p.payment_date
+    ? new Date(`${p.payment_date}T12:00:00`).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
+    : "—";
+  if (p.payment_status === "pending") return `Pending on ${shortDate}`;
+  if (p.bill_id !== currentBillId) return `Payment on ${shortDate}`;
+  if (amt > 0 && amt + 1e-9 < invoiceTotalMajor) return `Partial Pay on ${shortDate}`;
+  return `Paid on ${shortDate}`;
+}
+
+/** Invoice column: bill ref / short bill id, optional payment reference_no. */
+function paymentInvoiceNoDisplay(p: PaymentItem): string {
+  const shortBill =
+    p.bill_id.length >= 8 ? p.bill_id.slice(0, 8).toUpperCase() : p.bill_id.toUpperCase();
+  const base = p.bill_reference?.trim() || shortBill;
+  const ref = p.reference_no?.trim();
+  return ref ? `${base} · ${ref}` : base;
+}
+
 export function PaymentRequestDetailBody() {
   const params = useParams();
   const requestId = typeof params?.id === "string" ? params.id : "";
@@ -296,23 +321,21 @@ export function PaymentRequestDetailBody() {
             </span>
           </button>
           <PaymentHistoryCard
-            rows={payments.map((p) => ({
-              id: p.id,
-              date: (() => {
-                const amt = parseFloat(p.amount || "0");
-                const shortDate = p.payment_date
-                  ? new Date(p.payment_date + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
-                  : "—";
-                if (p.payment_status === "pending") return `Pending on ${shortDate}`;
-                if (amt > 0 && amt + 1e-9 < invoiceTotalMajor) return `Partial Pay on ${shortDate}`;
-                return `Paid on ${shortDate}`;
-              })(),
-              amountLabel: `(${currencyLabel} ${parseFloat(p.amount || "0").toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
-              invoiceNo: p.reference_no || p.id.slice(0, 18).toUpperCase(),
-            }))}
-            onDeleteRow={async (id) => {
+            rows={payments.map((p) => {
+              const isOther = p.bill_id !== requestId;
+              return {
+                id: p.id,
+                billId: p.bill_id,
+                date: paymentHistoryDateLabel(p, requestId, invoiceTotalMajor),
+                amountLabel: `(${currencyLabel} ${Number.parseFloat(p.amount || "0").toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
+                invoiceNo: paymentInvoiceNoDisplay(p),
+                invoiceHref: isOther ? `/payment-request/${p.bill_id}` : "#",
+                isOtherBill: isOther,
+              };
+            })}
+            onDeleteRow={async (row) => {
               try {
-                await apiDeletePayment(requestId, id);
+                await apiDeletePayment(row.billId, row.id);
                 await loadPayments();
                 await reloadBill();
                 bumpAudit();

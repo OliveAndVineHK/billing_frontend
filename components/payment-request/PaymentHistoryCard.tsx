@@ -5,23 +5,29 @@ import { useState } from "react";
 
 export type PaymentHistoryRow = {
   id: string;
+  /** Bill that owns this payment (required for DELETE /bills/{bill_id}/payments/{id}). */
+  billId: string;
   date: string;
   amountLabel: string;
   invoiceNo: string;
+  /** Link target for invoice ref; omit or "#" for current bill. */
+  invoiceHref?: string;
+  /** Payment applies to a different bill than the page context. */
+  isOtherBill?: boolean;
 };
 
 type PaymentHistoryCardProps = {
   rows?: PaymentHistoryRow[];
-  onDeleteRow?: (id: string) => void;
+  onDeleteRow?: (row: PaymentHistoryRow) => void;
 };
 
 const defaultRows: PaymentHistoryRow[] = [
-  { id: "1", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031626" },
-  { id: "2", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031627" },
-  { id: "3", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031628" },
-  { id: "4", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031629" },
-  { id: "5", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031630" },
-  { id: "6", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031631" },
+  { id: "1", billId: "demo-1", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031626" },
+  { id: "2", billId: "demo-2", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031627" },
+  { id: "3", billId: "demo-3", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031628" },
+  { id: "4", billId: "demo-4", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031629" },
+  { id: "5", billId: "demo-5", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031630" },
+  { id: "6", billId: "demo-6", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031631" },
 ];
 
 export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow }: PaymentHistoryCardProps) {
@@ -69,8 +75,8 @@ export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow }: PaymentH
                   <span className="text-sm font-medium text-primary sm:min-w-[7rem]">{row.date}</span>
                   <span className="block w-full text-sm font-semibold text-primary text-left">{row.amountLabel}</span>
                   <Link
-                    href="#"
-                    className="block w-full min-w-0 truncate text-left text-sm font-medium text-[#54D3DA] underline underline-offset-2 hover:text-[#3db9c2]"
+                    href={row.invoiceHref ?? "#"}
+                    className={`block w-full min-w-0 truncate text-left text-sm font-medium underline underline-offset-2 ${row.isOtherBill ? "text-amber-700 hover:text-amber-800" : "text-[#54D3DA] hover:text-[#3db9c2]"}`}
                   >
                     {row.invoiceNo}
                   </Link>
@@ -78,7 +84,7 @@ export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow }: PaymentH
                     type="button"
                     className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-rose-500 transition-colors hover:bg-rose-100 hover:text-rose-600 sm:justify-self-end"
                     aria-label={`Delete payment ${row.invoiceNo}`}
-                    onClick={() => onDeleteRow?.(row.id)}
+                    onClick={() => onDeleteRow?.(row)}
                   >
                     <span className="material-symbols-outlined text-[22px]">delete</span>
                   </button>

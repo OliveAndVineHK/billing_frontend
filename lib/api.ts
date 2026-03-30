@@ -222,6 +222,8 @@ export function uploadBillAttachment(billId: string, file: File): Promise<BillAt
 export type PaymentItem = {
   id: string;
   bill_id: string;
+  /** Invoice-style ref for the bill paid; list responses may include it. */
+  bill_reference?: string;
   payment_date: string | null;
   amount: string;
   currency_code: string;

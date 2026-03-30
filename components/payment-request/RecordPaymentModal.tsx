@@ -81,15 +81,20 @@ export function RecordPaymentModal({
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const paymentsForBill = useMemo(
+    () => payments.filter((p) => p.bill_id === billId),
+    [payments, billId],
+  );
+
   const totalPaid = useMemo(
-    () => payments.reduce((s, p) => s + parseFloat(p.amount || "0"), 0),
-    [payments],
+    () => paymentsForBill.reduce((s, p) => s + parseFloat(p.amount || "0"), 0),
+    [paymentsForBill],
   );
   const remaining = Math.max(0, Math.round((invoiceAmount - totalPaid) * 100) / 100);
 
   const pendingPayments = useMemo(
-    () => payments.filter((p) => p.payment_status === "pending"),
-    [payments],
+    () => paymentsForBill.filter((p) => p.payment_status === "pending"),
+    [paymentsForBill],
   );
 
   const loadPayments = useCallback(async () => {
@@ -170,10 +175,10 @@ export function RecordPaymentModal({
     }
   };
 
-  const handleDeletePayment = async (paymentId: string) => {
-    setDeletingId(paymentId);
+  const handleDeletePayment = async (p: PaymentItem) => {
+    setDeletingId(p.id);
     try {
-      await deletePayment(billId, paymentId);
+      await deletePayment(p.bill_id, p.id);
       await loadPayments();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Failed to delete payment.");
@@ -187,7 +192,7 @@ export function RecordPaymentModal({
     try {
       await Promise.all(
         pendingPayments.map((p) =>
-          updatePayment(billId, p.id, { payment_status: "completed" }),
+          updatePayment(p.bill_id, p.id, { payment_status: "completed" }),
         ),
       );
       onPaymentSaved?.();
@@ -242,11 +247,11 @@ export function RecordPaymentModal({
               <span className="material-symbols-outlined animate-spin text-secondary text-[20px]">progress_activity</span>
               Loading payments…
             </div>
-          ) : payments.length === 0 ? (
+          ) : paymentsForBill.length === 0 ? (
             <p className="py-4 text-center text-sm text-primary/50">No payments recorded yet.</p>
           ) : (
             <ul className="flex flex-col gap-2.5">
-              {payments.map((p) => {
+              {paymentsForBill.map((p) => {
                 const amt = parseFloat(p.amount || "0");
                 const isPending = p.payment_status === "pending";
                 const isPartialPayment = amt > 0 && amt + 1e-9 < invoiceAmount;
@@ -270,7 +275,7 @@ export function RecordPaymentModal({
                     <span className="shrink-0 text-sm font-bold text-primary tabular-nums">({formatMoney(amt, currencyLabel)})</span>
                     <button
                       type="button"
-                      onClick={() => handleDeletePayment(p.id)}
+                      onClick={() => handleDeletePayment(p)}
                       disabled={deletingId === p.id}
                       className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-rose-500 transition-colors hover:bg-rose-100 hover:text-rose-600 disabled:opacity-50"
                       aria-label="Remove this payment"
