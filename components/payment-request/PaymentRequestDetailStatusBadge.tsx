@@ -5,7 +5,11 @@ import { useEffect, useState } from "react";
 import { fetchBill } from "@/lib/api";
 import { billStatusToDisplayLabel, statusDisplayBadgeClass } from "@/lib/billStatusDisplay";
 
-export function PaymentRequestDetailStatusBadge() {
+export type PaymentRequestDetailStatusBadgeProps = {
+  refreshSignal?: number;
+};
+
+export function PaymentRequestDetailStatusBadge({ refreshSignal = 0 }: PaymentRequestDetailStatusBadgeProps) {
   const params = useParams();
   const id = typeof params?.id === "string" ? params.id : "";
   const [label, setLabel] = useState<string | null>(null);
@@ -23,7 +27,7 @@ export function PaymentRequestDetailStatusBadge() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, refreshSignal]);
 
   if (!label) return null;
 

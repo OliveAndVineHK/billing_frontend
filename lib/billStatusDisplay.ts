@@ -1,10 +1,11 @@
 /** Maps API bill `status` (lowercase) to list/detail display labels. */
 export function billStatusToDisplayLabel(status: string): string {
-  const k = status.trim().toLowerCase();
+  const k = status.trim().toLowerCase().replace(/-/g, "_");
   const map: Record<string, string> = {
     draft: "Draft",
     submitted: "Payment Requested",
     paid: "Paid",
+    partially_paid: "Partially paid",
     voided: "Voided",
     returned: "Returned",
   };
