@@ -124,6 +124,9 @@ export type BillAttachment = {
   created_at: string;
 };
 
+/** Payment attachment row (bank slip, etc.) — same shape as bill attachment in API responses. */
+export type PaymentAttachment = BillAttachment;
+
 export type BillCreatePayload = {
   contact?: string;
   xero_contact_id?: string;
@@ -308,6 +311,30 @@ export function deletePayment(
   return apiFetch(`/bills/${billId}/payments/${paymentId}`, {
     method: "DELETE",
   });
+}
+
+export function listPaymentAttachments(
+  billId: string,
+  paymentId: string,
+): Promise<PaymentAttachment[]> {
+  return apiFetch(`/bills/${billId}/payments/${paymentId}/attachments`);
+}
+
+/** Upload a file for a payment (e.g. bank slip). Multipart field `file`; `attachment_role` query defaults to bank_slip. */
+export function uploadPaymentAttachment(
+  billId: string,
+  paymentId: string,
+  file: File,
+  attachmentRole: string = "bank_slip",
+): Promise<PaymentAttachment> {
+  const form = new FormData();
+  form.append("file", file);
+  const qs = new URLSearchParams();
+  qs.set("attachment_role", attachmentRole);
+  return apiFetch<PaymentAttachment>(
+    `/bills/${billId}/payments/${paymentId}/attachments?${qs.toString()}`,
+    { method: "POST", body: form },
+  );
 }
 
 // ── Audit ─────────────────────────────────────────────────────────

@@ -32,6 +32,8 @@ export type PaymentRequestRow = {
   payment: string;
   paidDate: string;
   bankslip: string;
+  /** Bill currency (ISO) for bank slip payment API. */
+  currencyCode?: string;
   bankslipFileCount?: number;
   /** When set, shown in Bank slip details modal; otherwise demo fields are derived from the row. */
   bankSlipDetails?: BankSlipDetails;
@@ -123,6 +125,7 @@ const DEMO_ROWS: PaymentRequestRow[] = [
     payment: "",
     paidDate: "",
     bankslip: "",
+    currencyCode: "HKD",
     xeroActive: false,
   },
   {
@@ -137,6 +140,7 @@ const DEMO_ROWS: PaymentRequestRow[] = [
     payment: "",
     paidDate: "",
     bankslip: "",
+    currencyCode: "HKD",
     xeroActive: false,
   },
   {
@@ -163,6 +167,7 @@ const DEMO_ROWS: PaymentRequestRow[] = [
       when: "15 Mar 2026",
       files: [{ id: "h1", name: "Harbour_Logistics_receipt.pdf" }],
     },
+    currencyCode: "HKD",
     xeroActive: false,
   },
   {
@@ -209,6 +214,7 @@ const DEMO_ROWS: PaymentRequestRow[] = [
         },
       ],
     },
+    currencyCode: "HKD",
     xeroActive: false,
   },
   {
@@ -223,6 +229,7 @@ const DEMO_ROWS: PaymentRequestRow[] = [
     payment: "",
     paidDate: "",
     bankslip: "",
+    currencyCode: "HKD",
     xeroActive: false,
   },
 ];
@@ -281,6 +288,8 @@ type PaymentRequestTableProps = {
   loading?: boolean;
   /** Called whenever the set of selected row ids changes (for toolbar bulk actions). */
   onSelectionChange?: (selectedIds: string[]) => void;
+  /** After bank slip files are uploaded via API for a bill. */
+  onBankSlipUploaded?: () => void;
 };
 
 export type PaymentRequestTableHandle = {
@@ -352,6 +361,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
     onRowClick,
     loading = false,
     onSelectionChange,
+    onBankSlipUploaded,
   },
   ref,
 ) {
@@ -791,7 +801,14 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
           </table>
         </div>
       </div>
-      <UploadBankslipModal open={bankslipModalRowId != null} onClose={() => setBankslipModalRowId(null)} contactTitle={bankslipModalRow?.contactTitle} />
+      <UploadBankslipModal
+        open={bankslipModalRowId != null}
+        billId={bankslipModalRowId}
+        currencyCode={bankslipModalRow?.currencyCode ?? "HKD"}
+        contactTitle={bankslipModalRow?.contactTitle}
+        onClose={() => setBankslipModalRowId(null)}
+        onUploaded={onBankSlipUploaded}
+      />
       {bankSlipDetailsRowId != null && bankSlipDetailsPayload ? <BankSlipDetailsModal open onClose={() => setBankSlipDetailsRowId(null)} details={bankSlipDetailsPayload} onUpload={() => { const id = bankSlipDetailsRowId; setBankSlipDetailsRowId(null); setBankslipModalRowId(id); }} /> : null}
       {rowMenu
         ? createPortal(

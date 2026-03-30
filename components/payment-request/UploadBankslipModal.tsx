@@ -4,13 +4,26 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { formatFileSize, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
+import {
+  ApiError,
+  createPayment,
+  deletePayment,
+  updatePayment,
+  uploadPaymentAttachment,
+} from "@/lib/api";
 
 export type UploadBankslipModalProps = {
   open: boolean;
   onClose: () => void;
+  /** Bill to attach payment + bank slips to (triggers real API when set). */
+  billId?: string | null;
+  /** ISO currency for `createPayment` (e.g. HKD). */
+  currencyCode?: string;
   /** Shown for context in the dialog description (optional). */
   contactTitle?: string;
-  /** Called when the user confirms with the current file selection, paid date, and amount. */
+  /** After successful API upload: refresh list, etc. */
+  onUploaded?: () => void;
+  /** Legacy: when `billId` is omitted, called with selected files (no API). */
   onComplete?: (files: File[], paidDate: string, amount: string) => void;
 };
 
@@ -27,6 +40,13 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function parseAmountValue(raw: string): number | null {
+  const t = raw.trim().replace(/,/g, "");
+  if (!t) return null;
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : null;
+}
+
 function openDatePicker(input: HTMLInputElement | null) {
   if (!input) return;
   if (typeof input.showPicker === "function") {
@@ -40,7 +60,15 @@ function openDatePicker(input: HTMLInputElement | null) {
   input.focus();
 }
 
-export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }: UploadBankslipModalProps) {
+export function UploadBankslipModal({
+  open,
+  onClose,
+  billId = null,
+  currencyCode = "HKD",
+  contactTitle,
+  onUploaded,
+  onComplete,
+}: UploadBankslipModalProps) {
   const titleId = useId();
   const descriptionId = useId();
   const paidDateFieldId = useId();
@@ -52,6 +80,8 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
   const [amount, setAmount] = useState("");
   const [paidDateError, setPaidDateError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [previewFileId, setPreviewFileId] = useState<string | null>(null);
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
 
@@ -79,6 +109,8 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
       setUploadedFiles([]);
       setPaidDateError(null);
       setAmountError(null);
+      setUploadError(null);
+      setUploading(false);
       setAmount("");
       setPreviewFileId(null);
     } else {
@@ -116,6 +148,7 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
       file,
     }));
     setUploadedFiles((prev) => [...prev, ...added]);
+    setUploadError(null);
     e.target.value = "";
   };
 
@@ -123,7 +156,7 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
     setUploadedFiles((prev) => prev.filter((x) => x.id !== entryId));
   };
 
-  const handleDone = () => {
+  const handleDone = async () => {
     let invalid = false;
     if (!paidDate.trim()) {
       setPaidDateError("Paid date is required.");
@@ -131,13 +164,61 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
     } else {
       setPaidDateError(null);
     }
+    let amountNum: number | null = null;
     if (!amount.trim()) {
       setAmountError("Amount is required.");
       invalid = true;
     } else {
-      setAmountError(null);
+      amountNum = parseAmountValue(amount);
+      if (amountNum === null || amountNum <= 0) {
+        setAmountError("Enter a valid amount greater than zero.");
+        invalid = true;
+      } else {
+        setAmountError(null);
+      }
     }
     if (invalid) return;
+    if (amountNum === null) return;
+
+    if (uploadedFiles.length === 0) {
+      setUploadError("Select at least one bank slip file.");
+      return;
+    }
+    setUploadError(null);
+
+    if (billId) {
+      if (uploading) return;
+      setUploading(true);
+      let createdPaymentId: string | null = null;
+      try {
+        const payment = await createPayment(billId, {
+          payment_date: paidDate,
+          amount: amountNum,
+          currency_code: currencyCode,
+          payment_status: "pending",
+        });
+        createdPaymentId = payment.id;
+        for (const { file } of uploadedFiles) {
+          await uploadPaymentAttachment(billId, payment.id, file, "bank_slip");
+        }
+        await updatePayment(billId, payment.id, { payment_status: "completed" });
+        onUploaded?.();
+        onClose();
+      } catch (e) {
+        if (createdPaymentId) {
+          try {
+            await deletePayment(billId, createdPaymentId);
+          } catch {
+            /* best-effort rollback */
+          }
+        }
+        setUploadError(e instanceof ApiError ? e.message : "Upload failed. Please try again.");
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
+
     onComplete?.(
       uploadedFiles.map((x) => x.file),
       paidDate,
@@ -178,6 +259,14 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
+          {uploadError ? (
+            <div
+              className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+              role="alert"
+            >
+              {uploadError}
+            </div>
+          ) : null}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
             <div className="min-w-0">
               <div className="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
@@ -355,16 +444,18 @@ export function UploadBankslipModal({ open, onClose, contactTitle, onComplete }:
           <button
             type="button"
             onClick={onClose}
-            className="box-border h-12 min-h-[48px] w-full rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px] sm:w-auto sm:px-4"
+            disabled={uploading}
+            className="box-border h-12 min-h-[48px] w-full rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:min-h-[44px] sm:w-auto sm:px-4"
           >
             Cancel
           </button>
           <button
             type="button"
-            onClick={handleDone}
-            className="box-border h-12 min-h-[48px] w-full rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px] sm:w-auto"
+            onClick={() => void handleDone()}
+            disabled={uploading}
+            className="box-border h-12 min-h-[48px] w-full rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px] sm:w-auto"
           >
-            Upload
+            {uploading ? "Uploading…" : "Upload"}
           </button>
         </div>
       </div>

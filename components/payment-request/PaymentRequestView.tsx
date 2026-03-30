@@ -8,6 +8,7 @@ import { BulkDeleteConfirmModal } from "./BulkDeleteConfirmModal";
 import { RecordPaymentModal } from "./RecordPaymentModal";
 import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
 import { deleteBill, fetchBills, publishBill, type BillListItem } from "@/lib/api";
+import { countBankSlipAttachmentsForBill } from "@/lib/bankSlipCounts";
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return "";
@@ -41,6 +42,7 @@ function mapBillToRow(bill: BillListItem): PaymentRequestRow {
     id: bill.id,
     contactTitle: bill.contact || "—",
     contactCaption: bill.description,
+    currencyCode: (bill.currency_code && bill.currency_code.trim()) || "HKD",
     invoiceDate: bill.invoice_date ? formatDate(bill.invoice_date) : "",
     status,
     submittedDate: formatDate(bill.created_at),
@@ -96,7 +98,21 @@ export function PaymentRequestView() {
         ...(debouncedSearch ? { contact: debouncedSearch } : {}),
       });
       setRawBills(data);
-      setBills(data.map(mapBillToRow));
+      const mapped = data.map(mapBillToRow);
+      setBills(mapped);
+      const BATCH = 5;
+      const enriched: PaymentRequestRow[] = [];
+      for (let i = 0; i < mapped.length; i += BATCH) {
+        const batch = mapped.slice(i, i + BATCH);
+        const chunk = await Promise.all(
+          batch.map(async (r) => ({
+            ...r,
+            bankslipFileCount: await countBankSlipAttachmentsForBill(r.id),
+          })),
+        );
+        enriched.push(...chunk);
+      }
+      setBills(enriched);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load bills");
     } finally {
@@ -195,6 +211,7 @@ export function PaymentRequestView() {
                 setError(err instanceof Error ? err.message : "Failed to publish bill");
               }
             }}
+            onBankSlipUploaded={loadBills}
           />
         )}
       </main>
