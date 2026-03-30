@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PaymentRequestTable, type PaymentRequestRow, type PaymentRequestTableHandle } from "./PaymentRequestTable";
 import { PaymentRequestToolbar, type PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
+import { BulkDeleteConfirmModal } from "./BulkDeleteConfirmModal";
 import { RecordPaymentModal } from "./RecordPaymentModal";
 import { deleteBill, fetchBills, publishBill, type BillListItem } from "@/lib/api";
 
@@ -76,6 +77,8 @@ export function PaymentRequestView() {
   const [error, setError] = useState<string | null>(null);
   const [recordPaymentBillId, setRecordPaymentBillId] = useState<string | null>(null);
   const [selectedBillIds, setSelectedBillIds] = useState<string[]>([]);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+  const [bulkDeletePending, setBulkDeletePending] = useState(false);
   const tableRef = useRef<PaymentRequestTableHandle>(null);
   const bulkActionsEnabled = selectedBillIds.length >= 2;
 
@@ -114,19 +117,32 @@ export function PaymentRequestView() {
     loadBills();
   }, [loadBills]);
 
-  const runBulkDeleteSelected = useCallback(async () => {
+  useEffect(() => {
+    if (bulkDeleteModalOpen && selectedBillIds.length < 2 && !bulkDeletePending) {
+      setBulkDeleteModalOpen(false);
+    }
+  }, [bulkDeleteModalOpen, bulkDeletePending, selectedBillIds.length]);
+
+  const openBulkDeleteModal = useCallback(() => {
     if (selectedBillIds.length < 2) return;
-    if (!window.confirm(`Delete ${selectedBillIds.length} selected bills? This cannot be undone.`)) return;
+    setBulkDeleteModalOpen(true);
+  }, [selectedBillIds.length]);
+
+  const executeBulkDelete = useCallback(async () => {
+    if (selectedBillIds.length < 2) return;
     setError(null);
+    setBulkDeletePending(true);
     try {
       await Promise.all(selectedBillIds.map((id) => deleteBill(id)));
-      setBills((prev) => prev.filter((b) => !selectedBillIds.includes(b.id)));
-      setRawBills((prev) => prev.filter((b) => !selectedBillIds.includes(b.id)));
+      await loadBills();
       tableRef.current?.clearSelection();
+      setBulkDeleteModalOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete bills");
+    } finally {
+      setBulkDeletePending(false);
     }
-  }, [selectedBillIds]);
+  }, [selectedBillIds, loadBills]);
 
   const runBulkPublishSelected = useCallback(async () => {
     if (selectedBillIds.length < 2) return;
@@ -150,7 +166,7 @@ export function PaymentRequestView() {
         onSearchChange={setSearchQuery}
         bulkActionsEnabled={bulkActionsEnabled}
         bulkSelectedCount={selectedBillIds.length}
-        onBulkDeleteSelected={runBulkDeleteSelected}
+        onBulkDeleteSelected={openBulkDeleteModal}
         onBulkPublishSelected={runBulkPublishSelected}
       />
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3">
@@ -177,6 +193,7 @@ export function PaymentRequestView() {
                 await loadBills();
               } catch (err) {
                 setError(err instanceof Error ? err.message : "Failed to delete bill");
+                throw err;
               }
             }}
             onRowPublish={async (rowId) => {
@@ -190,6 +207,15 @@ export function PaymentRequestView() {
           />
         )}
       </main>
+      <BulkDeleteConfirmModal
+        open={bulkDeleteModalOpen}
+        selectedCount={selectedBillIds.length}
+        pending={bulkDeletePending}
+        onClose={() => {
+          if (!bulkDeletePending) setBulkDeleteModalOpen(false);
+        }}
+        onConfirm={executeBulkDelete}
+      />
       <RecordPaymentModal
         open={recordPaymentBillId != null}
         onClose={() => setRecordPaymentBillId(null)}
