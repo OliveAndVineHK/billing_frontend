@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import { Header } from "@/components/layout";
 import { PaymentRequestDetailSkeleton } from "@/components/payment-request/PaymentRequestDetailSkeleton";
+import { PaymentRequestDetailStatusBadge } from "@/components/payment-request/PaymentRequestDetailStatusBadge";
 
 const PaymentRequestDetailBody = dynamic(
   () => import("@/components/payment-request/PaymentRequestDetailBody").then((m) => ({ default: m.PaymentRequestDetailBody })),
@@ -23,11 +24,7 @@ export default function PaymentRequestDetailPage() {
         backHref="/"
         backLabel="Bills"
         companyName="Minty Bills Incorporated"
-        statusBadge={
-          <span className="rounded-md bg-[#FFF0F0] px-3 py-1 text-xs font-semibold text-[#FF6B6B] sm:text-sm">
-            Payment Requested
-          </span>
-        }
+        statusBadge={<PaymentRequestDetailStatusBadge />}
       />
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3 lg:pt-4">
         <PaymentRequestDetailBody />
