@@ -388,6 +388,8 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             onDeleteBill={handleRequestDeleteBill}
             onPublishToXero={handlePublishToXero}
             deleteDisabled={loadingBill || !bill || isDeleting || isPublishing || bill?.status === "voided"}
+            publishStatus={(bill?.published as "not_published" | "published" | "failed") ?? "not_published"}
+            publishPending={isPublishing}
             draftSubmit={
               billIsDraft
                 ? {
