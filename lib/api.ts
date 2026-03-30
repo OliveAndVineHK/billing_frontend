@@ -356,8 +356,12 @@ export function fetchAuditHistory(billId: string): Promise<AuditItem[]> {
 
 // ── Config ───────────────────────────────────────────────────────────
 
-export function fetchEntityBillAccounts(): Promise<EntityBillAccount[]> {
-  return apiFetch("/entity-bill-accounts/");
+/** Pass forceChartSync on Settings so Xero vs DB reconcile runs even if another list ran recently (bypasses server debounce). */
+export function fetchEntityBillAccounts(options?: {
+  forceChartSync?: boolean;
+}): Promise<EntityBillAccount[]> {
+  const qs = options?.forceChartSync ? "?force_chart_sync=true" : "";
+  return apiFetch(`/entity-bill-accounts/${qs}`);
 }
 
 export function updateEntityBillAccount(
