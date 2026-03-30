@@ -578,36 +578,66 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                     <td className="border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3">
                       <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleRow(row.id)} onClick={(e) => e.stopPropagation()} className={HEADER_CHECKBOX_CLASS} aria-label={`Select row ${row.contactTitle}`} suppressHydrationWarning />
                     </td>
-                    <td className={contactCellClass}>
-                      <div className="flex min-w-0 flex-col gap-0.5">
-                        <span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>
-                        {row.contactCaption ? <span className="text-xs text-primary/65 sm:text-sm">{row.contactCaption}</span> : null}
-                      </div>
-                    </td>
-                    <td className={singleLineDateCellClass}>{row.invoiceDate}</td>
-                    <td className={singleLineStatusCellClass}>
-                      {row.status ? <span className={isPaid ? statusTagPaidClass : isPaymentRequested ? statusTagPaymentRequestedClass : isReturned ? statusTagReturnedClass : statusTagClass}>{row.status}</span> : null}
-                    </td>
-                    <td className={invoiceDateCellClass}>{row.submittedDate}</td>
-                    <td className={unpaidAmountCellClass}>
-                      {row.unpaidAmount || row.invoiceTotal ? (
-                        <div className="flex min-w-0 flex-col gap-0.5">
-                          {row.unpaidAmount ? <span className={"whitespace-nowrap text-sm font-semibold sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span> : null}
-                          {row.invoiceTotal ? <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span> : null}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}>
-                      <button type="button" disabled={isPaid} aria-label={isPaid ? `Already paid — ${row.contactTitle}` : `Record payment for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button>
-                    </td>
-                    <td className={`${singleLineDateCellClass} ${actionBodyCellBg}`}>{row.paidDate.trim() ? row.paidDate : <span className="text-primary/40 tabular-nums" aria-label="No paid date">-</span>}</td>
-                    <td className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>
-                      {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
-                        <div className="inline-flex items-center gap-1.5 text-secondary sm:gap-2" role="status" aria-label={`${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`}><span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span></div>
-                      ) : (
-                        <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>
-                      )}
-                    </td>
+                    {orderedTableTitles.map((title) => {
+                      const selectorKey = TITLE_SELECTOR_KEY[title];
+                      if (selectorKey && !columnVisibility[selectorKey]) return null;
+                      switch (title) {
+                        case "Contact / Description":
+                          return (
+                            <td key={title} className={contactCellClass}>
+                              <div className="flex min-w-0 flex-col gap-0.5">
+                                <span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>
+                                {row.contactCaption ? <span className="text-xs text-primary/65 sm:text-sm">{row.contactCaption}</span> : null}
+                              </div>
+                            </td>
+                          );
+                        case "Invoice Date":
+                          return <td key={title} className={singleLineDateCellClass}>{row.invoiceDate}</td>;
+                        case "Status":
+                          return (
+                            <td key={title} className={singleLineStatusCellClass}>
+                              {row.status ? <span className={isPaid ? statusTagPaidClass : isPaymentRequested ? statusTagPaymentRequestedClass : isReturned ? statusTagReturnedClass : statusTagClass}>{row.status}</span> : null}
+                            </td>
+                          );
+                        case "Submitted Date":
+                          return <td key={title} className={invoiceDateCellClass}>{row.submittedDate}</td>;
+                        case "Unpaid Amount":
+                          return (
+                            <td key={title} className={unpaidAmountCellClass}>
+                              {row.unpaidAmount || row.invoiceTotal ? (
+                                <div className="flex min-w-0 flex-col gap-0.5">
+                                  {row.unpaidAmount ? <span className={"whitespace-nowrap text-sm font-semibold sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span> : null}
+                                  {row.invoiceTotal ? <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span> : null}
+                                </div>
+                              ) : null}
+                            </td>
+                          );
+                        case "Payment":
+                          return (
+                            <td key={title} className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}>
+                              <button type="button" disabled={isPaid} aria-label={isPaid ? `Already paid — ${row.contactTitle}` : `Record payment for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button>
+                            </td>
+                          );
+                        case "Paid Date":
+                          return (
+                            <td key={title} className={`${singleLineDateCellClass} ${actionBodyCellBg}`}>
+                              {row.paidDate.trim() ? row.paidDate : <span className="text-primary/40 tabular-nums" aria-label="No paid date">-</span>}
+                            </td>
+                          );
+                        case "Bankslip":
+                          return (
+                            <td key={title} className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>
+                              {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
+                                <div className="inline-flex items-center gap-1.5 text-secondary sm:gap-2" role="status" aria-label={`${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`}><span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span></div>
+                              ) : (
+                                <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>
+                              )}
+                            </td>
+                          );
+                        default:
+                          return null;
+                      }
+                    })}
                     <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
                       <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={24} height={24} className="mx-auto h-6 w-6 max-h-6 max-w-6 object-contain" />
                     </td>
