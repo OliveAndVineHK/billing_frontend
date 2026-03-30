@@ -37,6 +37,7 @@ export type PaymentRequestRow = {
   bankslipFileCount?: number;
   /** When set, shown in Bank slip details modal; otherwise demo fields are derived from the row. */
   bankSlipDetails?: BankSlipDetails;
+  /** True when the bill is already published to Xero (`published === "published"` from API). */
   xeroActive?: boolean;
 };
 
@@ -481,7 +482,17 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   const bankslipModalRow = bankslipModalRowId ? rows.find((r) => r.id === bankslipModalRowId) : undefined;
   const rowMenuRow = rowMenu ? rows.find((r) => r.id === rowMenu.rowId) : undefined;
   const isRowMenuDeleteDisabled = rowMenuRow?.status === "Voided";
-  const isRowMenuPublishRepublishDisabled = rowMenuRow?.status === "Draft";
+  const rowMenuPaidOrPaymentRequested =
+    rowMenuRow?.status === "Paid" || rowMenuRow?.status === "Payment Requested";
+  const rowMenuPublishedToXero = rowMenuRow?.xeroActive === true;
+  const showRowMenuPublish =
+    rowMenuRow != null &&
+    rowMenuRow.status !== "Draft" &&
+    (rowMenuPaidOrPaymentRequested ? !rowMenuPublishedToXero : true);
+  const showRowMenuRepublish =
+    rowMenuRow != null &&
+    rowMenuRow.status !== "Draft" &&
+    (rowMenuPaidOrPaymentRequested ? rowMenuPublishedToXero : true);
   const rowDeleteContactTitle = useMemo(() => {
     if (!rowDeleteConfirmId) return "";
     return rows.find((r) => r.id === rowDeleteConfirmId)?.contactTitle ?? "";
@@ -827,32 +838,32 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
               >
                 Delete
               </button>
-              <button
-                type="button"
-                role="menuitem"
-                disabled={isRowMenuPublishRepublishDisabled}
-                className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-                onClick={() => {
-                  if (isRowMenuPublishRepublishDisabled) return;
-                  onRowPublish?.(rowMenu.rowId);
-                  setRowMenu(null);
-                }}
-              >
-                Publish
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                disabled={isRowMenuPublishRepublishDisabled}
-                className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-                onClick={() => {
-                  if (isRowMenuPublishRepublishDisabled) return;
-                  onRowRepublish?.(rowMenu.rowId);
-                  setRowMenu(null);
-                }}
-              >
-                Republish
-              </button>
+              {showRowMenuPublish ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100"
+                  onClick={() => {
+                    onRowPublish?.(rowMenu.rowId);
+                    setRowMenu(null);
+                  }}
+                >
+                  Publish
+                </button>
+              ) : null}
+              {showRowMenuRepublish ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100"
+                  onClick={() => {
+                    onRowRepublish?.(rowMenu.rowId);
+                    setRowMenu(null);
+                  }}
+                >
+                  Republish
+                </button>
+              ) : null}
             </div>,
             document.body,
           )

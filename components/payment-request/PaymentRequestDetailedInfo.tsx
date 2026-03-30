@@ -36,6 +36,7 @@ export type PaymentRequestDetailedInfoProps = {
   disabled?: boolean;
   /** Inline error under Bill No. (e.g. duplicate invoice number from API). */
   billNoError?: string | null;
+  accountCodeError?: string | null;
   accountOptions?: ThemedSelectOption[];
   contactOptions?: ThemedSelectOption[];
   /** Maps contact display name (API `name`) → Xero contact UUID for supplier-scoped payment history. */
@@ -69,7 +70,7 @@ const headerActionsClass =
   "flex min-h-[44px] w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end";
 
 const editToggleButtonClass =
-  "inline-flex h-11 min-h-[44px] shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-secondary px-4 text-sm font-semibold text-white transition-[filter] hover:brightness-95 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex h-11 min-h-[44px] shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-[filter] hover:brightness-95 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50";
 
 function FieldLabel({
   htmlFor,
@@ -147,16 +148,10 @@ function ReadOnlyAmountRow({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-0">
-      <div
-        className="box-border flex h-11 min-h-[44px] w-full shrink-0 items-center justify-between gap-2 rounded-lg bg-transparent px-2 pl-3 pr-2 text-base font-semibold text-[#656565] sm:w-24 sm:rounded-l-lg sm:rounded-r-none sm:px-3 sm:text-sm"
-        aria-label="Currency"
-      >
+      <div className="box-border flex h-11 min-h-[44px] w-full shrink-0 items-center justify-between gap-2 rounded-lg bg-transparent px-2 pl-3 pr-2 text-base font-semibold text-[#656565] sm:w-24 sm:rounded-l-lg sm:rounded-r-none sm:px-3 sm:text-sm" aria-label="Currency">
         <span className="min-w-0 flex-1 truncate">{currencyDisplayLabel}</span>
       </div>
-      <div
-        className="box-border flex h-11 min-h-[44px] min-w-0 w-full items-center rounded-lg bg-transparent px-3 text-base font-semibold text-black sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:text-sm"
-        aria-readonly="true"
-      >
+      <div className="box-border flex h-11 min-h-[44px] min-w-0 w-full items-center rounded-lg bg-transparent px-3 text-base font-semibold text-black sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:text-sm" aria-readonly="true">
         <span className="min-w-0 flex-1 truncate">{amount || "—"}</span>
       </div>
     </div>
@@ -170,10 +165,7 @@ function ReadOnlyDateRow({ display }: { display: string }) {
       <div className="flex h-11 min-h-[44px] w-full items-center rounded-lg bg-transparent py-0 pl-3 pr-11 text-base font-semibold text-black sm:min-h-11 sm:text-sm">
         <span className="min-w-0 flex-1 truncate">{display}</span>
       </div>
-      <div
-        className="pointer-events-none absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-r-lg text-primary sm:min-h-11"
-        aria-hidden
-      >
+      <div className="pointer-events-none absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-r-lg text-primary sm:min-h-11" aria-hidden>
         <span className="material-symbols-outlined text-[20px] leading-none">calendar_clock</span>
       </div>
     </div>
@@ -186,6 +178,7 @@ export function PaymentRequestDetailedInfo({
   isSaving = false,
   disabled = false,
   billNoError = null,
+  accountCodeError = null,
   onPatchChange,
   onEdit,
   onCancel,
@@ -221,6 +214,7 @@ export function PaymentRequestDetailedInfo({
   const idInvoiceDate = `detail-inv-date-${uid}`;
   const idDueDate = `detail-due-date-${uid}`;
   const idBillNoError = `detail-bill-no-err-${uid}`;
+  const idAccountError = `detail-account-err-${uid}`;
 
   const fallbackContactOptions: ThemedSelectOption[] = [{ value: "", label: "Select contact" }];
   const contactOptions = mergeSelectOption(contactOptionsProp ?? fallbackContactOptions, contact);
@@ -233,9 +227,7 @@ export function PaymentRequestDetailedInfo({
     currencyLabelForCode(currencyCode);
 
   return (
-    <section
-      className={`rounded-xl border border-gray-200/90 bg-white p-4 sm:p-5 md:p-6 ${className}`}
-    >
+    <section className={`rounded-xl border border-gray-200/90 bg-white p-4 sm:p-5 md:p-6 ${className}`}>
       <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <h2 className="min-w-0 text-base font-medium leading-snug text-[#5c5c5c] sm:text-lg">
           Detailed Information
@@ -243,30 +235,15 @@ export function PaymentRequestDetailedInfo({
         <div className={headerActionsClass}>
           {isEditing ? (
             <>
-              <button
-                type="button"
-                onClick={onCancel}
-                className={cancelButtonClass}
-                disabled={disabled || isSaving}
-              >
+              <button type="button" onClick={onCancel} className={cancelButtonClass} disabled={disabled || isSaving}>
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={onSave}
-                className={saveButtonClass}
-                disabled={disabled || isSaving}
-              >
+              <button type="button" onClick={onSave} className={saveButtonClass} disabled={disabled || isSaving}>
                 {isSaving ? "Saving…" : "Save Changes"}
               </button>
             </>
           ) : (
-            <button
-              type="button"
-              onClick={onEdit}
-              className={editToggleButtonClass}
-              disabled={disabled}
-            >
+            <button type="button" onClick={onEdit} className={editToggleButtonClass} disabled={disabled}>
               Edit
               <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>
                 edit_document
@@ -390,13 +367,21 @@ export function PaymentRequestDetailedInfo({
             Account Code<span className="text-red-500"> *</span>
           </FieldLabel>
           {isEditing ? (
-            <ThemedSelect
-              id={idAccount}
-              value={accountCode ?? ""}
-              onChange={(v) => patch({ accountCode: v })}
-              options={accountOptions}
-              disabled={disabled}
-            />
+            <>
+              <ThemedSelect
+                id={idAccount}
+                value={accountCode ?? ""}
+                onChange={(v) => patch({ accountCode: v })}
+                options={accountOptions}
+                disabled={disabled}
+                error={!!accountCodeError}
+              />
+              {accountCodeError ? (
+                <p id={idAccountError} className="mt-1 text-xs text-red-600" role="alert">
+                  {accountCodeError}
+                </p>
+              ) : null}
+            </>
           ) : (
             <ReadOnlySelectShell value={accountCode} />
           )}
