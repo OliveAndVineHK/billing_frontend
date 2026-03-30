@@ -447,8 +447,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             />
           ) : null}
 
-          <button
-            type="button"
+          <button type="button"
             disabled={loadingBill || !bill || billIsDraft}
             onClick={() => setRecordPaymentOpen(true)}
             aria-label={
