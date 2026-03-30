@@ -644,16 +644,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                     aria-disabled={isVoided ? "true" : undefined}
                   >
                     <td className="border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(row.id)}
-                        disabled={isVoided}
-                        onChange={() => toggleRow(row.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className={`${HEADER_CHECKBOX_CLASS} disabled:cursor-not-allowed disabled:opacity-40`}
-                        aria-label={isVoided ? `Voided — cannot select ${row.contactTitle}` : `Select row ${row.contactTitle}`}
-                        suppressHydrationWarning
-                      />
+                      <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleRow(row.id)} onClick={(e) => e.stopPropagation()} className={HEADER_CHECKBOX_CLASS} aria-label={`Select row ${row.contactTitle}`} suppressHydrationWarning />
                     </td>
                     {orderedTableTitles.map((title) => {
                       const selectorKey = TITLE_SELECTOR_KEY[title];
@@ -692,26 +683,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                         case "Payment":
                           return (
                             <td key={title} className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}>
-                              <button
-                                type="button"
-                                disabled={isPaid || isVoided}
-                                aria-label={
-                                  isVoided
-                                    ? `Voided — record payment not available for ${row.contactTitle}`
-                                    : isPaid
-                                      ? `Already paid — ${row.contactTitle}`
-                                      : `Record payment for ${row.contactTitle}`
-                                }
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (isPaid || isVoided) return;
-                                  onRecordPayment?.(row.id);
-                                }}
-                                className={recordPaymentButtonClass}
-                              >
-                                <span className="whitespace-nowrap">Record Payment</span>
-                                <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span>
-                              </button>
+                              <button type="button" disabled={isPaid} aria-label={isPaid ? `Already paid — ${row.contactTitle}` : `Record payment for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); if (isPaid) return; onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}><span className="whitespace-nowrap">Record Payment</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span></button>
                             </td>
                           );
                         case "Paid Date":
@@ -724,23 +696,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                           return (
                             <td key={title} className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>
                               {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
-                                <div
-                                  className={`inline-flex items-center gap-1.5 sm:gap-2 ${isVoided ? "text-primary/40" : "text-secondary"}`}
-                                  role="status"
-                                  aria-label={
-                                    isVoided
-                                      ? `Voided — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} (read only)`
-                                      : `${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`
-                                  }
-                                >
-                                  <span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span>
-                                  <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span>
-                                </div>
-                              ) : isVoided ? (
-                                <div className={uploadBankslipReadOnlyClass} aria-label={`Voided — upload not available for ${row.contactTitle}`}>
-                                  <span className="whitespace-nowrap">Upload</span>
-                                  <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span>
-                                </div>
+                                <div className="inline-flex items-center gap-1.5 text-secondary sm:gap-2" role="status" aria-label={`${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`}><span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span></div>
                               ) : (
                                 <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>
                               )}
