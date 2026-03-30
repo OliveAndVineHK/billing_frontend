@@ -15,6 +15,26 @@ export class ApiError extends Error {
   }
 }
 
+/** 422 from billing API when `reference` duplicates another bill in the entity. */
+export function isDuplicateBillReferenceError(err: unknown): err is ApiError {
+  return (
+    err instanceof ApiError &&
+    err.status === 422 &&
+    /invoice number already exists/i.test(err.message)
+  );
+}
+
+function normalizeApiErrorDetail(detail: unknown, fallback: string): string {
+  if (detail == null || detail === "") return fallback;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((x) => (typeof x === "string" ? x : JSON.stringify(x)))
+      .join("; ");
+  }
+  return String(detail);
+}
+
 // ── Core fetch wrapper ───────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -33,7 +53,11 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(res.status, body.detail ?? body.message ?? res.statusText);
+    const msg = normalizeApiErrorDetail(
+      body.detail ?? body.message,
+      res.statusText,
+    );
+    throw new ApiError(res.status, msg);
   }
 
   if (res.status === 204) return undefined as T;

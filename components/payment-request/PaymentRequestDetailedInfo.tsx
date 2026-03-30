@@ -34,6 +34,8 @@ export type PaymentRequestDetailedInfoProps = {
   isEditing?: boolean;
   isSaving?: boolean;
   disabled?: boolean;
+  /** Inline error under Bill No. (e.g. duplicate invoice number from API). */
+  billNoError?: string | null;
   accountOptions?: ThemedSelectOption[];
   contactOptions?: ThemedSelectOption[];
   /** Maps contact display name (API `name`) → Xero contact UUID for supplier-scoped payment history. */
@@ -183,6 +185,7 @@ export function PaymentRequestDetailedInfo({
   isEditing = false,
   isSaving = false,
   disabled = false,
+  billNoError = null,
   onPatchChange,
   onEdit,
   onCancel,
@@ -217,6 +220,7 @@ export function PaymentRequestDetailedInfo({
   const idAccount = `detail-account-${uid}`;
   const idInvoiceDate = `detail-inv-date-${uid}`;
   const idDueDate = `detail-due-date-${uid}`;
+  const idBillNoError = `detail-bill-no-err-${uid}`;
 
   const fallbackContactOptions: ThemedSelectOption[] = [{ value: "", label: "Select contact" }];
   const contactOptions = mergeSelectOption(contactOptionsProp ?? fallbackContactOptions, contact);
@@ -278,15 +282,28 @@ export function PaymentRequestDetailedInfo({
             Bill No.
           </FieldLabel>
           {isEditing ? (
-            <input
-              id={idBillNo}
-              type="text"
-              value={billNo ?? ""}
-              onChange={(e) => patch({ billNo: e.target.value })}
-              className={modalTextInputClass}
-              placeholder="MBIDAN-115803031626"
-              disabled={disabled}
-            />
+            <>
+              <input
+                id={idBillNo}
+                type="text"
+                value={billNo ?? ""}
+                onChange={(e) => patch({ billNo: e.target.value })}
+                aria-invalid={!!billNoError}
+                aria-describedby={billNoError ? idBillNoError : undefined}
+                className={
+                  billNoError
+                    ? "box-border h-11 min-h-[44px] w-full rounded-lg border border-red-500 bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200/50 sm:min-h-11 sm:text-sm"
+                    : modalTextInputClass
+                }
+                placeholder="MBIDAN-115803031626"
+                disabled={disabled}
+              />
+              {billNoError ? (
+                <p id={idBillNoError} className="mt-1 text-xs text-red-600" role="alert">
+                  {billNoError}
+                </p>
+              ) : null}
+            </>
           ) : (
             <ReadOnlyTextBox emphasis="semibold">{billNo}</ReadOnlyTextBox>
           )}

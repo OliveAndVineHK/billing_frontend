@@ -2,7 +2,20 @@
 
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, deleteBill, fetchBill, fetchEntityBillAccounts, fetchEntityBillContacts, fetchPayments, deletePayment as apiDeletePayment, updateBill, type BillDetail, type EntityBillContact, type PaymentItem } from "@/lib/api";
+import {
+  ApiError,
+  deleteBill,
+  fetchBill,
+  fetchEntityBillAccounts,
+  fetchEntityBillContacts,
+  fetchPayments,
+  deletePayment as apiDeletePayment,
+  isDuplicateBillReferenceError,
+  updateBill,
+  type BillDetail,
+  type EntityBillContact,
+  type PaymentItem,
+} from "@/lib/api";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
@@ -31,6 +44,7 @@ export function PaymentRequestDetailBody() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [billNoError, setBillNoError] = useState<string | null>(null);
 
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
@@ -189,15 +203,20 @@ export function PaymentRequestDetailBody() {
     setDraft(billToDetailedInfo(bill));
     setIsEditing(true);
     setActionError(null);
+    setBillNoError(null);
   }, [bill]);
 
   const handleCancel = useCallback(() => {
     setIsEditing(false);
     setDraft(null);
     setActionError(null);
+    setBillNoError(null);
   }, []);
 
   const handlePatch = useCallback((patch: Partial<PaymentRequestDetailedInfoData>) => {
+    if (Object.prototype.hasOwnProperty.call(patch, "billNo")) {
+      setBillNoError(null);
+    }
     setDraft((d) => (d ? { ...d, ...patch } : null));
   }, []);
 
@@ -205,6 +224,7 @@ export function PaymentRequestDetailBody() {
     if (!requestId || !bill || !draft) return;
     setIsSaving(true);
     setActionError(null);
+    setBillNoError(null);
     try {
       const payload = buildBillUpdatePayload(bill, draft);
       const updated = await updateBill(requestId, payload);
@@ -212,9 +232,14 @@ export function PaymentRequestDetailBody() {
       await loadPayments();
       setIsEditing(false);
       setDraft(null);
+      setBillNoError(null);
       bumpAudit();
     } catch (e) {
-      setActionError(e instanceof ApiError ? e.message : "Could not save changes.");
+      if (isDuplicateBillReferenceError(e)) {
+        setBillNoError(e.message);
+      } else {
+        setActionError(e instanceof ApiError ? e.message : "Could not save changes.");
+      }
     } finally {
       setIsSaving(false);
     }
@@ -290,6 +315,7 @@ export function PaymentRequestDetailBody() {
               isEditing={isEditing}
               isSaving={isSaving}
               disabled={!bill}
+              billNoError={isEditing ? billNoError : null}
               accountOptions={accountOptions}
               contactOptions={contactOptions}
               contactXeroByName={contactXeroByName}

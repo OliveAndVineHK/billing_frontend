@@ -8,7 +8,15 @@ import { formatFileSize, isImageFile, isPdfFile } from "@/lib/fileAttachmentPrev
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
 
-import { fetchEntityBillAccounts, fetchEntityBillContacts, saveBillDraft, submitBill, uploadBillAttachment } from "@/lib/api";
+import {
+  ApiError,
+  fetchEntityBillAccounts,
+  fetchEntityBillContacts,
+  isDuplicateBillReferenceError,
+  saveBillDraft,
+  submitBill,
+  uploadBillAttachment,
+} from "@/lib/api";
 import type { EntityBillContact } from "@/lib/api";
 import {
   BILL_CURRENCY_SELECT_OPTIONS,
@@ -40,7 +48,14 @@ function getUploadedFileIconInfo(filename: string): { icon: string; iconClass: s
   return { icon: "draft", iconClass: "text-primary" };
 }
 
-type ValidatedField = "amount" | "contact" | "accountCode" | "invoiceDate" | "dueDate" | "attachments";
+type ValidatedField =
+  | "billNo"
+  | "amount"
+  | "contact"
+  | "accountCode"
+  | "invoiceDate"
+  | "dueDate"
+  | "attachments";
 
 function parseAmountValue(raw: string): number | null {
   const t = raw.trim().replace(/,/g, "");
@@ -142,6 +157,8 @@ export function PaymentRequestModal({
   const [invoiceDate, setInvoiceDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<ValidatedField, string>>>({});
+  /** Non-field server message (e.g. other 422 validation). */
+  const [formError, setFormError] = useState<string | null>(null);
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
   const [draftSubmitting, setDraftSubmitting] = useState(false);
 
@@ -249,6 +266,7 @@ export function PaymentRequestModal({
   useEffect(() => {
     if (!open) return;
     setFieldErrors({});
+    setFormError(null);
     setContact("");
     setAccountCode("");
     setInvoiceDate("");
@@ -282,6 +300,7 @@ export function PaymentRequestModal({
     if (draftSubmitting) return;
     setDraftSubmitting(true);
     setFieldErrors({});
+    setFormError(null);
     try {
       const parsedAmount = parseAmountValue(amount);
       const acctCode = accountCode.split(" - ")[0]?.trim() ?? "";
@@ -330,9 +349,15 @@ export function PaymentRequestModal({
       onClose();
     } catch (err) {
       console.error("Failed to save draft:", err);
-      setFieldErrors({
-        amount: err instanceof Error ? err.message : "Failed to save draft. Please try again.",
-      });
+      if (isDuplicateBillReferenceError(err)) {
+        setFieldErrors({ billNo: err.message });
+      } else if (err instanceof ApiError && err.status === 422) {
+        setFormError(err.message);
+      } else {
+        setFormError(
+          err instanceof Error ? err.message : "Failed to save draft. Please try again.",
+        );
+      }
     } finally {
       setDraftSubmitting(false);
     }
@@ -357,6 +382,7 @@ export function PaymentRequestModal({
       return;
     }
     setFieldErrors({});
+    setFormError(null);
     if (confirmSubmitting) return;
     setConfirmSubmitting(true);
     try {
@@ -406,9 +432,15 @@ export function PaymentRequestModal({
       router.push(`/payment-request/${encodeURIComponent(bill.id)}`);
     } catch (err) {
       console.error("Failed to create bill:", err);
-      setFieldErrors({
-        amount: err instanceof Error ? err.message : "Failed to create bill. Please try again.",
-      });
+      if (isDuplicateBillReferenceError(err)) {
+        setFieldErrors({ billNo: err.message });
+      } else if (err instanceof ApiError && err.status === 422) {
+        setFormError(err.message);
+      } else {
+        setFormError(
+          err instanceof Error ? err.message : "Failed to create bill. Please try again.",
+        );
+      }
     } finally {
       setConfirmSubmitting(false);
     }
@@ -532,6 +564,15 @@ export function PaymentRequestModal({
             </p>
           ) : null}
 
+          {formError ? (
+            <div
+              className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+              role="alert"
+            >
+              {formError}
+            </div>
+          ) : null}
+
           <div className="mt-6 flex flex-col gap-5">
             <div>
               <FieldLabel htmlFor="pr-bill-no">Bill No.</FieldLabel>
@@ -539,10 +580,26 @@ export function PaymentRequestModal({
                 id="pr-bill-no"
                 type="text"
                 value={billNo ?? ""}
-                onChange={(e) => setBillNo(e.target.value)}
-                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
+                onChange={(e) => {
+                  setBillNo(e.target.value);
+                  clearFieldError("billNo");
+                  setFormError(null);
+                }}
+                aria-invalid={!!fieldErrors.billNo}
+                aria-describedby={fieldErrors.billNo ? "pr-bill-no-error" : undefined}
+                className={
+                  "box-border h-11 min-h-[44px] w-full rounded-lg border bg-white px-3 text-base text-black placeholder:text-primary/45 focus:outline-none focus:ring-2 sm:min-h-11 sm:text-sm " +
+                  (fieldErrors.billNo
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
+                    : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
+                }
                 placeholder="MBIDAN-115803031626"
               />
+              {fieldErrors.billNo ? (
+                <p id="pr-bill-no-error" className="mt-1 text-xs text-red-600" role="alert">
+                  {fieldErrors.billNo}
+                </p>
+              ) : null}
             </div>
 
             <div>
