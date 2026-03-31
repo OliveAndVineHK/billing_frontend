@@ -1,4 +1,4 @@
-import { getAuth } from "./auth";
+import { getAuth, redirectToLogin } from "./auth";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://localhost:8000";
@@ -52,6 +52,10 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   const res = await fetch(`${API_BASE}/api/v1${path}`, { ...options, headers });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      redirectToLogin();
+      throw new ApiError(401, "Session expired. Redirecting to login.");
+    }
     const body = await res.json().catch(() => ({ detail: res.statusText }));
     const msg = normalizeApiErrorDetail(
       body.detail ?? body.message,

@@ -9,7 +9,7 @@ export type AuthInfo = {
 };
 
 export function setAuth(token: string, entityId: string, entityName: string) {
-  const maxAge = 60 * 60 * 24; // 24 hours
+  const maxAge = 60 * 30; // 30 minutes — matches JWT exp issued by Flask
   const opts = `path=/;max-age=${maxAge};SameSite=Lax`;
   document.cookie = `${TOKEN_KEY}=${encodeURIComponent(token)};${opts}`;
   document.cookie = `${ENTITY_ID_KEY}=${encodeURIComponent(entityId)};${opts}`;
@@ -45,3 +45,12 @@ export function clearAuth() {
 
 /** Cookie name checked by Next.js middleware for auth gating. */
 export const AUTH_COOKIE_NAME = TOKEN_KEY;
+
+const MODULE1_URL =
+  process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
+
+/** Clear cookies and redirect the browser back to Module 1 login. */
+export function redirectToLogin() {
+  clearAuth();
+  window.location.href = `${MODULE1_URL}/login`;
+}
