@@ -70,3 +70,28 @@ export async function loadAttachmentBlobs(requestId: string): Promise<LoadedAtta
     db.close();
   }
 }
+
+export async function removeAttachmentBlobs(requestId: string, namesToRemove: string[]): Promise<void> {
+  if (namesToRemove.length === 0) return;
+  const remove = new Set(namesToRemove);
+  const db = await openDb();
+  try {
+    const record = await new Promise<{ files: StoredFile[] } | undefined>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readonly");
+      const r = tx.objectStore(STORE).get(requestId);
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    });
+    const existing = record?.files ?? [];
+    const next = existing.filter((f) => !remove.has(f.name));
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      if (next.length === 0) tx.objectStore(STORE).delete(requestId);
+      else tx.objectStore(STORE).put({ files: next }, requestId);
+    });
+  } finally {
+    db.close();
+  }
+}

@@ -21,7 +21,7 @@ import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
-import { loadAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
+import { loadAttachmentBlobs, removeAttachmentBlobs, saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ActivityHistoryAccordion } from "./ActivityHistoryAccordion";
 import { BillActionBar } from "./BillActionBar";
 import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
@@ -29,6 +29,8 @@ import { InvoiceAttachmentToolbar } from "./InvoiceAttachmentToolbar";
 import { PaymentHistoryCard, type PaymentHistoryRow } from "./PaymentHistoryCard";
 import { RecordPaymentModal } from "./RecordPaymentModal";
 import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
+import { AttachmentDeleteConfirmModal } from "./AttachmentDeleteConfirmModal";
+import { UploadInvoiceAttachmentModal } from "./UploadInvoiceAttachmentModal";
 import {
   PaymentRequestDetailedInfo,
   type PaymentRequestDetailedInfoData,
@@ -153,6 +155,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [attachments, setAttachments] = useState<InvoiceAttachmentPreviewItem[]>([]);
   const [attachmentsReady, setAttachmentsReady] = useState(false);
   const attachmentUrlsRef = useRef<string[]>([]);
+  const [selectedAttachmentIndices, setSelectedAttachmentIndices] = useState<number[]>([]);
+  const [uploadAttachmentOpen, setUploadAttachmentOpen] = useState(false);
+  const [deleteAttachmentConfirmOpen, setDeleteAttachmentConfirmOpen] = useState(false);
+  const [deleteAttachmentPending, setDeleteAttachmentPending] = useState(false);
 
   useEffect(() => {
     if (!requestId) {
@@ -371,6 +377,34 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
 
   const billIsDraft = (bill?.status ?? "").toLowerCase() === "draft";
 
+  const handleOpenUploadAttachment = useCallback(() => {
+    setUploadAttachmentOpen(true);
+  }, []);
+
+  const handleConfirmDeleteAttachments = useCallback(() => {
+    if (selectedAttachmentIndices.length === 0) return;
+    setDeleteAttachmentConfirmOpen(true);
+  }, [selectedAttachmentIndices.length]);
+
+  const executeDeleteSelectedAttachments = useCallback(async () => {
+    if (!requestId) return;
+    if (selectedAttachmentIndices.length === 0) return;
+    const itemsToDelete = selectedAttachmentIndices
+      .map((i) => attachments[i])
+      .filter((x): x is InvoiceAttachmentPreviewItem => Boolean(x));
+    if (itemsToDelete.length === 0) return;
+
+    try {
+      await removeAttachmentBlobs(requestId, itemsToDelete.map((x) => x.name));
+    } catch {
+      // best-effort
+    }
+
+    // Update UI immediately
+    setAttachments((prev) => prev.filter((_, idx) => !selectedAttachmentIndices.includes(idx)));
+    setSelectedAttachmentIndices([]);
+  }, [attachments, removeAttachmentBlobs, requestId, selectedAttachmentIndices]);
+
   return (
     <>
       {actionError ? (
@@ -381,7 +415,50 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
 
       <div className="mx-auto grid w-full min-w-0 max-w-[1920px] grid-cols-1 gap-4 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-1 sm:gap-5 sm:px-6 lg:grid-cols-2 lg:grid-rows-[auto_minmax(20rem,1fr)] lg:gap-x-6 lg:gap-y-4 lg:px-8 xl:gap-x-8 2xl:gap-x-10">
         <div className="min-w-0 lg:col-start-1 lg:row-start-1">
-          <InvoiceAttachmentToolbar deleteReadOnly={!isEditing} />
+          <InvoiceAttachmentToolbar
+            onDelete={handleConfirmDeleteAttachments}
+            deleteReadOnly={selectedAttachmentIndices.length === 0 || deleteAttachmentPending}
+            onUpload={handleOpenUploadAttachment}
+            uploadReadOnly={false}
+            showUpload={attachmentsReady && attachments.length === 0}
+          />
+          <AttachmentDeleteConfirmModal
+            open={deleteAttachmentConfirmOpen}
+            count={selectedAttachmentIndices.length}
+            pending={deleteAttachmentPending}
+            onClose={() => {
+              if (!deleteAttachmentPending) setDeleteAttachmentConfirmOpen(false);
+            }}
+            onConfirm={async () => {
+              if (deleteAttachmentPending) return;
+              setDeleteAttachmentPending(true);
+              try {
+                await executeDeleteSelectedAttachments();
+              } finally {
+                setDeleteAttachmentPending(false);
+                setDeleteAttachmentConfirmOpen(false);
+              }
+            }}
+          />
+          <UploadInvoiceAttachmentModal
+            open={uploadAttachmentOpen}
+            onClose={() => setUploadAttachmentOpen(false)}
+            onUpload={async (files) => {
+              if (!requestId) return;
+              // UI-only: store for preview + reload from local store
+              await saveAttachmentBlobs(requestId, files);
+              const blobs = await loadAttachmentBlobs(requestId);
+              attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+              attachmentUrlsRef.current = [];
+              const next: InvoiceAttachmentPreviewItem[] = blobs.map((b) => {
+                const url = URL.createObjectURL(b.blob);
+                attachmentUrlsRef.current.push(url);
+                return { url, name: b.name, mime: b.type };
+              });
+              setAttachments(next);
+              setAttachmentsReady(true);
+            }}
+          />
         </div>
         <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:self-center">
           <BillActionBar
@@ -411,7 +488,9 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           <InvoiceAttachmentPreview
             attachments={attachments}
             isLoadingAttachments={!attachmentsReady}
-            editMode={isEditing}
+            editMode={true}
+            selectedIndices={selectedAttachmentIndices}
+            onSelectedIndicesChange={setSelectedAttachmentIndices}
             className="min-h-[min(45dvh,22rem)] sm:min-h-[min(55dvh,30rem)] lg:min-h-[min(70vh,40rem)]"
           />
         </div>

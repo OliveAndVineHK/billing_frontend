@@ -24,6 +24,8 @@ type InvoiceAttachmentPreviewProps = {
   isLoadingAttachments?: boolean;
   /** Show attachment selection checkboxes (used in Edit mode). */
   editMode?: boolean;
+  selectedIndices?: number[];
+  onSelectedIndicesChange?: (next: number[]) => void;
 };
 
 function PreviewBlock({ url, name, mime }: InvoiceAttachmentPreviewItem) {
@@ -71,11 +73,35 @@ export function InvoiceAttachmentPreview({
   onExitFullscreen,
   isLoadingAttachments = false,
   editMode = false,
+  selectedIndices,
+  onSelectedIndicesChange,
 }: InvoiceAttachmentPreviewProps) {
   const [scale, setScale] = useState(1);
   const pinchRef = useRef<{ initialDistance: number; initialScale: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [internalSelected, setInternalSelected] = useState<Set<number>>(new Set());
+
+  const effectiveSelected = selectedIndices ? new Set(selectedIndices) : internalSelected;
+  const setEffectiveSelected = useCallback(
+    (updater: (prev: Set<number>) => Set<number>) => {
+      if (selectedIndices && onSelectedIndicesChange) {
+        const nextSet = updater(new Set(selectedIndices));
+        onSelectedIndicesChange(Array.from(nextSet).sort((a, b) => a - b));
+        return;
+      }
+      setInternalSelected((prev) => updater(new Set(prev)));
+    },
+    [selectedIndices, onSelectedIndicesChange],
+  );
+
+  useEffect(() => {
+    if (editMode) return;
+    if (selectedIndices && onSelectedIndicesChange) {
+      if (selectedIndices.length > 0) onSelectedIndicesChange([]);
+      return;
+    }
+    setInternalSelected((prev) => (prev.size > 0 ? new Set() : prev));
+  }, [editMode, selectedIndices?.length, onSelectedIndicesChange]);
 
   const getDistance = (a: { clientX: number; clientY: number }, b: { clientX: number; clientY: number }) =>
     Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
@@ -143,14 +169,12 @@ export function InvoiceAttachmentPreview({
                   <label className="absolute left-2 top-2 z-10 inline-flex cursor-pointer items-center">
                     <input
                       type="checkbox"
-                      checked={selectedKeys.has(`${item.url}-${i}`)}
+                      checked={effectiveSelected.has(i)}
                       onChange={(e) => {
-                        const key = `${item.url}-${i}`;
-                        setSelectedKeys((prev) => {
-                          const next = new Set(prev);
-                          if (e.target.checked) next.add(key);
-                          else next.delete(key);
-                          return next;
+                        setEffectiveSelected((prev) => {
+                          if (e.target.checked) prev.add(i);
+                          else prev.delete(i);
+                          return prev;
                         });
                       }}
                       className={`${ATTACHMENT_CHECKBOX_CLASS} cursor-pointer`}

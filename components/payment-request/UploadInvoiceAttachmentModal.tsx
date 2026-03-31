@@ -4,27 +4,11 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { formatFileSize, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
-import {
-  ApiError,
-  createPayment,
-  deletePayment,
-  updatePayment,
-  uploadPaymentAttachment,
-} from "@/lib/api";
 
-export type UploadBankslipModalProps = {
+export type UploadInvoiceAttachmentModalProps = {
   open: boolean;
   onClose: () => void;
-  /** Bill to attach payment + bank slips to (triggers real API when set). */
-  billId?: string | null;
-  /** ISO currency for `createPayment` (e.g. HKD). */
-  currencyCode?: string;
-  /** Shown for context in the dialog description (optional). */
-  contactTitle?: string;
-  /** After successful API upload: refresh list, etc. */
-  onUploaded?: () => void;
-  /** Legacy: when `billId` is omitted, called with selected files (no API). */
-  onComplete?: (files: File[], paidDate: string, amount: string) => void;
+  onUpload: (files: File[]) => Promise<void> | void;
 };
 
 type UploadedEntry = { id: string; file: File };
@@ -36,21 +20,9 @@ function getUploadedFileIconInfo(filename: string): { icon: string; iconClass: s
   return { icon: "draft", iconClass: "text-primary" };
 }
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-export function UploadBankslipModal({
-  open,
-  onClose,
-  billId = null,
-  currencyCode = "HKD",
-  contactTitle,
-  onUploaded,
-  onComplete,
-}: UploadBankslipModalProps) {
+export function UploadInvoiceAttachmentModal({ open, onClose, onUpload }: UploadInvoiceAttachmentModalProps) {
   const titleId = useId();
-  const descriptionId = useId();
+  const previewSubtitleId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedEntry[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -59,7 +31,6 @@ export function UploadBankslipModal({
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
 
   const previewFile = previewFileId ? uploadedFiles.find((x) => x.id === previewFileId)?.file ?? null : null;
-  const previewSubtitleId = useId();
 
   useEffect(() => {
     if (!previewFile) {
@@ -72,9 +43,7 @@ export function UploadBankslipModal({
   }, [previewFile]);
 
   useEffect(() => {
-    if (previewFileId && !uploadedFiles.some((x) => x.id === previewFileId)) {
-      setPreviewFileId(null);
-    }
+    if (previewFileId && !uploadedFiles.some((x) => x.id === previewFileId)) setPreviewFileId(null);
   }, [uploadedFiles, previewFileId]);
 
   useEffect(() => {
@@ -99,11 +68,11 @@ export function UploadBankslipModal({
         setPreviewFileId(null);
         return;
       }
-      onClose();
+      if (!uploading) onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose, previewFileId]);
+  }, [open, onClose, previewFileId, uploading]);
 
   const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = e.target.files;
@@ -124,77 +93,45 @@ export function UploadBankslipModal({
     setUploadedFiles((prev) => prev.filter((x) => x.id !== entryId));
   };
 
-  const handleDone = async () => {
+  const handleUploadClick = async () => {
     if (uploadedFiles.length === 0) {
-      setUploadError("Select at least one bank slip file.");
+      setUploadError("Select at least one attachment.");
       return;
     }
+    if (uploading) return;
     setUploadError(null);
-
-    if (billId) {
-      if (uploading) return;
-      setUploading(true);
-      let createdPaymentId: string | null = null;
-      try {
-        const payment = await createPayment(billId, {
-          currency_code: currencyCode,
-          payment_status: "pending",
-        });
-        createdPaymentId = payment.id;
-        for (const { file } of uploadedFiles) {
-          await uploadPaymentAttachment(billId, payment.id, file, "bank_slip");
-        }
-        await updatePayment(billId, payment.id, { payment_status: "completed" });
-        onUploaded?.();
-        onClose();
-      } catch (e) {
-        if (createdPaymentId) {
-          try {
-            await deletePayment(billId, createdPaymentId);
-          } catch {
-            /* best-effort rollback */
-          }
-        }
-        setUploadError(e instanceof ApiError ? e.message : "Upload failed. Please try again.");
-      } finally {
-        setUploading(false);
-      }
-      return;
+    setUploading(true);
+    try {
+      await Promise.resolve(onUpload(uploadedFiles.map((x) => x.file)));
+      onClose();
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
     }
-
-    onComplete?.(
-      uploadedFiles.map((x) => x.file),
-      todayISO(),
-      "",
-    );
-    onClose();
   };
 
   if (!open) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[300] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6" role="presentation">
-      <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-black/35 backdrop-blur-[1px]" onClick={onClose} />
+      <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-black/35 backdrop-blur-[1px]" onClick={() => { if (!uploading) onClose(); }} />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        aria-describedby={previewFile ? previewSubtitleId : contactTitle ? descriptionId : undefined}
+        aria-describedby={previewFile ? previewSubtitleId : undefined}
         className="relative z-[1] flex max-h-[min(100dvh-1rem,760px)] w-full min-w-0 max-w-[980px] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,760px)] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-4 pb-3 pt-4 sm:gap-4 sm:px-6 sm:pb-4 sm:pt-6">
           <div className="min-w-0 pr-2">
             <h2 id={titleId} className="text-lg font-bold leading-snug text-black sm:text-xl md:text-2xl">
-              Upload Bank Slip
+              Upload Attachment
             </h2>
-            {contactTitle ? (
-              <p id={descriptionId} className="mt-1 text-sm text-primary/70">
-                {contactTitle}
-              </p>
-            ) : null}
+            <p className="mt-1 text-sm text-primary/70">Add invoice images or PDFs to this bill.</p>
           </div>
-          <button type="button" onClick={onClose} className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary" aria-label="Close">
+          <button type="button" onClick={() => { if (!uploading) onClose(); }} className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary" aria-label="Close">
             <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
               close
             </span>
@@ -203,13 +140,11 @@ export function UploadBankslipModal({
 
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
           {uploadError ? (
-            <div
-              className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
-              role="alert"
-            >
+            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800" role="alert">
               {uploadError}
             </div>
           ) : null}
+
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
             <div className="min-w-0">
               <div className="relative mb-3">
@@ -220,7 +155,7 @@ export function UploadBankslipModal({
                   multiple
                   accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
                   onChange={handleFilesSelected}
-                  aria-label="Choose bank slip files to upload"
+                  aria-label="Choose attachment files to upload"
                 />
                 <div className="pointer-events-none">
                   <div className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 bg-white px-3 py-3 sm:min-h-[104px] sm:py-4">
@@ -242,6 +177,7 @@ export function UploadBankslipModal({
                   <span className="shrink-0 text-[10px] font-medium text-primary/55 sm:text-[11px]">Click to preview</span>
                 ) : null}
               </div>
+
               <ul className="flex flex-col gap-2">
                 {uploadedFiles.map(({ id, file }) => {
                   const { icon, iconClass } = getUploadedFileIconInfo(file.name);
@@ -251,9 +187,7 @@ export function UploadBankslipModal({
                       key={id}
                       className={
                         "relative flex items-center justify-start rounded-lg border bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3 " +
-                        (selected
-                          ? "border-secondary/50 ring-2 ring-secondary/20"
-                          : "border-gray-200")
+                        (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-gray-200")
                       }
                     >
                       <button
@@ -263,10 +197,7 @@ export function UploadBankslipModal({
                         aria-pressed={selected}
                         aria-label={`Preview ${file.name}`}
                       >
-                        <span
-                          className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`}
-                          aria-hidden
-                        >
+                        <span className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`} aria-hidden>
                           {icon}
                         </span>
                         <span className="min-w-0 break-words text-left text-sm leading-snug text-black sm:flex-1 sm:truncate sm:leading-normal">
@@ -291,14 +222,30 @@ export function UploadBankslipModal({
 
             <div className="min-w-0">
               {previewFile && previewObjectUrl ? (
-                <BankSlipModalInlinePreview
-                  file={previewFile}
-                  objectUrl={previewObjectUrl}
-                  previewSubtitleId={previewSubtitleId}
-                />
-              ) : previewFile && !previewObjectUrl ? (
-                <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-sm text-primary/60">
-                  Loading preview…
+                <div className="flex h-full flex-col">
+                  <div className="flex gap-3 pb-2">
+                    <span className={`material-symbols-outlined mt-0.5 shrink-0 text-[28px] leading-none sm:text-[32px] ${getUploadedFileIconInfo(previewFile.name).iconClass}`} aria-hidden>
+                      {getUploadedFileIconInfo(previewFile.name).icon}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-black sm:text-base">{previewFile.name}</p>
+                      <p id={previewSubtitleId} className="mt-1 text-[11px] font-medium uppercase tracking-wide text-primary/55 sm:text-xs">
+                        Document preview<span className="text-primary/35"> • </span>
+                        {formatFileSize(previewFile.size)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 min-h-[min(50dvh,320px)] overflow-auto rounded-lg bg-black/5 p-2 sm:p-3">
+                    {isImageFile(previewFile) ? (
+                      <img src={previewObjectUrl} alt={`Preview: ${previewFile.name}`} className="mx-auto max-h-[min(55dvh,480px)] w-auto max-w-full object-contain" />
+                    ) : null}
+                    {isPdfFile(previewFile) && !isImageFile(previewFile) ? (
+                      <iframe title={previewFile.name} src={previewObjectUrl} className="h-[min(55dvh,480px)] w-full rounded-lg border border-gray-200 bg-white" />
+                    ) : null}
+                    {!isImageFile(previewFile) && !isPdfFile(previewFile) ? (
+                      <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>
+                    ) : null}
+                  </div>
                 </div>
               ) : (
                 <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-primary/60">
@@ -320,7 +267,7 @@ export function UploadBankslipModal({
           </button>
           <button
             type="button"
-            onClick={() => void handleDone()}
+            onClick={() => void handleUploadClick()}
             disabled={uploading}
             className="box-border h-12 min-h-[48px] w-full rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px] sm:w-auto"
           >
@@ -333,48 +280,3 @@ export function UploadBankslipModal({
   );
 }
 
-function BankSlipModalInlinePreview({
-  file,
-  objectUrl,
-  previewSubtitleId,
-}: {
-  file: File;
-  objectUrl: string;
-  previewSubtitleId: string;
-}) {
-  const { icon, iconClass } = getUploadedFileIconInfo(file.name);
-  return (
-    <div className="flex h-full flex-col">
-      <div className="flex gap-3 pb-2">
-        <span
-          className={`material-symbols-outlined mt-0.5 shrink-0 text-[28px] leading-none sm:text-[32px] ${iconClass}`}
-          aria-hidden
-        >
-          {icon}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-black sm:text-base">{file.name}</p>
-          <p id={previewSubtitleId} className="mt-1 text-[11px] font-medium uppercase tracking-wide text-primary/55 sm:text-xs">
-            Document preview<span className="text-primary/35"> • </span>
-            {formatFileSize(file.size)}
-          </p>
-        </div>
-      </div>
-      <div className="mt-3 min-h-[min(50dvh,320px)] overflow-auto rounded-lg bg-black/5 p-2 sm:p-3">
-        {isImageFile(file) ? (
-          <img
-            src={objectUrl}
-            alt={`Preview: ${file.name}`}
-            className="mx-auto max-h-[min(55dvh,480px)] w-auto max-w-full object-contain"
-          />
-        ) : null}
-        {isPdfFile(file) && !isImageFile(file) ? (
-          <iframe title={file.name} src={objectUrl} className="h-[min(55dvh,480px)] w-full rounded-lg border border-gray-200 bg-white" />
-        ) : null}
-        {!isImageFile(file) && !isPdfFile(file) ? (
-          <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
