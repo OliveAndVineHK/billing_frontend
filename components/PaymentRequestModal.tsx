@@ -690,10 +690,7 @@ export function PaymentRequestModal({
                     }
                   />
                   {!invoiceDate ? (
-                    <span
-                      className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45"
-                      aria-hidden
-                    >
+                    <span className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45" aria-hidden>
                       mm/dd/yyyy
                     </span>
                   ) : null}
