@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -53,7 +54,6 @@ function buildDefaultItems(sections: NavMenuSection[]): NavMenuItem[] {
     { href: `${MODULE1_URL}/entity`, label: "Select entity", icon: "corporate_fare", external: true },
     ...sections.flatMap((s) => s.items),
     { href: "/settings", label: "Settings", icon: "settings" },
-    { href: "/module-selection", label: "Change Module", icon: "change_circle" },
   ];
 }
 
@@ -107,7 +107,6 @@ export function NavMenu({ items, menuSections, companyAbbreviation = "ICH", onLo
 
   const selectEntityItem = resolvedItems.find((i) => i.label === "Select entity");
   const settingsItem = resolvedItems.find((i) => i.href === "/settings");
-  const changeModuleItem = resolvedItems.find((i) => i.href === "/module-selection");
 
   useEffect(() => {
     setPortalReady(true);
@@ -131,7 +130,7 @@ export function NavMenu({ items, menuSections, companyAbbreviation = "ICH", onLo
       <button type="button" className={`absolute inset-0 cursor-pointer bg-black/40 transition-opacity duration-300 ease-out ${open ? "opacity-100" : "opacity-0"}`} onClick={() => setOpen(false)} tabIndex={open ? 0 : -1} aria-label="Close menu" />
       <nav
         id={panelId}
-        className={`absolute right-0 top-0 flex h-full w-[min(100%,18rem)] max-w-[calc(100%-env(safe-area-inset-left)-env(safe-area-inset-right))] flex-col bg-white pt-[env(safe-area-inset-top,0px)] shadow-xl transition-transform duration-300 ease-out ${open ? "translate-x-0" : "translate-x-full"}`}
+        className={`absolute right-0 top-0 flex h-full w-[min(100%,14rem)] max-w-[calc(100%-env(safe-area-inset-left)-env(safe-area-inset-right))] flex-col bg-white pt-[env(safe-area-inset-top,0px)] shadow-xl transition-transform duration-300 ease-out ${open ? "translate-x-0" : "translate-x-full"}`}
         aria-label="Main navigation"
       >
           <div className="flex flex-col gap-3 border-b border-primary/20 px-4 py-3 sm:px-6 sm:py-4">
@@ -147,35 +146,55 @@ export function NavMenu({ items, menuSections, companyAbbreviation = "ICH", onLo
               <NavMenuItemLink item={selectEntityItem} pathname={pathname} onNavigate={() => setOpen(false)} />
             ) : null}
           </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">
-            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-              {resolvedSections.map((section) => (
-                <div key={section.title} className={`flex flex-col ${section.title === "Payment Request" ? "mt-6 gap-3" : "gap-1"}`} role="group" aria-label={section.title}>
-                  <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-primary/70">{section.title}</p>
-                  <ul className="flex flex-col gap-1">
-                    {section.items.map((item) => (
-                      <li key={item.label} className="w-full">
-                        <NavMenuItemLink item={item} pathname={pathname} onNavigate={() => setOpen(false)} />
-                      </li>
-                    ))}
-                  </ul>
+          <div className="flex min-h-0 flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <div className="w-full max-h-[calc(100%-11.5rem)] flex-none overflow-y-auto overscroll-contain">
+                <div className="flex flex-col gap-3">
+                  {resolvedSections.map((section) => (
+                    <div key={section.title} className={`flex flex-col ${section.title === "Payment Request" ? "mt-6 gap-3" : "gap-1"}`} role="group" aria-label={section.title}>
+                      <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-primary/70">{section.title}</p>
+                      <ul className="flex flex-col gap-1">
+                        {section.items.map((item) => (
+                          <li key={item.label} className="w-full">
+                            <NavMenuItemLink item={item} pathname={pathname} onNavigate={() => setOpen(false)} />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            {settingsItem || changeModuleItem ? (
-              <div className="flex shrink-0 flex-col gap-1">
-                {settingsItem ? <NavMenuItemLink item={settingsItem} pathname={pathname} onNavigate={() => setOpen(false)} /> : null}
-                {changeModuleItem ? <NavMenuItemLink item={changeModuleItem} pathname={pathname} onNavigate={() => setOpen(false)} /> : null}
               </div>
-            ) : null}
-          </div>
-          <div className="shrink-0 border-t border-primary/20 px-4 py-3 sm:px-6 sm:py-4">
-            <button type="button" onClick={() => { setOpen(false); onLogout?.(); }} className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-base font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-              <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary" aria-hidden>
-                logout
-              </span>
-              Logout
-            </button>
+              <div className="mt-4 shrink-0 -mx-4 border-t border-primary/15 sm:-mx-6" role="presentation">
+                <div className="flex flex-col gap-1 px-4 pt-4 sm:px-6 sm:pt-4">
+                  {settingsItem ? <NavMenuItemLink item={settingsItem} pathname={pathname} onNavigate={() => setOpen(false)} /> : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      onLogout?.();
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-left text-base font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary" aria-hidden>
+                      logout
+                    </span>
+                    Logout
+                  </button>
+                </div>
+              </div>
+              <div className="min-h-0 min-w-0 flex-1" aria-hidden />
+              <div className="flex shrink-0 justify-center px-2 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+                <Image
+                  src="/cat.png"
+                  alt=""
+                  width={200}
+                  height={180}
+                  className="h-auto w-[min(100%,10rem)] object-contain object-bottom select-none"
+                  draggable={false}
+                  priority={false}
+                />
+              </div>
+            </div>
           </div>
         </nav>
     </div>
