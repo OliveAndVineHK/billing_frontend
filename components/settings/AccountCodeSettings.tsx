@@ -142,9 +142,17 @@ export function AccountCodeSettings() {
               </span>
             </div>
 
-            <div className="flex items-center justify-end gap-2">
-              <span className="text-sm font-medium text-primary">Select all</span>
-              <input ref={selectAllRef} type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAllFiltered} disabled={filtered.length === 0} className={CHECKBOX_CLASS} aria-label="Select all visible account codes" />
+            <div className="flex items-center justify-between gap-3 px-3 sm:pl-4 sm:pr-[31px]">
+              <span className="min-w-0 flex-1 text-right text-sm font-medium text-primary">Select all</span>
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                checked={allFilteredSelected}
+                onChange={toggleSelectAllFiltered}
+                disabled={filtered.length === 0}
+                className={CHECKBOX_CLASS}
+                aria-label="Select all visible account codes"
+              />
             </div>
 
             {loading ? (
