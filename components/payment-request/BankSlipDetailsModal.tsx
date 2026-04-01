@@ -3,10 +3,19 @@
 import { createPortal } from "react-dom";
 import { useEffect, useId, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
+import { ApiError, deletePaymentAttachment, fetchPaymentAttachmentFile } from "@/lib/api";
+import { AttachmentDeleteConfirmModal } from "./AttachmentDeleteConfirmModal";
 
 export type BankSlipFileRef = { id: string; name: string };
 
-/** Per-file overrides; unspecified fields fall back to the parent `BankSlipDetails` row. */
+/** When set, the modal fetches file bytes with the user session and previews via a blob URL. */
+export type BankSlipFileFetchSource = {
+  billId: string;
+  paymentId: string;
+  attachmentId: string;
+};
+
+/** Per-file overrides (optional; kept for API compatibility — not shown in the simplified view). */
 export type BankSlipFileDetailsOverride = Partial<{
   createdBy: string;
   createdAt: string;
@@ -18,8 +27,13 @@ export type BankSlipFileDetailsOverride = Partial<{
   when: string;
 }>;
 
-export type BankSlipFileEntry = BankSlipFileRef & { details?: BankSlipFileDetailsOverride };
+export type BankSlipFileEntry = BankSlipFileRef & {
+  details?: BankSlipFileDetailsOverride;
+  previewUrl?: string;
+  fetchSource?: BankSlipFileFetchSource;
+};
 
+/** Row-level metadata (subtitle only in the simplified modal). */
 export type BankSlipDetails = {
   createdBy: string;
   createdAt: string;
@@ -38,29 +52,21 @@ export type BankSlipDetailsModalProps = {
   details: BankSlipDetails;
   onUpload?: () => void;
   onRemoveFile?: (fileId: string) => void;
+  allowRemoveFiles?: boolean;
+  onBankSlipFileDeleted?: () => void;
 };
 
 const overlayClass =
   "fixed inset-0 z-[300] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6";
 
 const shellClass =
-  "relative z-[1] flex max-h-[min(100dvh-1rem,720px)] w-full min-w-0 max-w-[520px] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,720px)] sm:rounded-2xl";
+  "relative z-[1] flex max-h-[min(100dvh-1rem,760px)] w-full min-w-0 max-w-[980px] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,760px)] sm:rounded-2xl";
 
 const focusRing = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary";
-
-const closeIconBtnClass = `-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 ${focusRing}`;
 
 const footerCloseClass = `box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 ${focusRing} sm:h-11 sm:min-h-[44px] sm:w-auto sm:px-4`;
 
 const footerUploadClass = `box-border inline-flex h-12 min-h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 ${focusRing} sm:h-11 sm:min-h-[44px] sm:w-auto`;
-
-const fileRowBaseClass = "flex items-start gap-2 rounded-lg border px-3 py-2.5 sm:items-center";
-
-const fileRowUnselectedClass = `${fileRowBaseClass} border-[#EDEDED] bg-white`;
-
-const fileRowSelectedClass = `${fileRowBaseClass} border-secondary/40 bg-secondary/5 ring-2 ring-secondary/25`;
-
-const accountSubClass = "mt-1 block text-sm font-normal tabular-nums text-primary/65";
 
 function fileIconForName(filename: string): { icon: string; iconClass: string } {
   const ext = filename.trim().split(".").pop()?.toLowerCase() ?? "";
@@ -69,68 +75,213 @@ function fileIconForName(filename: string): { icon: string; iconClass: string } 
   return { icon: "draft", iconClass: "text-primary" };
 }
 
-type SlipBodyFields = Omit<BankSlipDetails, "files">;
-
-function mergedSlipFields(base: BankSlipDetails, entry: BankSlipFileEntry | undefined): SlipBodyFields {
-  const o = entry?.details;
-  return {
-    createdBy: o?.createdBy ?? base.createdBy,
-    createdAt: o?.createdAt ?? base.createdAt,
-    toName: o?.toName ?? base.toName,
-    toAccount: o?.toAccount !== undefined ? o.toAccount : base.toAccount,
-    amount: o?.amount ?? base.amount,
-    fromName: o?.fromName ?? base.fromName,
-    fromAccount: o?.fromAccount !== undefined ? o.fromAccount : base.fromAccount,
-    when: o?.when ?? base.when,
-  };
+function isPdfName(name: string): boolean {
+  return name.trim().toLowerCase().endsWith(".pdf");
 }
 
-function ReadonlyField({ label, children }: { label: string; children: React.ReactNode }) {
+function isImageName(name: string): boolean {
+  const ext = name.trim().split(".").pop()?.toLowerCase() ?? "";
+  return ext === "jpg" || ext === "jpeg" || ext === "png" || ext === "gif" || ext === "webp";
+}
+
+function PreviewContent({
+  fileName,
+  previewUrl,
+  fetchSource,
+}: {
+  fileName: string;
+  previewUrl?: string;
+  fetchSource?: BankSlipFileFetchSource;
+}) {
+  if (previewUrl) {
+    return <BlobOrUrlPreviewContent fileName={fileName} url={previewUrl} />;
+  }
+  if (fetchSource) {
+    return <FetchedPreviewContent fileName={fileName} source={fetchSource} />;
+  }
   return (
-    <div className="border-b border-gray-100 py-3">
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-primary sm:text-xs">{label}</p>
-      <div className="text-base font-bold text-[#656565] sm:text-sm">{children}</div>
+    <p className="py-8 text-center text-sm text-primary/70">No preview available for this file.</p>
+  );
+}
+
+function BlobOrUrlPreviewContent({ fileName, url }: { fileName: string; url: string }) {
+  if (isImageName(fileName)) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={`Preview: ${fileName}`}
+        className="mx-auto max-h-[min(55dvh,480px)] w-auto max-w-full object-contain"
+      />
+    );
+  }
+  if (isPdfName(fileName)) {
+    return (
+      <iframe title={fileName} src={url} className="h-[min(55dvh,480px)] w-full rounded-lg border border-gray-200 bg-white" />
+    );
+  }
+  return (
+    <div className="py-8 text-center">
+      <p className="text-sm text-primary/70">Preview is not available for this file type.</p>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`mt-2 inline-block text-sm font-semibold text-secondary underline ${focusRing} rounded`}
+      >
+        Open file
+      </a>
     </div>
   );
 }
 
-function FileRow({
-  name,
-  icon,
-  iconClass,
-  selected,
-  onSelect,
-  onRemove,
-}: {
-  name: string;
-  icon: string;
-  iconClass: string;
-  selected: boolean;
-  onSelect: () => void;
-  onRemove: () => void;
-}) {
+function FetchedPreviewContent({ fileName, source }: { fileName: string; source: BankSlipFileFetchSource }) {
+  const [state, setState] = useState<
+    | { status: "loading" }
+    | { status: "ready"; url: string; mime: string }
+    | { status: "error" }
+  >({ status: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+    const urlRef: { current: string | null } = { current: null };
+    setState({ status: "loading" });
+    (async () => {
+      try {
+        const blob = await fetchPaymentAttachmentFile(source.billId, source.paymentId, source.attachmentId);
+        if (cancelled) return;
+        const objectUrl = URL.createObjectURL(blob);
+        if (cancelled) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        urlRef.current = objectUrl;
+        setState({ status: "ready", url: objectUrl, mime: blob.type || "" });
+      } catch {
+        if (!cancelled) setState({ status: "error" });
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (urlRef.current) {
+        URL.revokeObjectURL(urlRef.current);
+        urlRef.current = null;
+      }
+    };
+  }, [source.billId, source.paymentId, source.attachmentId]);
+
+  if (state.status === "loading") {
+    return (
+      <div className="flex min-h-[200px] items-center justify-center py-8">
+        <span className="inline-flex items-center gap-2 text-sm text-primary/60">
+          <span className="material-symbols-outlined animate-spin text-secondary text-[22px]" aria-hidden>
+            progress_activity
+          </span>
+          Loading preview…
+        </span>
+      </div>
+    );
+  }
+  if (state.status === "error") {
+    return <p className="py-8 text-center text-sm text-primary/70">Could not load this file.</p>;
+  }
+
+  const { url, mime } = state;
+  const showImage = mime.startsWith("image/") || isImageName(fileName);
+  const showPdf = mime === "application/pdf" || mime === "application/octet-stream" || isPdfName(fileName);
+
+  if (showImage) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={`Preview: ${fileName}`}
+        className="mx-auto max-h-[min(55dvh,480px)] w-auto max-w-full object-contain"
+      />
+    );
+  }
+  if (showPdf) {
+    return (
+      <iframe title={fileName} src={url} className="h-[min(55dvh,480px)] w-full rounded-lg border border-gray-200 bg-white" />
+    );
+  }
   return (
-    <li className={selected ? fileRowSelectedClass : fileRowUnselectedClass}>
-      <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 cursor-pointer items-start gap-2 rounded-md text-left sm:items-center" aria-pressed={selected} aria-label={`Show details for ${name}`}>
-        <span className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`} aria-hidden>{icon}</span>
-        <span className="min-w-0 flex-1 break-words text-sm leading-snug text-black sm:truncate sm:leading-normal">{name}</span>
-      </button>
-      <button type="button" onClick={(e) => { e.stopPropagation(); onRemove(); }} className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-primary/60 transition-colors hover:bg-gray-100 hover:text-primary" aria-label={`Remove ${name}`}>
-        <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>close</span>
-      </button>
-    </li>
+    <div className="py-8 text-center">
+      <p className="text-sm text-primary/70">Preview is not available for this file type.</p>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        download={fileName}
+        className={`mt-2 inline-block text-sm font-semibold text-secondary underline ${focusRing} rounded`}
+      >
+        Download file
+      </a>
+    </div>
   );
 }
 
-export function BankSlipDetailsModal({ open, onClose, details, onUpload, onRemoveFile }: BankSlipDetailsModalProps) {
+/** Same layout as UploadBankslipModal’s inline preview: title row + document area. */
+function ViewBankSlipInlinePreview({
+  fileName,
+  previewUrl,
+  fetchSource,
+  previewSubtitleId,
+}: {
+  fileName: string;
+  previewUrl?: string;
+  fetchSource?: BankSlipFileFetchSource;
+  previewSubtitleId: string;
+}) {
+  const { icon, iconClass } = fileIconForName(fileName);
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex gap-3 pb-2">
+        <span
+          className={`material-symbols-outlined mt-0.5 shrink-0 text-[28px] leading-none sm:text-[32px] ${iconClass}`}
+          aria-hidden
+        >
+          {icon}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-black sm:text-base">{fileName}</p>
+          <p id={previewSubtitleId} className="mt-1 text-[11px] font-medium uppercase tracking-wide text-primary/55 sm:text-xs">
+            Document preview
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 min-h-[min(50dvh,320px)] overflow-auto rounded-lg bg-black/5 p-2 sm:min-h-[240px] sm:p-3">
+        <PreviewContent fileName={fileName} previewUrl={previewUrl} fetchSource={fetchSource} />
+      </div>
+    </div>
+  );
+}
+
+export function BankSlipDetailsModal({
+  open,
+  onClose,
+  details,
+  onUpload,
+  onRemoveFile,
+  allowRemoveFiles = true,
+  onBankSlipFileDeleted,
+}: BankSlipDetailsModalProps) {
   const titleId = useId();
+  const descriptionId = useId();
+  const previewSubtitleId = useId();
   const [files, setFiles] = useState<BankSlipFileEntry[]>(() => details.files);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(() => details.files[0]?.id ?? null);
+  const [pendingDeleteFileId, setPendingDeleteFileId] = useState<string | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setFiles(details.files.map((f) => ({ ...f })));
     setSelectedFileId(details.files[0]?.id ?? null);
+    setPendingDeleteFileId(null);
+    setDeleteError(null);
+    setDeletePending(false);
   }, [open, details]);
 
   useEffect(() => {
@@ -147,70 +298,201 @@ export function BankSlipDetailsModal({ open, onClose, details, onUpload, onRemov
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || pendingDeleteFileId) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, pendingDeleteFileId]);
 
   const removeLocal = (fileId: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== fileId));
     onRemoveFile?.(fileId);
   };
 
+  const pendingDeleteFile = pendingDeleteFileId ? files.find((f) => f.id === pendingDeleteFileId) : undefined;
+
+  const confirmDeleteBankSlip = async () => {
+    if (!pendingDeleteFileId || !pendingDeleteFile) return;
+    setDeleteError(null);
+    const wasLast = files.length === 1;
+    try {
+      if (pendingDeleteFile.fetchSource) {
+        setDeletePending(true);
+        const { billId, paymentId, attachmentId } = pendingDeleteFile.fetchSource;
+        await deletePaymentAttachment(billId, paymentId, attachmentId);
+      }
+      removeLocal(pendingDeleteFileId);
+      setPendingDeleteFileId(null);
+      onBankSlipFileDeleted?.();
+      if (wasLast) onClose();
+    } catch (e) {
+      setPendingDeleteFileId(null);
+      setDeleteError(e instanceof ApiError ? e.message : "Could not delete this bank slip. Please try again.");
+    } finally {
+      setDeletePending(false);
+    }
+  };
+
   const selectedEntry = files.find((f) => f.id === selectedFileId);
-  const view = mergedSlipFields(details, selectedEntry);
+  const showRemoveOnRows = allowRemoveFiles;
 
   if (!open) return null;
 
   return createPortal(
     <div className={overlayClass} role="presentation">
-      <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-black/35 backdrop-blur-[1px]" onClick={onClose}/>
-      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className={shellClass} onClick={(e) => e.stopPropagation()}>
-        <div className="shrink-0">
-          <div className="px-4 pt-4 sm:px-6 sm:pt-6">
-            <div className="flex items-start justify-between gap-3">
-              <h2 id={titleId} className="min-w-0 pr-2 text-sm font-semibold uppercase tracking-[0.12em] text-secondary sm:text-base">Bank slip details</h2>
-              <button type="button" onClick={onClose} className={closeIconBtnClass} aria-label="Close"><span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>close</span></button>
-            </div>
+      <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-black/35 backdrop-blur-[1px]" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={details.toName.trim() ? descriptionId : undefined}
+        className={shellClass}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-4 pb-3 pt-4 sm:gap-4 sm:px-6 sm:pb-4 sm:pt-6">
+          <div className="min-w-0 pr-2">
+            <h2 id={titleId} className="text-lg font-bold leading-snug text-black sm:text-xl md:text-2xl">
+              Bank Slip
+            </h2>
+            {details.toName.trim() ? (
+              <p id={descriptionId} className="mt-1 text-sm text-primary/70">
+                {details.toName}
+              </p>
+            ) : null}
           </div>
-          <div className="mt-3 w-full border-b border-dotted border-gray-300" aria-hidden/>
+          <button
+            type="button"
+            onClick={onClose}
+            className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+            aria-label="Close"
+          >
+            <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
+              close
+            </span>
+          </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
-          <div className="flex flex-col">
-            <ReadonlyField label="Created by">{view.createdBy}</ReadonlyField>
-            <ReadonlyField label="Created at">{view.createdAt}</ReadonlyField>
-            <ReadonlyField label="To">
-              <span className="block">{view.toName}</span>
-              {view.toAccount ? <span className={accountSubClass}>{view.toAccount}</span> : null}
-            </ReadonlyField>
-            <ReadonlyField label="Amount">{view.amount}</ReadonlyField>
-            <ReadonlyField label="From">
-              <span className="block">{view.fromName}</span>
-              {view.fromAccount ? <span className={accountSubClass}>{view.fromAccount}</span> : null}
-            </ReadonlyField>
-            <ReadonlyField label="When">{view.when}</ReadonlyField>
-          </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
+          {deleteError ? (
+            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800" role="alert">
+              {deleteError}
+            </div>
+          ) : null}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
+            <div className="min-w-0">
+              <div className="mb-2 flex items-baseline justify-between gap-3">
+                <p className="min-w-0 text-[11px] font-semibold uppercase tracking-wide text-primary/80">
+                  Files ({files.length})
+                </p>
+                {files.length > 0 ? (
+                  <span className="shrink-0 text-[10px] font-medium text-primary/55 sm:text-[11px]">Click to preview</span>
+                ) : null}
+              </div>
+              <ul className="flex flex-col gap-2">
+                {files.map((f) => {
+                  const { icon, iconClass } = fileIconForName(f.name);
+                  const selected = f.id === selectedFileId;
+                  return (
+                    <li
+                      key={f.id}
+                      className={
+                        "relative flex items-center justify-start rounded-lg border bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3 " +
+                        (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-gray-200")
+                      }
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFileId(f.id)}
+                        className="flex min-w-0 flex-1 cursor-pointer items-center justify-start gap-2 rounded-md text-left"
+                        aria-pressed={selected}
+                        aria-label={`Preview ${f.name}`}
+                      >
+                        <span
+                          className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`}
+                          aria-hidden
+                        >
+                          {icon}
+                        </span>
+                        <span className="min-w-0 break-words text-left text-sm leading-snug text-black sm:flex-1 sm:truncate sm:leading-normal">
+                          {f.name}
+                        </span>
+                      </button>
+                      {showRemoveOnRows ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDeleteError(null);
+                            setPendingDeleteFileId(f.id);
+                          }}
+                          className="absolute right-2 top-1/2 flex h-8 w-8 shrink-0 -translate-y-1/2 items-center justify-center rounded-md text-primary/60 transition-colors hover:bg-gray-100 hover:text-primary sm:static sm:translate-y-0"
+                          aria-label={`Delete ${f.name}`}
+                        >
+                          <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+                            close
+                          </span>
+                        </button>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
 
-          <div className="border-b border-gray-100 pt-5 pb-3">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-primary/80">Uploaded files ({files.length})</p>
-            <ul className="flex flex-col gap-2">
-              {files.map((f) => {
-                const { icon, iconClass } = fileIconForName(f.name);
-                return <FileRow key={f.id} name={f.name} icon={icon} iconClass={iconClass} selected={f.id === selectedFileId} onSelect={() => setSelectedFileId(f.id)} onRemove={() => removeLocal(f.id)} />;
-              })}
-            </ul>
+            <div className="min-w-0">
+              {selectedEntry ? (
+                <ViewBankSlipInlinePreview
+                  fileName={selectedEntry.name}
+                  previewUrl={selectedEntry.previewUrl}
+                  fetchSource={selectedEntry.fetchSource}
+                  previewSubtitleId={previewSubtitleId}
+                />
+              ) : (
+                <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-primary/60">
+                  Select a file to preview
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 px-4 py-3 sm:flex-row sm:justify-end sm:gap-3 sm:px-6 sm:py-4">
-          <button type="button" onClick={onClose} className={footerCloseClass}>Close</button>
-          {onUpload ? <button type="button" onClick={onUpload} className={footerUploadClass}><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>upload</span>Upload</button> : null}
+          <button type="button" onClick={onClose} className={footerCloseClass}>
+            Close
+          </button>
+          {onUpload ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onUpload();
+              }}
+              className={footerUploadClass}
+            >
+              <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+                upload_file
+              </span>
+              Upload
+            </button>
+          ) : null}
         </div>
       </div>
+      <AttachmentDeleteConfirmModal
+        open={pendingDeleteFileId != null}
+        count={1}
+        pending={deletePending}
+        variant="bankSlip"
+        fileName={pendingDeleteFile?.name}
+        onClose={() => {
+          if (!deletePending) {
+            setPendingDeleteFileId(null);
+            setDeleteError(null);
+          }
+        }}
+        onConfirm={() => void confirmDeleteBankSlip()}
+      />
     </div>,
     document.body,
   );

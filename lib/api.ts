@@ -68,6 +68,47 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   return res.json();
 }
 
+/** Authenticated GET returning raw bytes (e.g. attachment file stream). */
+async function apiFetchBlob(path: string): Promise<Blob> {
+  const auth = getAuth();
+  if (!auth?.token) throw new ApiError(401, "Not authenticated");
+
+  const headers = new Headers();
+  headers.set("Authorization", `Bearer ${auth.token}`);
+  headers.set("X-Entity-Id", auth.entityId);
+
+  const res = await fetch(`${API_BASE}/api/v1${path}`, { headers });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      redirectToLogin();
+      throw new ApiError(401, "Session expired. Redirecting to login.");
+    }
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    const msg = normalizeApiErrorDetail(
+      body.detail ?? body.message,
+      res.statusText,
+    );
+    throw new ApiError(res.status, msg);
+  }
+
+  return res.blob();
+}
+
+/**
+ * Download bytes for a payment attachment row (bank slip).
+ * Path suffix `/file` must match the billing API; change here if the backend uses e.g. `/download`.
+ */
+export function fetchPaymentAttachmentFile(
+  billId: string,
+  paymentId: string,
+  paymentAttachmentId: string,
+): Promise<Blob> {
+  return apiFetchBlob(
+    `/bills/${billId}/payments/${paymentId}/attachments/${paymentAttachmentId}/file`,
+  );
+}
+
 // ── Types ────────────────────────────────────────────────────────────
 
 export type BillListItem = {
@@ -324,6 +365,16 @@ export function listPaymentAttachments(
   paymentId: string,
 ): Promise<PaymentAttachment[]> {
   return apiFetch(`/bills/${billId}/payments/${paymentId}/attachments`);
+}
+
+export function deletePaymentAttachment(
+  billId: string,
+  paymentId: string,
+  paymentAttachmentId: string,
+): Promise<{ message: string } | undefined> {
+  return apiFetch(`/bills/${billId}/payments/${paymentId}/attachments/${paymentAttachmentId}`, {
+    method: "DELETE",
+  });
 }
 
 /** Upload a file for a payment (e.g. bank slip). Multipart field `file`; `attachment_role` query defaults to bank_slip. */
