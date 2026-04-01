@@ -108,8 +108,11 @@ function resolveBackendFileUrl(url: string): string {
 function extractFileUrlFromAttachmentJson(data: Record<string, unknown>): string | undefined {
   const nested = data.attachment as Record<string, unknown> | undefined;
   const from = (o: Record<string, unknown>): string | undefined => {
-    const pick = (v: unknown): string | undefined =>
-      typeof v === "string" && v.trim() ? v.trim() : undefined;
+    const pick = (v: unknown): string | undefined => {
+      if (typeof v !== "string") return undefined;
+      const s = v.trim();
+      return s.length > 0 ? s : undefined;
+    };
     return (
       pick(o.download_url) ??
       pick(o.file_url) ??
