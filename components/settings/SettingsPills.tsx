@@ -29,16 +29,50 @@ const pillClass = (isActive: boolean) =>
     isActive ? "bg-secondary font-semibold text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
   }`;
 
-type SettingsPillsProps = {
-  activeTab: SettingsTabId;
+/**
+ * Tabs that redirect to Flask Module 1 rather than staying in this Next.js app.
+ * The URL builder receives the entityId stored in the billing auth cookie.
+ */
+const FLASK_REDIRECT_TABS: Partial<
+  Record<SettingsTabId, (module1Url: string, entityId: string) => string>
+> = {
+  users: (module1Url, entityId) =>
+    `${module1Url}/entity/settings/users/${entityId}`,
+  xero: (module1Url, entityId) =>
+    `${module1Url}/entity/${entityId}/settings/xero`,
+  entity: (module1Url, entityId) =>
+    `${module1Url}/entity/settings/entity/${entityId}?from=bills`,
 };
 
-export function SettingsPills({ activeTab }: SettingsPillsProps) {
+type SettingsPillsProps = {
+  activeTab: SettingsTabId;
+  entityId: string;
+  module1Url: string;
+};
+
+export function SettingsPills({ activeTab, entityId, module1Url }: SettingsPillsProps) {
   return (
     <div className="w-full px-4 sm:px-6">
       <div className="-mx-4 flex flex-wrap gap-2 px-4 pb-1 sm:mx-0 sm:px-0">
         {TABS.map(({ id, label }) => {
           const isActive = activeTab === id;
+          const flaskUrl = FLASK_REDIRECT_TABS[id];
+
+          if (flaskUrl) {
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  window.location.href = flaskUrl(module1Url, entityId);
+                }}
+                className={pillClass(isActive)}
+              >
+                {label}
+              </button>
+            );
+          }
+
           return (
             <Link
               key={id}
