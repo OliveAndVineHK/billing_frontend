@@ -13,6 +13,8 @@ export type BankSlipFileFetchSource = {
   billId: string;
   paymentId: string;
   attachmentId: string;
+  /** Nested `attachment.id` from API — used as fallback download path when `/file` on link id 404s. */
+  fileAttachmentId?: string;
 };
 
 /** Per-file overrides (optional; kept for API compatibility — not shown in the simplified view). */
@@ -148,7 +150,12 @@ function FetchedPreviewContent({ fileName, source }: { fileName: string; source:
     setState({ status: "loading" });
     (async () => {
       try {
-        const blob = await fetchPaymentAttachmentFile(source.billId, source.paymentId, source.attachmentId);
+        const blob = await fetchPaymentAttachmentFile(
+          source.billId,
+          source.paymentId,
+          source.attachmentId,
+          source.fileAttachmentId,
+        );
         if (cancelled) return;
         const objectUrl = URL.createObjectURL(blob);
         if (cancelled) {
@@ -168,7 +175,7 @@ function FetchedPreviewContent({ fileName, source }: { fileName: string; source:
         urlRef.current = null;
       }
     };
-  }, [source.billId, source.paymentId, source.attachmentId]);
+  }, [source.billId, source.paymentId, source.attachmentId, source.fileAttachmentId]);
 
   if (state.status === "loading") {
     return (
@@ -471,10 +478,7 @@ export function BankSlipDetailsModal({
               }}
               className={footerUploadClass}
             >
-              <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                upload_file
-              </span>
-              Upload
+              New Bank Slip
             </button>
           ) : null}
         </div>

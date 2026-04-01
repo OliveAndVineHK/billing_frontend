@@ -94,14 +94,34 @@ async function apiFetchBlob(path: string): Promise<Blob> {
   return res.blob();
 }
 
-export function fetchPaymentAttachmentFile(
+export async function fetchPaymentAttachmentFile(
   billId: string,
   paymentId: string,
   paymentAttachmentId: string,
+  storageAttachmentId?: string,
 ): Promise<Blob> {
-  return apiFetchBlob(
-    `/bills/${billId}/payments/${paymentId}/attachments/${paymentAttachmentId}/file`,
-  );
+  const base = `/bills/${billId}/payments/${paymentId}/attachments`;
+  const candidates: string[] = [
+    `${base}/${paymentAttachmentId}/file`,
+    `${base}/${paymentAttachmentId}/download`,
+  ];
+  const nested = storageAttachmentId?.trim();
+  if (nested && nested !== paymentAttachmentId) {
+    candidates.push(`${base}/${nested}/file`, `${base}/${nested}/download`);
+  }
+
+  let lastError: unknown;
+  for (const path of candidates) {
+    try {
+      return await apiFetchBlob(path);
+    } catch (e) {
+      lastError = e;
+      if (e instanceof ApiError && e.status === 404) continue;
+      throw e;
+    }
+  }
+  if (lastError instanceof Error) throw lastError;
+  throw new ApiError(404, "Could not download attachment");
 }
 
 // ── Types ────────────────────────────────────────────────────────────

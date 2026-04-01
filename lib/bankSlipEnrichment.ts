@@ -90,10 +90,14 @@ export async function fetchBillBankSlipEnrichment(billId: string, row: {
     if (forBill.length === 0) return { bankslipFileCount: 0 };
 
     const files: BankSlipFileEntry[] = [];
+    const seenAttachmentLinkIds = new Set<string>();
     for (const p of forBill) {
       const attachments = await listPaymentAttachments(billId, p.id);
       for (const a of attachments) {
+        if (seenAttachmentLinkIds.has(a.id)) continue;
+        seenAttachmentLinkIds.add(a.id);
         const uploadedAt = a.created_at?.trim() || a.attachment.created_at?.trim();
+        const nestedId = a.attachment.id?.trim();
         files.push({
           id: a.id,
           name: a.attachment.original_name,
@@ -101,6 +105,7 @@ export async function fetchBillBankSlipEnrichment(billId: string, row: {
             billId,
             paymentId: p.id,
             attachmentId: a.id,
+            ...(nestedId ? { fileAttachmentId: nestedId } : {}),
           },
           ...(uploadedAt
             ? { details: { createdAt: formatApiDateTime(uploadedAt) } }

@@ -697,7 +697,6 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             }
                           >
                             <span className="text-sm font-semibold tabular-nums">{row.bankslipFileCount}</span>
-                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>draft</span>
                           </button>
                         ) : null}
                       </div>
@@ -707,6 +706,18 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             <span className="whitespace-nowrap">Upload</span>
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>upload_file</span>
                           </div>
+                        ) : row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
+                          <button
+                            type="button"
+                            className={uploadBankslipButtonClass}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setBankslipModalRowId(row.id);
+                            }}
+                            aria-label={`New bank slip for ${row.contactTitle}`}
+                          >
+                            <span className="whitespace-nowrap">New Bank Slip</span>
+                          </button>
                         ) : (
                           <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}>
                             <span className="whitespace-nowrap">Upload</span>
@@ -879,7 +890,6 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                                     }
                                   >
                                     <span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span>
-                                    <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span>
                                   </button>
                                   {!bankslipReadOnly ? (
                                     <button
@@ -889,10 +899,9 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                                         e.stopPropagation();
                                         setBankslipModalRowId(row.id);
                                       }}
-                                      aria-label={`Upload bank slip for ${row.contactTitle}`}
+                                      aria-label={`New bank slip for ${row.contactTitle}`}
                                     >
-                                      <span className="whitespace-nowrap">Upload</span>
-                                      <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span>
+                                      <span className="whitespace-nowrap">New Bank Slip</span>
                                     </button>
                                   ) : null}
                                 </div>
