@@ -32,17 +32,22 @@ export type PaymentRequestRow = {
   payment: string;
   paidDate: string;
   bankslip: string;
-  /** Bill currency (ISO) for bank slip payment API. */
   currencyCode?: string;
   bankslipFileCount?: number;
-  /** When set, shown in Bank slip details modal; otherwise demo fields are derived from the row. */
   bankSlipDetails?: BankSlipDetails;
-  /** True when the bill is already published to Xero (`published === "published"` from API). */
   xeroActive?: boolean;
 };
 
 function isActionColumnTitle(title: string) {
   return title === "Payment" || title === "Paid Date" || title === "Bankslip";
+}
+
+const MOBILE_BILL_DESCRIPTION_VISIBLE_CHARS = 26;
+
+function truncateMobileBillDescription(text: string): string {
+  return text.length > MOBILE_BILL_DESCRIPTION_VISIBLE_CHARS
+    ? `${text.slice(0, MOBILE_BILL_DESCRIPTION_VISIBLE_CHARS)}...`
+    : text;
 }
 
 type SortKey = "contact" | "invoiceDate" | "status" | "submittedDate" | "unpaidAmount" | "paidDate";
@@ -298,7 +303,6 @@ export type PaymentRequestTableHandle = {
 };
 
 const ROW_MENU_MIN_WIDTH_PX = 160;
-/** Approximate panel width for positioning (matches `w-72` / 18rem). */
 const COLUMNS_MENU_WIDTH_PX = 288;
 
 type RowMenuState = { rowId: string; top: number; left: number };
@@ -584,22 +588,119 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
 
   return (
     <div className="w-full min-w-0 px-4 pb-6 sm:px-6">
-      <div className="overflow-hidden rounded-lg border border-gray-200">
+      <div className="flex flex-col gap-3 sm:hidden" role="list" aria-label="Payment requests">
+        {loading ? (
+          <div className="rounded-xl border border-gray-200 bg-[#F5F5F5] px-4 py-10 text-center text-sm text-primary/60">
+            <span className="inline-flex items-center gap-2">
+              <span className="material-symbols-outlined animate-spin text-secondary text-[22px]">progress_activity</span>
+              Loading bills…
+            </span>
+          </div>
+        ) : visibleRows.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-[#F5F5F5] px-4 py-8 text-center text-sm text-primary/70">No payment requests match this status.</div>
+        ) : (
+          sortedVisibleRows.map((row) => {
+            const isPaid = row.status === "Paid";
+            const isVoided = row.status === "Voided";
+            const isPaymentRequested = row.status === "Payment Requested";
+            const isDraft = row.status === "Draft";
+            const isReturned = row.status === "Returned";
+            const bankslipReadOnly = isVoided || isDraft;
+            const xeroConnected = !isDraft && row.xeroActive;
+            const statusBadgeClass = isPaid
+              ? statusTagPaidClass
+              : isPaymentRequested
+                ? statusTagPaymentRequestedClass
+                : isReturned
+                  ? statusTagReturnedClass
+                  : statusTagClass;
+            const articleClassName = `rounded-xl border border-gray-200 p-4 shadow-sm transition-colors ${isPaid ? "bg-[#54D3DA]/10" : isPaymentRequested ? "bg-[#FF6B6B]/10" : "bg-[#F5F5F5]"} ${isVoided ? "cursor-default opacity-90" : isPaid ? "cursor-pointer active:bg-[#54D3DA]/20" : isPaymentRequested ? "cursor-pointer active:bg-[#FF6B6B]/20" : "cursor-pointer active:bg-gray-200/60"}`;
+            return (
+              <article key={row.id} role="listitem" className={articleClassName} onClick={() => { if (isVoided) return; onRowClick?.(row.id); }}>
+                <div className="flex gap-3">
+                  <div className="hidden shrink-0 pt-0.5 sm:block" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={selectedIds.has(row.id)} disabled={isVoided} onChange={() => toggleRow(row.id)} className={`${HEADER_CHECKBOX_CLASS} disabled:cursor-not-allowed disabled:opacity-40`} aria-label={isVoided ? `Voided — cannot select ${row.contactTitle}` : `Select row ${row.contactTitle}`} suppressHydrationWarning />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-semibold leading-snug text-primary">{row.contactTitle}</h3>
+                        {row.contactCaption ? (
+                          <p className="mt-0.5 min-w-0 max-w-full text-xs leading-snug text-primary/60" title={row.contactCaption}>
+                            {truncateMobileBillDescription(row.contactCaption)}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                        <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={40} height={40} className="h-10 w-10 object-contain" />
+                      </div>
+                    </div>
+                    <div className="mt-4 flex min-w-0 flex-col gap-2">
+                      {row.status ? (
+                        <div className="flex w-full justify-end">
+                          <span className={statusBadgeClass}>{row.status}</span>
+                        </div>
+                      ) : null}
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="flex min-w-0 flex-col gap-0.5">
+                          <span className="text-[10px] font-medium uppercase tracking-wide text-primary/45">Invoice date</span>
+                          <span className="text-sm font-semibold tabular-nums text-primary">{row.invoiceDate}</span>
+                        </div>
+                        {row.unpaidAmount || row.invoiceTotal ? (
+                          <div className="shrink-0 space-y-0.5 text-right">
+                            {row.unpaidAmount ? (
+                              <p className={"text-base font-semibold tabular-nums " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</p>
+                            ) : null}
+                            {row.invoiceTotal ? (
+                              <p className="text-[11px] tabular-nums text-primary/55">(Inv total HK$ {row.invoiceTotal})</p>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="mt-4 flex min-h-[2.5rem] min-w-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex min-w-0 min-h-10 flex-1 flex-wrap items-center gap-2">
+                        {!isPaid && !isVoided && !isDraft ? (
+                          <button type="button" aria-label={`Record payment for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}>
+                            <span className="whitespace-nowrap">Record Payment</span>
+                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>add</span>
+                          </button>
+                        ) : null}
+                        {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
+                          <div className={`inline-flex h-10 min-h-10 items-center gap-1.5 ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`} role="status" aria-label={isVoided ? `Voided — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} (read only)` : isDraft ? `Draft — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} (read only)` : `${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`}>
+                            <span className="text-sm font-semibold tabular-nums">{row.bankslipFileCount}</span>
+                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>draft</span>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="flex h-10 min-h-10 shrink-0 items-center justify-end">
+                        {bankslipReadOnly ? (
+                          <div className={uploadBankslipReadOnlyClass} aria-label={isVoided ? `Voided — upload not available for ${row.contactTitle}` : `Draft — upload not available for ${row.contactTitle}`}>
+                            <span className="whitespace-nowrap">Upload</span>
+                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>upload_file</span>
+                          </div>
+                        ) : (
+                          <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}>
+                            <span className="whitespace-nowrap">Upload</span>
+                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>upload_file</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })
+        )}
+      </div>
+      <div className="hidden overflow-hidden rounded-lg border border-gray-200 sm:block">
         <div className="overflow-x-auto touch-pan-x [-webkit-overflow-scrolling:touch]">
           <table className="min-w-[82rem] w-full border-collapse text-left">
             <thead>
               <tr>
                 <th scope="col" className="w-12 min-w-[2.75rem] border-b border-gray-200 bg-[#9CA3AF] px-2 py-3 text-center sm:px-3 sm:py-3.5">
-                  <input
-                    ref={headerCheckboxRef}
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={toggleAll}
-                    disabled={selectableVisibleRows.length === 0}
-                    className={`${HEADER_CHECKBOX_CLASS} disabled:cursor-not-allowed disabled:opacity-40`}
-                    aria-label="Select all rows"
-                    suppressHydrationWarning
-                  />
+                  <input ref={headerCheckboxRef} type="checkbox" checked={allSelected} onChange={toggleAll} disabled={selectableVisibleRows.length === 0} className={`${HEADER_CHECKBOX_CLASS} disabled:cursor-not-allowed disabled:opacity-40`} aria-label="Select all rows" suppressHydrationWarning />
                 </th>
                 {orderedTableTitles.map((title) => {
                   const selectorKey = TITLE_SELECTOR_KEY[title];
@@ -657,26 +758,9 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                 const bankslipReadOnly = isVoided || isDraft;
                 const xeroConnected = !isDraft && row.xeroActive;
                 return (
-                  <tr
-                    key={row.id}
-                    className={`transition-colors duration-150 ease-out ${isVoided ? "cursor-default" : "cursor-pointer hover:bg-gray-50"}`}
-                    onClick={() => {
-                      if (isVoided) return;
-                      onRowClick?.(row.id);
-                    }}
-                    aria-disabled={isVoided ? "true" : undefined}
-                  >
+                  <tr key={row.id} className={`transition-colors duration-150 ease-out ${isVoided ? "cursor-default" : "cursor-pointer hover:bg-gray-50"}`} onClick={() => { if (isVoided) return; onRowClick?.(row.id); }} aria-disabled={isVoided ? "true" : undefined}>
                     <td className="border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(row.id)}
-                        disabled={isVoided}
-                        onChange={() => toggleRow(row.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className={`${HEADER_CHECKBOX_CLASS} disabled:cursor-not-allowed disabled:opacity-40`}
-                        aria-label={isVoided ? `Voided — cannot select ${row.contactTitle}` : `Select row ${row.contactTitle}`}
-                        suppressHydrationWarning
-                      />
+                      <input type="checkbox" checked={selectedIds.has(row.id)} disabled={isVoided} onChange={() => toggleRow(row.id)} onClick={(e) => e.stopPropagation()} className={`${HEADER_CHECKBOX_CLASS} disabled:cursor-not-allowed disabled:opacity-40`} aria-label={isVoided ? `Voided — cannot select ${row.contactTitle}` : `Select row ${row.contactTitle}`} suppressHydrationWarning />
                     </td>
                     {orderedTableTitles.map((title) => {
                       const selectorKey = TITLE_SELECTOR_KEY[title];
@@ -785,23 +869,10 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                       }
                     })}
                     <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
-                      <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={24} height={24} className="mx-auto h-6 w-6 max-h-6 max-w-6 object-contain" />
+                      <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={40} height={40} className="mx-auto h-10 w-10 max-h-10 max-w-10 object-contain" />
                     </td>
                     <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
-                      <button
-                        type="button"
-                        data-row-menu-trigger
-                        disabled={isVoided}
-                        className={rowMenuButtonClass}
-                        aria-label={isVoided ? `Voided — row actions not available for ${row.contactTitle}` : `More options for ${row.contactTitle}`}
-                        aria-expanded={rowMenu?.rowId === row.id ? "true" : "false"}
-                        aria-haspopup={isVoided ? undefined : "menu"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isVoided) return;
-                          toggleRowMenu(row.id, e.currentTarget);
-                        }}
-                      >
+                      <button type="button" data-row-menu-trigger disabled={isVoided} className={rowMenuButtonClass} aria-label={isVoided ? `Voided — row actions not available for ${row.contactTitle}` : `More options for ${row.contactTitle}`} aria-expanded={rowMenu?.rowId === row.id ? "true" : "false"} aria-haspopup={isVoided ? undefined : "menu"} onClick={(e) => { e.stopPropagation(); if (isVoided) return; toggleRowMenu(row.id, e.currentTarget); }}>
                         <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>more_vert</span>
                       </button>
                     </td>
@@ -824,46 +895,15 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
       {rowMenu
         ? createPortal(
             <div data-row-menu-panel role="menu" aria-label="Row actions" className="fixed z-[400] rounded-lg border border-gray-200 bg-white py-1 shadow-lg" style={{ top: rowMenu.top, left: rowMenu.left, minWidth: ROW_MENU_MIN_WIDTH_PX }}>
-              <button
-                type="button"
-                role="menuitem"
-                disabled={isRowMenuDeleteDisabled}
-                className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => {
-                  if (isRowMenuDeleteDisabled) return;
-                  const id = rowMenu.rowId;
-                  setRowMenu(null);
-                  setRowDeleteConfirmId(id);
-                }}
-              >
+              <button type="button" role="menuitem" disabled={isRowMenuDeleteDisabled} className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => { if (isRowMenuDeleteDisabled) return; const id = rowMenu.rowId; setRowMenu(null); setRowDeleteConfirmId(id); }}>
                 Delete
               </button>
               {showRowMenuPublish ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100"
-                  onClick={() => {
-                    onRowPublish?.(rowMenu.rowId);
-                    setRowMenu(null);
-                  }}
-                >
+                <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onRowPublish?.(rowMenu.rowId); setRowMenu(null); }}>
                   Publish
                 </button>
               ) : null}
-              {showRowMenuRepublish ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100"
-                  onClick={() => {
-                    onRowRepublish?.(rowMenu.rowId);
-                    setRowMenu(null);
-                  }}
-                >
-                  Republish
-                </button>
-              ) : null}
+              {showRowMenuRepublish ? <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onRowRepublish?.(rowMenu.rowId); setRowMenu(null); }}>Republish</button> : null}
             </div>,
             document.body,
           )

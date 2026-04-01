@@ -56,7 +56,7 @@ export function BillActionBar({ onDeleteBill, onPublishToXero, deleteDisabled, p
           ) : (
             "Publish to Xero"
           )}
-          <img src="/xero-active.png" alt="" width={24} height={24} className="h-6 w-6 shrink-0 object-contain" aria-hidden />
+          <img src="/xero-active.png" alt="" width={40} height={40} className="h-10 w-10 shrink-0 object-contain" aria-hidden />
         </button>
       </div>
     </div>
