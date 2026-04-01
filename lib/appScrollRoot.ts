@@ -6,10 +6,6 @@ export function getAppScrollRoot(): HTMLElement | null {
   return document.getElementById(APP_SCROLL_ROOT_ID);
 }
 
-/**
- * Locks main app scrolling (modal / drawer open). Prefers `#app-scroll-root` when present
- * so iOS scrolls the inner shell, not a “ghost” document behind it.
- */
 export function pushAppScrollLock(): () => void {
   const root = getAppScrollRoot();
   if (root) {
