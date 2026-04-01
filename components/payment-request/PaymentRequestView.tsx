@@ -8,7 +8,7 @@ import { BulkDeleteConfirmModal } from "./BulkDeleteConfirmModal";
 import { RecordPaymentModal } from "./RecordPaymentModal";
 import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
 import { deleteBill, fetchBills, publishBill, type BillListItem } from "@/lib/api";
-import { countBankSlipAttachmentsForBill } from "@/lib/bankSlipCounts";
+import { fetchBillBankSlipEnrichment } from "@/lib/bankSlipEnrichment";
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return "";
@@ -105,10 +105,21 @@ export function PaymentRequestView() {
       for (let i = 0; i < mapped.length; i += BATCH) {
         const batch = mapped.slice(i, i + BATCH);
         const chunk = await Promise.all(
-          batch.map(async (r) => ({
-            ...r,
-            bankslipFileCount: await countBankSlipAttachmentsForBill(r.id),
-          })),
+          batch.map(async (r) => {
+            const { bankslipFileCount, bankSlipDetails } = await fetchBillBankSlipEnrichment(r.id, {
+              contactTitle: r.contactTitle,
+              submittedDate: r.submittedDate,
+              invoiceDate: r.invoiceDate,
+              paidDate: r.paidDate,
+              unpaidAmount: r.unpaidAmount,
+              currencyCode: r.currencyCode,
+            });
+            return {
+              ...r,
+              bankslipFileCount,
+              ...(bankSlipDetails ? { bankSlipDetails } : {}),
+            };
+          }),
         );
         enriched.push(...chunk);
       }

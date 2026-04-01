@@ -10,6 +10,8 @@ export type AttachmentDeleteConfirmModalProps = {
   pending?: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  variant?: "attachments" | "bankSlip";
+  fileName?: string;
 };
 
 const overlayClass =
@@ -31,6 +33,8 @@ export function AttachmentDeleteConfirmModal({
   pending = false,
   onClose,
   onConfirm,
+  variant = "attachments",
+  fileName,
 }: AttachmentDeleteConfirmModalProps) {
   const titleId = useId();
   const descId = useId();
@@ -52,6 +56,9 @@ export function AttachmentDeleteConfirmModal({
   if (!open || typeof document === "undefined") return null;
 
   const n = Math.max(0, Math.floor(count));
+  const isBankSlip = variant === "bankSlip";
+  const titleText =
+    isBankSlip && n <= 1 ? "Delete bank slip?" : n > 1 ? "Delete attachments?" : "Delete attachment?";
 
   return createPortal(
     <div
@@ -70,10 +77,21 @@ export function AttachmentDeleteConfirmModal({
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-lg font-semibold text-primary sm:text-xl">
-          {n > 1 ? "Delete attachments?" : "Delete attachment?"}
+          {titleText}
         </h2>
         <p id={descId} className="mt-3 text-sm leading-relaxed text-primary/80">
-          {n > 1 ? (
+          {isBankSlip && n === 1 ? (
+            <>
+              Are you sure you want to delete this uploaded bank slip
+              {fileName?.trim() ? (
+                <>
+                  {" "}
+                  <span className="font-medium break-all">“{fileName.trim()}”</span>
+                </>
+              ) : null}
+              ? This cannot be undone.
+            </>
+          ) : n > 1 ? (
             <>Are you sure you want to delete these {n} attachments? This cannot be undone.</>
           ) : (
             <>Are you sure you want to delete this attachment? This cannot be undone.</>

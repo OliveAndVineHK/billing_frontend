@@ -68,6 +68,218 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   return res.json();
 }
 
+function resolveBackendFileUrl(url: string): string {
+  const base = API_BASE.replace(/\/$/, "");
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("/api/v1")) return `${base}${url}`;
+  if (url.startsWith("/")) return `${base}/api/v1${url}`;
+  return `${base}/api/v1/${url}`;
+}
+
+function getApiOrigin(): string {
+  try {
+    return new URL(API_BASE.replace(/\/$/, "")).origin;
+  } catch {
+    return "";
+  }
+}
+
+function isCrossOriginStoragePreviewUrl(absolute: string): boolean {
+  if (!absolute.startsWith("http://") && !absolute.startsWith("https://")) return false;
+  const api = getApiOrigin();
+  if (!api) return true;
+  try {
+    return new URL(absolute).origin !== api;
+  } catch {
+    return false;
+  }
+}
+
+function extractFileUrlFromAttachmentJson(data: Record<string, unknown>): string | undefined {
+  const nested = data.attachment as Record<string, unknown> | undefined;
+  const from = (o: Record<string, unknown>): string | undefined => {
+    const pick = (v: unknown): string | undefined => {
+      if (typeof v !== "string") return undefined;
+      const s = v.trim();
+      return s.length > 0 ? s : undefined;
+    };
+    return (
+      pick(o.download_url) ??
+      pick(o.file_url) ??
+      pick(o.url) ??
+      pick(o.signed_url) ??
+      pick(o.presigned_url) ??
+      pick(o.public_url)
+    );
+  };
+  return from(data) ?? (nested ? from(nested) : undefined);
+}
+
+function parseAttachmentFileSizeBytes(raw: unknown): number | undefined {
+  if (typeof raw === "number" && Number.isFinite(raw) && raw >= 0) return Math.round(raw);
+  if (typeof raw === "string" && raw.trim()) {
+    const n = Number.parseFloat(raw.trim());
+    if (Number.isFinite(n) && n >= 0) return Math.round(n);
+  }
+  return undefined;
+}
+
+async function fetchAttachmentDownloadJson(path: string): Promise<{
+  url: string;
+  mime_type?: string;
+  file_size?: number;
+} | null> {
+  const auth = getAuth();
+  if (!auth?.token) throw new ApiError(401, "Not authenticated");
+
+  const headers = new Headers();
+  headers.set("Authorization", `Bearer ${auth.token}`);
+  headers.set("X-Entity-Id", auth.entityId);
+  headers.set("Accept", "application/json");
+
+  const res = await fetch(`${API_BASE}/api/v1${path}`, { headers });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      redirectToLogin();
+      throw new ApiError(401, "Session expired. Redirecting to login.");
+    }
+    return null;
+  }
+
+  const data = (await res.json()) as Record<string, unknown>;
+  const url = extractFileUrlFromAttachmentJson(data);
+  if (!url) return null;
+
+  const mimeRaw = data.mime_type;
+  const mime_type =
+    typeof mimeRaw === "string" && mimeRaw.trim() ? mimeRaw.trim() : undefined;
+
+  const nestedAtt = data.attachment as Record<string, unknown> | undefined;
+  const file_size =
+    parseAttachmentFileSizeBytes(data.file_size) ??
+    (nestedAtt ? parseAttachmentFileSizeBytes(nestedAtt.file_size) : undefined);
+
+  return { url, mime_type, file_size };
+}
+
+async function fetchBytesFromResolvedFileUrl(absolute: string): Promise<Blob | null> {
+  const auth = getAuth();
+  const apiOrigin = getApiOrigin();
+  let targetOrigin: string;
+  try {
+    targetOrigin = new URL(absolute).origin;
+  } catch {
+    return null;
+  }
+
+  const authHeaders = (): Headers => {
+    const h = new Headers();
+    h.set("Accept", "*/*");
+    if (auth?.token) {
+      h.set("Authorization", `Bearer ${auth.token}`);
+      h.set("X-Entity-Id", auth.entityId);
+    }
+    return h;
+  };
+
+  if (targetOrigin === apiOrigin && apiOrigin !== "") {
+    const res = await fetch(absolute, { headers: authHeaders() });
+    if (!res.ok) return null;
+    const b = await res.blob();
+    return b.size > 0 ? b : null;
+  }
+
+  /** Third-party storage: no Authorization (avoids CORS preflight / breaks presigned URLs). */
+  const res = await fetch(absolute, { credentials: "omit" });
+  if (!res.ok) return null;
+  const b = await res.blob();
+  return b.size > 0 ? b : null;
+}
+
+/**
+ * Ordered `/download` candidates for preview (see `fetchAttachmentDownloadJson`).
+ * Tries payment-attachment id on the payment route first, then bill file id on the bill route.
+ */
+function buildPaymentAttachmentDownloadPaths(
+  billId: string,
+  paymentId: string,
+  paymentAttachmentId: string,
+  storageAttachmentId?: string,
+): string[] {
+  const payBase = `/bills/${billId}/payments/${paymentId}/attachments`;
+  const billAttBase = `/bills/${billId}/attachments`;
+  const nested = storageAttachmentId?.trim();
+  const ordered: string[] = [`${payBase}/${paymentAttachmentId}/download`];
+  if (nested && nested !== paymentAttachmentId) {
+    ordered.push(`${billAttBase}/${nested}/download`);
+  }
+  ordered.push(`${billAttBase}/${paymentAttachmentId}/download`);
+  if (nested && nested !== paymentAttachmentId) {
+    ordered.push(`${payBase}/${nested}/download`);
+  }
+  const seen = new Set<string>();
+  return ordered.filter((p) => (seen.has(p) ? false : !!seen.add(p)));
+}
+
+type PaymentAttachmentPreview =
+  | { kind: "embed"; url: string; mime_type?: string; file_size?: number }
+  | { kind: "blob"; blob: Blob; file_size?: number };
+
+export async function fetchPaymentAttachmentPreview(
+  billId: string,
+  paymentId: string,
+  paymentAttachmentId: string,
+  storageAttachmentId?: string,
+): Promise<PaymentAttachmentPreview> {
+  let lastError: unknown;
+
+  const downloadPaths = buildPaymentAttachmentDownloadPaths(
+    billId,
+    paymentId,
+    paymentAttachmentId,
+    storageAttachmentId,
+  );
+
+  for (const path of downloadPaths) {
+    try {
+      const meta = await fetchAttachmentDownloadJson(path);
+      if (!meta) continue;
+      const absolute = resolveBackendFileUrl(meta.url);
+      if (isCrossOriginStoragePreviewUrl(absolute)) {
+        return {
+          kind: "embed",
+          url: absolute,
+          mime_type: meta.mime_type,
+          file_size: meta.file_size,
+        };
+      }
+      const bytes = await fetchBytesFromResolvedFileUrl(absolute);
+      if (!bytes || bytes.size === 0) {
+        lastError = new ApiError(404, "Empty file from storage URL");
+        continue;
+      }
+      const t = (bytes.type || "").toLowerCase();
+      const file_size = meta.file_size ?? bytes.size;
+      if (meta.mime_type && (!t || t === "application/octet-stream")) {
+        return {
+          kind: "blob",
+          blob: new Blob([await bytes.arrayBuffer()], { type: meta.mime_type }),
+          file_size,
+        };
+      }
+      return { kind: "blob", blob: bytes, file_size };
+    } catch (e) {
+      lastError = e;
+      if (e instanceof ApiError && e.status === 401) throw e;
+      continue;
+    }
+  }
+
+  if (lastError instanceof Error) throw lastError;
+  throw new ApiError(404, "Could not download attachment");
+}
+
 // ── Types ────────────────────────────────────────────────────────────
 
 export type BillListItem = {
@@ -324,6 +536,16 @@ export function listPaymentAttachments(
   paymentId: string,
 ): Promise<PaymentAttachment[]> {
   return apiFetch(`/bills/${billId}/payments/${paymentId}/attachments`);
+}
+
+export function deletePaymentAttachment(
+  billId: string,
+  paymentId: string,
+  paymentAttachmentId: string,
+): Promise<{ message: string } | undefined> {
+  return apiFetch(`/bills/${billId}/payments/${paymentId}/attachments/${paymentAttachmentId}`, {
+    method: "DELETE",
+  });
 }
 
 /** Upload a file for a payment (e.g. bank slip). Multipart field `file`; `attachment_role` query defaults to bank_slip. */

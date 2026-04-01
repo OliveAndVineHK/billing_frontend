@@ -300,6 +300,8 @@ type PaymentRequestTableProps = {
 
 export type PaymentRequestTableHandle = {
   clearSelection: () => void;
+  /** Opens the Upload bank slip modal for the given bill (same as the row Upload control). */
+  openBankSlipUpload: (billId: string) => void;
 };
 
 const ROW_MENU_MIN_WIDTH_PX = 160;
@@ -388,11 +390,14 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   const [columnOrder, setColumnOrder] = useState<ColumnSelectorKey[]>(() => COLUMN_SELECTOR_ITEMS.map((item) => item.key));
   const [draggingColumnKey, setDraggingColumnKey] = useState<ColumnSelectorKey | null>(null);
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
+  /** Bill id for the open bank slip details modal — stable when transitioning to Upload modal. */
+  const bankSlipDetailsBillIdRef = useRef<string | null>(null);
 
   const rowIdSet = useMemo(() => new Set(rows.map((r) => r.id)), [rows]);
 
   useImperativeHandle(ref, () => ({
     clearSelection: () => setSelectedIds(new Set()),
+    openBankSlipUpload: (billId: string) => setBankslipModalRowId(billId),
   }));
 
   useEffect(() => {
@@ -442,11 +447,19 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
     [columnOrder],
   );
 
-  const bankSlipDetailsPayload = useMemo(() => {
-    if (!bankSlipDetailsRowId) return null;
-    const r = rows.find((x) => x.id === bankSlipDetailsRowId);
-    return r ? getBankSlipDetailsForRow(r) : null;
+  const bankSlipDetailsSourceRow = useMemo(() => {
+    if (!bankSlipDetailsRowId) return undefined;
+    return rows.find((x) => x.id === bankSlipDetailsRowId);
   }, [bankSlipDetailsRowId, rows]);
+
+  const bankSlipDetailsPayload = useMemo(() => {
+    if (!bankSlipDetailsSourceRow) return null;
+    return getBankSlipDetailsForRow(bankSlipDetailsSourceRow);
+  }, [bankSlipDetailsSourceRow]);
+
+  const bankSlipDetailsReadOnly =
+    bankSlipDetailsSourceRow != null &&
+    (bankSlipDetailsSourceRow.status === "Voided" || bankSlipDetailsSourceRow.status === "Draft");
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -631,8 +644,31 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                           </p>
                         ) : null}
                       </div>
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center" onClick={(e) => e.stopPropagation()}>
-                        <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={40} height={40} className="h-10 w-10 object-contain" />
+                      <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
+                          <button
+                            type="button"
+                            className={`inline-flex h-10 min-h-10 cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              bankSlipDetailsBillIdRef.current = row.id;
+                              setBankSlipDetailsRowId(row.id);
+                            }}
+                            aria-label={
+                              isVoided
+                                ? `View bank slip — voided, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
+                                : isDraft
+                                  ? `View bank slip — draft, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
+                                  : `View bank slip — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`
+                            }
+                          >
+                            <span className="text-sm font-semibold tabular-nums">{row.bankslipFileCount}</span>
+                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>draft</span>
+                          </button>
+                        ) : null}
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+                          <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={40} height={40} className="h-10 w-10 object-contain" />
+                        </div>
                       </div>
                     </div>
                     <div className="mt-4 flex min-w-0 flex-col gap-2">
@@ -666,12 +702,6 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>add</span>
                           </button>
                         ) : null}
-                        {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
-                          <div className={`inline-flex h-10 min-h-10 items-center gap-1.5 ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`} role="status" aria-label={isVoided ? `Voided — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} (read only)` : isDraft ? `Draft — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} (read only)` : `${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`}>
-                            <span className="text-sm font-semibold tabular-nums">{row.bankslipFileCount}</span>
-                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>draft</span>
-                          </div>
-                        ) : null}
                       </div>
                       <div className="flex h-10 min-h-10 shrink-0 items-center justify-end">
                         {bankslipReadOnly ? (
@@ -679,7 +709,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             <span className="whitespace-nowrap">Upload</span>
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>upload_file</span>
                           </div>
-                        ) : (
+                        ) : row.bankslipFileCount != null && row.bankslipFileCount > 0 ? null : (
                           <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}>
                             <span className="whitespace-nowrap">Upload</span>
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>upload_file</span>
@@ -833,20 +863,25 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                           return (
                             <td key={title} className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>
                               {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
-                                <div
-                                  className={`inline-flex items-center gap-1.5 sm:gap-2 ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`}
-                                  role="status"
+                                <button
+                                  type="button"
+                                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:gap-2 ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    bankSlipDetailsBillIdRef.current = row.id;
+                                    setBankSlipDetailsRowId(row.id);
+                                  }}
                                   aria-label={
                                     isVoided
-                                      ? `Voided — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} (read only)`
+                                      ? `View bank slip — voided, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
                                       : isDraft
-                                        ? `Draft — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} (read only)`
-                                        : `${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`
+                                        ? `View bank slip — draft, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
+                                        : `View bank slip — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`
                                   }
                                 >
                                   <span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span>
                                   <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span>
-                                </div>
+                                </button>
                               ) : bankslipReadOnly ? (
                                 <div
                                   className={uploadBankslipReadOnlyClass}
@@ -891,7 +926,24 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
         onClose={() => setBankslipModalRowId(null)}
         onUploaded={onBankSlipUploaded}
       />
-      {bankSlipDetailsRowId != null && bankSlipDetailsPayload ? <BankSlipDetailsModal open onClose={() => setBankSlipDetailsRowId(null)} details={bankSlipDetailsPayload} onUpload={() => { const id = bankSlipDetailsRowId; setBankSlipDetailsRowId(null); setBankslipModalRowId(id); }} /> : null}
+      {bankSlipDetailsRowId != null && bankSlipDetailsPayload ? (
+        <BankSlipDetailsModal
+          open
+          onClose={() => setBankSlipDetailsRowId(null)}
+          details={bankSlipDetailsPayload}
+          allowRemoveFiles={!bankSlipDetailsReadOnly}
+          onBankSlipFileDeleted={onBankSlipUploaded}
+          onUpload={
+            bankSlipDetailsReadOnly
+              ? undefined
+              : () => {
+                  const id = bankSlipDetailsBillIdRef.current;
+                  setBankSlipDetailsRowId(null);
+                  if (id) setBankslipModalRowId(id);
+                }
+          }
+        />
+      ) : null}
       {rowMenu
         ? createPortal(
             <div data-row-menu-panel role="menu" aria-label="Row actions" className="fixed z-[400] rounded-lg border border-gray-200 bg-white py-1 shadow-lg" style={{ top: rowMenu.top, left: rowMenu.left, minWidth: ROW_MENU_MIN_WIDTH_PX }}>
