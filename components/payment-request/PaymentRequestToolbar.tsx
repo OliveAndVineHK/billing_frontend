@@ -348,7 +348,7 @@ export function PaymentRequestToolbar({
             )
               : null}
           </div>
-          <div ref={bulkWrapRef} className="relative">
+          <div ref={bulkWrapRef} className="relative hidden sm:block">
             <button ref={bulkButtonRef} type="button" aria-label={bulkSelectedCount > 0 ? `Bulk actions, ${bulkSelectedCount} selected` : "Bulk actions"} aria-expanded={bulkOpen ? "true" : "false"} aria-haspopup="menu" disabled={!bulkActionsEnabled} onClick={() => { if (!bulkButtonRef.current) return; toggleBulkMenu(bulkButtonRef.current); }} className={`box-border inline-flex h-11 min-h-[44px] items-center justify-center rounded-lg border px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:px-4 ${bulkActionsEnabled ? "cursor-pointer border-primary/25 text-primary hover:bg-primary/10" : "cursor-not-allowed border-primary/20 bg-[#F5F5F5] text-primary/45"}`}>{bulkSelectedCount > 0 ? `Bulk Actions (${bulkSelectedCount})` : "Bulk Actions"}</button>
             {bulkOpen && bulkMenu && bulkActionsEnabled && typeof document !== "undefined"
               ? createPortal(
