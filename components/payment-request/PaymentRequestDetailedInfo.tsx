@@ -11,6 +11,7 @@ import {
   mergeSelectOption,
   modalCurrencyToIsoCode,
 } from "@/lib/billFormSelectOptions";
+import type { EntityBillContact } from "@/lib/api";
 
 /** Bill / request fields shown in the “Detailed Information” card. */
 export type PaymentRequestDetailedInfoData = {
@@ -39,8 +40,8 @@ export type PaymentRequestDetailedInfoProps = {
   accountCodeError?: string | null;
   accountOptions?: ThemedSelectOption[];
   contactOptions?: ThemedSelectOption[];
-  /** Maps contact display name (API `name`) → Xero contact UUID for supplier-scoped payment history. */
-  contactXeroByName?: Map<string, string>;
+  /** Maps Xero contact id → API row (names may duplicate across rows). */
+  contactById?: Map<string, EntityBillContact>;
   onPatchChange?: (patch: Partial<PaymentRequestDetailedInfoData>) => void;
   onEdit?: () => void;
   onCancel?: () => void;
@@ -186,7 +187,7 @@ export function PaymentRequestDetailedInfo({
   className = "",
   accountOptions: accountOptionsProp,
   contactOptions: contactOptionsProp,
-  contactXeroByName,
+  contactById,
 }: PaymentRequestDetailedInfoProps) {
   const {
     billNo,
@@ -194,6 +195,7 @@ export function PaymentRequestDetailedInfo({
     currencyCode,
     description,
     contact,
+    xero_contact_id,
     accountCode,
     invoiceDate,
     dueDate,
@@ -217,7 +219,12 @@ export function PaymentRequestDetailedInfo({
   const idAccountError = `detail-account-err-${uid}`;
 
   const fallbackContactOptions: ThemedSelectOption[] = [{ value: "", label: "Select contact" }];
-  const contactOptions = mergeSelectOption(contactOptionsProp ?? fallbackContactOptions, contact);
+  const contactMergeValue = (xero_contact_id || contact).trim() || contact;
+  const contactOptions = mergeSelectOption(
+    contactOptionsProp ?? fallbackContactOptions,
+    contactMergeValue,
+    contact,
+  );
   const fallbackAccountOptions: ThemedSelectOption[] = [{ value: "", label: "Select account code" }];
   const accountOptions = mergeSelectOption(accountOptionsProp ?? fallbackAccountOptions, accountCode);
   const currencyOptions = currencyOptionsForEditing(currencyCode);
@@ -345,14 +352,19 @@ export function PaymentRequestDetailedInfo({
           {isEditing ? (
             <ThemedSelect
               id={idContact}
-              value={contact}
+              value={contactMergeValue}
               onChange={(v) => {
                 const trimmed = v.trim();
-                const xid =
-                  trimmed && contactXeroByName?.has(trimmed)
-                    ? (contactXeroByName.get(trimmed) ?? "")
-                    : "";
-                patch({ contact: v, xero_contact_id: xid });
+                if (!trimmed) {
+                  patch({ contact: "", xero_contact_id: "" });
+                  return;
+                }
+                const row = contactById?.get(trimmed);
+                if (row) {
+                  patch({ contact: row.name, xero_contact_id: row.xero_contact_id });
+                  return;
+                }
+                patch({ contact: v, xero_contact_id: "" });
               }}
               options={contactOptions}
               disabled={disabled}

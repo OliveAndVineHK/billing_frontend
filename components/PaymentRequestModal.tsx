@@ -201,12 +201,12 @@ export function PaymentRequestModal({
         if (cancelled) return;
         const map = new Map<string, EntityBillContact>();
         for (const c of contacts) {
-          if (!map.has(c.name)) map.set(c.name, c);
+          map.set(c.xero_contact_id, c);
         }
         setContactsMap(map);
         const opts: ThemedSelectOption[] = [
           { value: "", label: "Select contact" },
-          ...Array.from(map.values()).map((c) => ({ value: c.name, label: c.name })),
+          ...contacts.map((c) => ({ value: c.xero_contact_id, label: c.name })),
         ];
         setContactOptions(opts);
       })
@@ -306,8 +306,9 @@ export function PaymentRequestModal({
       const acctCode = accountCode.split(" - ")[0]?.trim() ?? "";
 
       const selectedContact = contactsMap.get(contact);
+      const contactName = selectedContact?.name ?? contact;
       const bill = await saveBillDraft({
-        contact: contact || undefined,
+        contact: contactName || undefined,
         xero_contact_id: selectedContact?.xero_contact_id || undefined,
         description: description || undefined,
         amount: parsedAmount ?? undefined,
@@ -391,8 +392,9 @@ export function PaymentRequestModal({
       const acctCode = accountCode.split(" - ")[0]?.trim() ?? "";
 
       const selectedContact = contactsMap.get(contact);
+      const contactName = selectedContact?.name ?? contact;
       const bill = await submitBill({
-        contact,
+        contact: contactName,
         xero_contact_id: selectedContact?.xero_contact_id || undefined,
         description,
         amount: parsedAmount,

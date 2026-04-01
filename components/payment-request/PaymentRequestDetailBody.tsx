@@ -71,7 +71,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [contactOptions, setContactOptions] = useState<ThemedSelectOption[]>([
     { value: "", label: "Select contact" },
   ]);
-  const [contactXeroByName, setContactXeroByName] = useState<Map<string, string>>(() => new Map());
+  const [contactById, setContactById] = useState<Map<string, EntityBillContact>>(() => new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -92,20 +92,14 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     fetchEntityBillContacts()
       .then((contacts: EntityBillContact[]) => {
         if (cancelled) return;
-        const byName = new Map<string, string>();
+        const byId = new Map<string, EntityBillContact>();
         for (const c of contacts) {
-          byName.set(c.name, c.xero_contact_id);
+          byId.set(c.xero_contact_id, c);
         }
-        setContactXeroByName(byName);
-        const seen = new Set<string>();
-        const unique = contacts.filter((c) => {
-          if (seen.has(c.name)) return false;
-          seen.add(c.name);
-          return true;
-        });
+        setContactById(byId);
         setContactOptions([
           { value: "", label: "Select contact" },
-          ...unique.map((c) => ({ value: c.name, label: c.name })),
+          ...contacts.map((c) => ({ value: c.xero_contact_id, label: c.name })),
         ]);
       })
       .catch(() => {});
@@ -518,7 +512,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               accountCodeError={isEditing ? accountCodeError : null}
               accountOptions={accountOptions}
               contactOptions={contactOptions}
-              contactXeroByName={contactXeroByName}
+              contactById={contactById}
               onPatchChange={isEditing ? handlePatch : undefined}
               onEdit={handleEdit}
               onCancel={handleCancel}
