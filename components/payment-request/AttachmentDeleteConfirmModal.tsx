@@ -10,9 +10,7 @@ export type AttachmentDeleteConfirmModalProps = {
   pending?: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  /** Default copy vs bank slip delete wording. */
   variant?: "attachments" | "bankSlip";
-  /** File name for bank slip single-delete copy. */
   fileName?: string;
 };
 

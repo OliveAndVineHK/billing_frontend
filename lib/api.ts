@@ -68,7 +68,6 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   return res.json();
 }
 
-/** Authenticated GET returning raw bytes (e.g. attachment file stream). */
 async function apiFetchBlob(path: string): Promise<Blob> {
   const auth = getAuth();
   if (!auth?.token) throw new ApiError(401, "Not authenticated");
@@ -95,10 +94,6 @@ async function apiFetchBlob(path: string): Promise<Blob> {
   return res.blob();
 }
 
-/**
- * Download bytes for a payment attachment row (bank slip).
- * Path suffix `/file` must match the billing API; change here if the backend uses e.g. `/download`.
- */
 export function fetchPaymentAttachmentFile(
   billId: string,
   paymentId: string,

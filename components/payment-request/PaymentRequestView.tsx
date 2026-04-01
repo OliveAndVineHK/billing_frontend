@@ -9,23 +9,6 @@ import { RecordPaymentModal } from "./RecordPaymentModal";
 import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
 import { deleteBill, fetchBills, publishBill, type BillListItem } from "@/lib/api";
 import { fetchBillBankSlipEnrichment } from "@/lib/bankSlipEnrichment";
-import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsModal";
-
-/** Sample payload for the toolbar test button (no API / fetchSource — preview panel shows placeholder). */
-const TEST_BANK_SLIP_DETAILS: BankSlipDetails = {
-  createdBy: "John Doe",
-  createdAt: "03 Mar 2026 13:36 HKT",
-  toName: "OL*VE AN* V*NE LTD",
-  toAccount: "147-622484-838",
-  amount: "HK$ 1,500.00",
-  fromName: "BUSINESS INTEGRATED SAVINGS - HKD SAVINGS",
-  fromAccount: "040-286XXX-838",
-  when: "03 Mar 2026",
-  files: [
-    { id: "test-slip-1", name: "01 Nov 2025_ChunFatSeafood_240 1.pdf" },
-    { id: "test-slip-2", name: "Metro_Office_slip_2.pdf" },
-  ],
-};
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return "";
@@ -89,7 +72,6 @@ export function PaymentRequestView() {
   const [selectedBillIds, setSelectedBillIds] = useState<string[]>([]);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
-  const [testBankSlipModalOpen, setTestBankSlipModalOpen] = useState(false);
   const tableRef = useRef<PaymentRequestTableHandle>(null);
   const bulkActionsEnabled = selectedBillIds.length >= 2;
 
@@ -194,15 +176,6 @@ export function PaymentRequestView() {
 
   return (
     <>
-      <div className="flex shrink-0 justify-end border-b border-gray-100 bg-[#FAFAFA] px-4 py-2 sm:px-6">
-        <button
-          type="button"
-          onClick={() => setTestBankSlipModalOpen(true)}
-          className="rounded-lg border border-secondary/40 bg-white px-3 py-1.5 text-xs font-semibold text-secondary shadow-sm transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:text-sm"
-        >
-          Test bank slip modal
-        </button>
-      </div>
       <PaymentRequestToolbar
         activeStatus={statusFilter}
         onActiveStatusChange={setStatusFilter}
@@ -277,17 +250,6 @@ export function PaymentRequestView() {
             : "HK$"
         }
         onPaymentSaved={loadBills}
-      />
-      <BankSlipDetailsModal
-        open={testBankSlipModalOpen}
-        onClose={() => setTestBankSlipModalOpen(false)}
-        details={TEST_BANK_SLIP_DETAILS}
-        allowRemoveFiles
-        onUpload={() => {
-          setTestBankSlipModalOpen(false);
-          const eligible = bills.find((b) => b.status !== "Voided" && b.status !== "Draft");
-          if (eligible) tableRef.current?.openBankSlipUpload(eligible.id);
-        }}
       />
     </>
   );
