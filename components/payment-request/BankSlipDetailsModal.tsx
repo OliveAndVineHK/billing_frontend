@@ -3,12 +3,11 @@
 import { createPortal } from "react-dom";
 import { useEffect, useId, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
-import { ApiError, deletePaymentAttachment, fetchPaymentAttachmentFile } from "@/lib/api";
+import { ApiError, deletePaymentAttachment, fetchPaymentAttachmentPreview } from "@/lib/api";
 import { AttachmentDeleteConfirmModal } from "./AttachmentDeleteConfirmModal";
 
 export type BankSlipFileRef = { id: string; name: string };
 
-/** When set, the modal fetches file bytes with the user session and previews via a blob URL. */
 export type BankSlipFileFetchSource = {
   billId: string;
   paymentId: string;
@@ -150,17 +149,25 @@ function FetchedPreviewContent({ fileName, source }: { fileName: string; source:
 
   useEffect(() => {
     let cancelled = false;
-    const urlRef: { current: string | null } = { current: null };
+    const blobObjectUrlRef: { current: string | null } = { current: null };
     setState({ status: "loading" });
     (async () => {
       try {
-        const blob = await fetchPaymentAttachmentFile(
+        const preview = await fetchPaymentAttachmentPreview(
           source.billId,
           source.paymentId,
           source.attachmentId,
           source.fileAttachmentId,
         );
         if (cancelled) return;
+
+        if (preview.kind === "embed") {
+          const mime = (preview.mime_type || "").toLowerCase();
+          setState({ status: "ready", url: preview.url, mime });
+          return;
+        }
+
+        const blob = preview.blob;
         const rawType = (blob.type || "").toLowerCase();
         let previewBlob = blob;
         if (isPdfName(fileName) && (!rawType || rawType === "application/octet-stream")) {
@@ -182,7 +189,7 @@ function FetchedPreviewContent({ fileName, source }: { fileName: string; source:
           URL.revokeObjectURL(objectUrl);
           return;
         }
-        urlRef.current = objectUrl;
+        blobObjectUrlRef.current = objectUrl;
         setState({ status: "ready", url: objectUrl, mime: previewBlob.type || "" });
       } catch {
         if (!cancelled) setState({ status: "error" });
@@ -190,9 +197,9 @@ function FetchedPreviewContent({ fileName, source }: { fileName: string; source:
     })();
     return () => {
       cancelled = true;
-      if (urlRef.current) {
-        URL.revokeObjectURL(urlRef.current);
-        urlRef.current = null;
+      if (blobObjectUrlRef.current) {
+        URL.revokeObjectURL(blobObjectUrlRef.current);
+        blobObjectUrlRef.current = null;
       }
     };
   }, [source.billId, source.paymentId, source.attachmentId, source.fileAttachmentId]);

@@ -105,6 +105,25 @@ function resolveBackendFileUrl(url: string): string {
   return `${base}/api/v1/${url}`;
 }
 
+function getApiOrigin(): string {
+  try {
+    return new URL(API_BASE.replace(/\/$/, "")).origin;
+  } catch {
+    return "";
+  }
+}
+
+function isCrossOriginStoragePreviewUrl(absolute: string): boolean {
+  if (!absolute.startsWith("http://") && !absolute.startsWith("https://")) return false;
+  const api = getApiOrigin();
+  if (!api) return true;
+  try {
+    return new URL(absolute).origin !== api;
+  } catch {
+    return false;
+  }
+}
+
 function extractFileUrlFromAttachmentJson(data: Record<string, unknown>): string | undefined {
   const nested = data.attachment as Record<string, unknown> | undefined;
   const from = (o: Record<string, unknown>): string | undefined => {
@@ -190,19 +209,17 @@ async function fetchBytesFromResolvedFileUrl(absolute: string): Promise<Blob | n
     return b.size > 0 ? b : null;
   }
 
-  let res = await fetch(absolute, { headers: authHeaders(), credentials: "omit" });
-  if (res.ok) {
-    const b = await res.blob();
-    if (b.size > 0) return b;
-  }
-  res = await fetch(absolute, { credentials: "omit" });
+  /** Third-party storage: no Authorization (avoids CORS preflight / breaks presigned URLs). */
+  const res = await fetch(absolute, { credentials: "omit" });
   if (!res.ok) return null;
   const b = await res.blob();
   return b.size > 0 ? b : null;
 }
 
-/** Some backends return JSON `{ "url": "…" }` even from `/file` — unwrap to real bytes. */
-async function unwrapBlobIfJsonUrlEnvelope(blob: Blob): Promise<Blob> {
+/** Some backends return JSON `{ "url": "…" }` even from `/file` — unwrap to real bytes or embed URL. */
+async function unwrapBlobIfJsonUrlEnvelope(
+  blob: Blob,
+): Promise<Blob | { kind: "embed"; url: string }> {
   const type = (blob.type || "").toLowerCase();
   if (type.includes("pdf") || type.startsWith("image/")) return blob;
   const maybeJsonEnvelope =
@@ -231,16 +248,59 @@ async function unwrapBlobIfJsonUrlEnvelope(blob: Blob): Promise<Blob> {
   }
 
   const absolute = resolveBackendFileUrl(url);
+  if (isCrossOriginStoragePreviewUrl(absolute)) {
+    return { kind: "embed", url: absolute };
+  }
+
   const resolved = await fetchBytesFromResolvedFileUrl(absolute);
   return resolved ?? new Blob([text], { type: blob.type || "application/json" });
 }
 
-export async function fetchPaymentAttachmentFile(
+function isEmbedUnwrapResult(
+  v: Blob | { kind: "embed"; url: string },
+): v is { kind: "embed"; url: string } {
+  return typeof v === "object" && v !== null && "kind" in v && (v as { kind?: string }).kind === "embed";
+}
+
+/**
+ * Ordered `/download` candidates for preview (see `fetchAttachmentDownloadJson`).
+ * Tries payment-attachment id on the payment route first, then bill file id on the bill route.
+ */
+function buildPaymentAttachmentDownloadPaths(
   billId: string,
   paymentId: string,
   paymentAttachmentId: string,
   storageAttachmentId?: string,
-): Promise<Blob> {
+): string[] {
+  const payBase = `/bills/${billId}/payments/${paymentId}/attachments`;
+  const billAttBase = `/bills/${billId}/attachments`;
+  const nested = storageAttachmentId?.trim();
+  const ordered: string[] = [`${payBase}/${paymentAttachmentId}/download`];
+  if (nested && nested !== paymentAttachmentId) {
+    ordered.push(`${billAttBase}/${nested}/download`);
+  }
+  ordered.push(`${billAttBase}/${paymentAttachmentId}/download`);
+  if (nested && nested !== paymentAttachmentId) {
+    ordered.push(`${payBase}/${nested}/download`);
+  }
+  const seen = new Set<string>();
+  return ordered.filter((p) => (seen.has(p) ? false : !!seen.add(p)));
+}
+
+export type PaymentAttachmentPreview =
+  | { kind: "embed"; url: string; mime_type?: string }
+  | { kind: "blob"; blob: Blob };
+
+/**
+ * Resolves a bank-slip / payment attachment for in-browser preview.
+ * Uses the billing `…/attachments/{id}/download` JSON (presigned `url`) first; cross-origin URLs are returned for direct <img>/<iframe> use.
+ */
+export async function fetchPaymentAttachmentPreview(
+  billId: string,
+  paymentId: string,
+  paymentAttachmentId: string,
+  storageAttachmentId?: string,
+): Promise<PaymentAttachmentPreview> {
   const payBase = `/bills/${billId}/payments/${paymentId}/attachments`;
   const billAttBase = `/bills/${billId}/attachments`;
   const nested = storageAttachmentId?.trim();
@@ -248,33 +308,34 @@ export async function fetchPaymentAttachmentFile(
 
   let lastError: unknown;
 
-  /** Documented preview flow: JSON with presigned `url` (Backblaze/S3, etc.). */
-  const downloadPaths: string[] = [];
-  const seenDownload = new Set<string>();
-  for (const id of ids) {
-    for (const p of [`${payBase}/${id}/download`, `${billAttBase}/${id}/download`]) {
-      if (!seenDownload.has(p)) {
-        seenDownload.add(p);
-        downloadPaths.push(p);
-      }
-    }
-  }
+  const downloadPaths = buildPaymentAttachmentDownloadPaths(
+    billId,
+    paymentId,
+    paymentAttachmentId,
+    storageAttachmentId,
+  );
 
   for (const path of downloadPaths) {
     try {
       const meta = await fetchAttachmentDownloadJson(path);
       if (!meta) continue;
       const absolute = resolveBackendFileUrl(meta.url);
+      if (isCrossOriginStoragePreviewUrl(absolute)) {
+        return { kind: "embed", url: absolute, mime_type: meta.mime_type };
+      }
       const bytes = await fetchBytesFromResolvedFileUrl(absolute);
       if (!bytes || bytes.size === 0) {
-        lastError = new ApiError(404, "Empty file from presigned URL");
+        lastError = new ApiError(404, "Empty file from storage URL");
         continue;
       }
       const t = (bytes.type || "").toLowerCase();
       if (meta.mime_type && (!t || t === "application/octet-stream")) {
-        return new Blob([await bytes.arrayBuffer()], { type: meta.mime_type });
+        return {
+          kind: "blob",
+          blob: new Blob([await bytes.arrayBuffer()], { type: meta.mime_type }),
+        };
       }
-      return bytes;
+      return { kind: "blob", blob: bytes };
     } catch (e) {
       lastError = e;
       if (e instanceof ApiError && e.status === 401) throw e;
@@ -302,11 +363,15 @@ export async function fetchPaymentAttachmentFile(
         continue;
       }
       const unwrapped = await unwrapBlobIfJsonUrlEnvelope(blob);
-      if (unwrapped.size === 0) {
+      if (isEmbedUnwrapResult(unwrapped)) {
+        return { kind: "embed", url: unwrapped.url };
+      }
+      const outBlob = unwrapped;
+      if (outBlob.size === 0) {
         lastError = new ApiError(404, "Empty attachment body");
         continue;
       }
-      return unwrapped;
+      return { kind: "blob", blob: outBlob };
     } catch (e) {
       lastError = e;
       if (e instanceof ApiError && (e.status === 404 || e.status === 403)) continue;
@@ -334,8 +399,14 @@ export async function fetchPaymentAttachmentFile(
       const url = extractFileUrlFromAttachmentJson(data);
       if (!url) continue;
       const absolute = resolveBackendFileUrl(url);
+      if (isCrossOriginStoragePreviewUrl(absolute)) {
+        const mimeRaw = data.mime_type;
+        const mime_type =
+          typeof mimeRaw === "string" && mimeRaw.trim() ? mimeRaw.trim() : undefined;
+        return { kind: "embed", url: absolute, mime_type };
+      }
       const out = await fetchBytesFromResolvedFileUrl(absolute);
-      if (out && out.size > 0) return out;
+      if (out && out.size > 0) return { kind: "blob", blob: out };
     }
   } catch {
     /* fall through */
