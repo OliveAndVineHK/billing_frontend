@@ -125,6 +125,39 @@ function extractFileUrlFromAttachmentJson(data: Record<string, unknown>): string
   return from(data) ?? (nested ? from(nested) : undefined);
 }
 
+async function fetchAttachmentDownloadJson(path: string): Promise<{
+  url: string;
+  mime_type?: string;
+} | null> {
+  const auth = getAuth();
+  if (!auth?.token) throw new ApiError(401, "Not authenticated");
+
+  const headers = new Headers();
+  headers.set("Authorization", `Bearer ${auth.token}`);
+  headers.set("X-Entity-Id", auth.entityId);
+  headers.set("Accept", "application/json");
+
+  const res = await fetch(`${API_BASE}/api/v1${path}`, { headers });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      redirectToLogin();
+      throw new ApiError(401, "Session expired. Redirecting to login.");
+    }
+    return null;
+  }
+
+  const data = (await res.json()) as Record<string, unknown>;
+  const url = extractFileUrlFromAttachmentJson(data);
+  if (!url) return null;
+
+  const mimeRaw = data.mime_type;
+  const mime_type =
+    typeof mimeRaw === "string" && mimeRaw.trim() ? mimeRaw.trim() : undefined;
+
+  return { url, mime_type };
+}
+
 async function fetchBytesFromResolvedFileUrl(absolute: string): Promise<Blob | null> {
   const auth = getAuth();
   let apiOrigin: string;
@@ -213,21 +246,54 @@ export async function fetchPaymentAttachmentFile(
   const nested = storageAttachmentId?.trim();
   const ids = [paymentAttachmentId, ...(nested && nested !== paymentAttachmentId ? [nested] : [])];
 
+  let lastError: unknown;
+
+  /** Documented preview flow: JSON with presigned `url` (Backblaze/S3, etc.). */
+  const downloadPaths: string[] = [];
+  const seenDownload = new Set<string>();
+  for (const id of ids) {
+    for (const p of [`${payBase}/${id}/download`, `${billAttBase}/${id}/download`]) {
+      if (!seenDownload.has(p)) {
+        seenDownload.add(p);
+        downloadPaths.push(p);
+      }
+    }
+  }
+
+  for (const path of downloadPaths) {
+    try {
+      const meta = await fetchAttachmentDownloadJson(path);
+      if (!meta) continue;
+      const absolute = resolveBackendFileUrl(meta.url);
+      const bytes = await fetchBytesFromResolvedFileUrl(absolute);
+      if (!bytes || bytes.size === 0) {
+        lastError = new ApiError(404, "Empty file from presigned URL");
+        continue;
+      }
+      const t = (bytes.type || "").toLowerCase();
+      if (meta.mime_type && (!t || t === "application/octet-stream")) {
+        return new Blob([await bytes.arrayBuffer()], { type: meta.mime_type });
+      }
+      return bytes;
+    } catch (e) {
+      lastError = e;
+      if (e instanceof ApiError && e.status === 401) throw e;
+      continue;
+    }
+  }
+
   const candidates: string[] = [];
   for (const id of ids) {
     candidates.push(
       `${payBase}/${id}/file`,
-      `${payBase}/${id}/download`,
       `${payBase}/${id}/content`,
       `${payBase}/${id}/stream`,
       `${billAttBase}/${id}/file`,
-      `${billAttBase}/${id}/download`,
       `${billAttBase}/${id}/content`,
       `${billAttBase}/${id}/stream`,
     );
   }
 
-  let lastError: unknown;
   for (const path of candidates) {
     try {
       const blob = await apiFetchBlob(path);
