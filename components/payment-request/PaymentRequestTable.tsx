@@ -697,6 +697,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             }
                           >
                             <span className="text-sm font-semibold tabular-nums">{row.bankslipFileCount}</span>
+                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>draft</span>
                           </button>
                         ) : null}
                       </div>
@@ -706,19 +707,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             <span className="whitespace-nowrap">Upload</span>
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>upload_file</span>
                           </div>
-                        ) : row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
-                          <button
-                            type="button"
-                            className={uploadBankslipButtonClass}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setBankslipModalRowId(row.id);
-                            }}
-                            aria-label={`New bank slip for ${row.contactTitle}`}
-                          >
-                            <span className="whitespace-nowrap">New Bank Slip</span>
-                          </button>
-                        ) : (
+                        ) : row.bankslipFileCount != null && row.bankslipFileCount > 0 ? null : (
                           <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}>
                             <span className="whitespace-nowrap">Upload</span>
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>upload_file</span>
@@ -872,39 +861,25 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                           return (
                             <td key={title} className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>
                               {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
-                                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                  <button
-                                    type="button"
-                                    className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:gap-2 ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      bankSlipDetailsBillIdRef.current = row.id;
-                                      setBankSlipDetailsRowId(row.id);
-                                    }}
-                                    aria-label={
-                                      isVoided
-                                        ? `View bank slip — voided, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
-                                        : isDraft
-                                          ? `View bank slip — draft, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
-                                          : `View bank slip — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`
-                                    }
-                                  >
-                                    <span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span>
-                                  </button>
-                                  {!bankslipReadOnly ? (
-                                    <button
-                                      type="button"
-                                      className={`${uploadBankslipButtonClass} shrink-0`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setBankslipModalRowId(row.id);
-                                      }}
-                                      aria-label={`New bank slip for ${row.contactTitle}`}
-                                    >
-                                      <span className="whitespace-nowrap">New Bank Slip</span>
-                                    </button>
-                                  ) : null}
-                                </div>
+                                <button
+                                  type="button"
+                                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:gap-2 ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    bankSlipDetailsBillIdRef.current = row.id;
+                                    setBankSlipDetailsRowId(row.id);
+                                  }}
+                                  aria-label={
+                                    isVoided
+                                      ? `View bank slip — voided, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
+                                      : isDraft
+                                        ? `View bank slip — draft, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
+                                        : `View bank slip — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`
+                                  }
+                                >
+                                  <span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span>
+                                  <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span>
+                                </button>
                               ) : bankslipReadOnly ? (
                                 <div
                                   className={uploadBankslipReadOnlyClass}

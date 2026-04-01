@@ -68,15 +68,18 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   return res.json();
 }
 
-async function apiFetchBlob(path: string): Promise<Blob> {
+async function apiFetchBlob(path: string, init?: RequestInit): Promise<Blob> {
   const auth = getAuth();
   if (!auth?.token) throw new ApiError(401, "Not authenticated");
 
-  const headers = new Headers();
+  const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${auth.token}`);
   headers.set("X-Entity-Id", auth.entityId);
+  if (!headers.has("Accept")) {
+    headers.set("Accept", "*/*");
+  }
 
-  const res = await fetch(`${API_BASE}/api/v1${path}`, { headers });
+  const res = await fetch(`${API_BASE}/api/v1${path}`, { ...init, headers });
 
   if (!res.ok) {
     if (res.status === 401) {
@@ -94,32 +97,181 @@ async function apiFetchBlob(path: string): Promise<Blob> {
   return res.blob();
 }
 
+function resolveBackendFileUrl(url: string): string {
+  const base = API_BASE.replace(/\/$/, "");
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("/api/v1")) return `${base}${url}`;
+  if (url.startsWith("/")) return `${base}/api/v1${url}`;
+  return `${base}/api/v1/${url}`;
+}
+
+function extractFileUrlFromAttachmentJson(data: Record<string, unknown>): string | undefined {
+  const nested = data.attachment as Record<string, unknown> | undefined;
+  const from = (o: Record<string, unknown>): string | undefined => {
+    const pick = (v: unknown): string | undefined =>
+      typeof v === "string" && v.trim() ? v.trim() : undefined;
+    return (
+      pick(o.download_url) ??
+      pick(o.file_url) ??
+      pick(o.url) ??
+      pick(o.signed_url) ??
+      pick(o.presigned_url) ??
+      pick(o.public_url)
+    );
+  };
+  return from(data) ?? (nested ? from(nested) : undefined);
+}
+
+async function fetchBytesFromResolvedFileUrl(absolute: string): Promise<Blob | null> {
+  const auth = getAuth();
+  let apiOrigin: string;
+  try {
+    apiOrigin = new URL(API_BASE.replace(/\/$/, "")).origin;
+  } catch {
+    apiOrigin = "";
+  }
+  let targetOrigin: string;
+  try {
+    targetOrigin = new URL(absolute).origin;
+  } catch {
+    return null;
+  }
+
+  const authHeaders = (): Headers => {
+    const h = new Headers();
+    h.set("Accept", "*/*");
+    if (auth?.token) {
+      h.set("Authorization", `Bearer ${auth.token}`);
+      h.set("X-Entity-Id", auth.entityId);
+    }
+    return h;
+  };
+
+  if (targetOrigin === apiOrigin && apiOrigin !== "") {
+    const res = await fetch(absolute, { headers: authHeaders() });
+    if (!res.ok) return null;
+    const b = await res.blob();
+    return b.size > 0 ? b : null;
+  }
+
+  let res = await fetch(absolute, { headers: authHeaders(), credentials: "omit" });
+  if (res.ok) {
+    const b = await res.blob();
+    if (b.size > 0) return b;
+  }
+  res = await fetch(absolute, { credentials: "omit" });
+  if (!res.ok) return null;
+  const b = await res.blob();
+  return b.size > 0 ? b : null;
+}
+
+/** Some backends return JSON `{ "url": "…" }` even from `/file` — unwrap to real bytes. */
+async function unwrapBlobIfJsonUrlEnvelope(blob: Blob): Promise<Blob> {
+  const type = (blob.type || "").toLowerCase();
+  if (type.includes("pdf") || type.startsWith("image/")) return blob;
+  const maybeJsonEnvelope =
+    type.includes("json") ||
+    (blob.size > 0 &&
+      blob.size <= 65536 &&
+      (type === "" || type === "application/octet-stream"));
+  if (!maybeJsonEnvelope) return blob;
+
+  const text = await blob.text();
+  const t = text.trim();
+  if (!t.startsWith("{")) {
+    return new Blob([text], { type: blob.type || "application/octet-stream" });
+  }
+
+  let data: Record<string, unknown>;
+  try {
+    data = JSON.parse(t) as Record<string, unknown>;
+  } catch {
+    return new Blob([text], { type: blob.type || "application/octet-stream" });
+  }
+
+  const url = extractFileUrlFromAttachmentJson(data);
+  if (!url) {
+    return new Blob([text], { type: blob.type || "application/json" });
+  }
+
+  const absolute = resolveBackendFileUrl(url);
+  const resolved = await fetchBytesFromResolvedFileUrl(absolute);
+  return resolved ?? new Blob([text], { type: blob.type || "application/json" });
+}
+
 export async function fetchPaymentAttachmentFile(
   billId: string,
   paymentId: string,
   paymentAttachmentId: string,
   storageAttachmentId?: string,
 ): Promise<Blob> {
-  const base = `/bills/${billId}/payments/${paymentId}/attachments`;
-  const candidates: string[] = [
-    `${base}/${paymentAttachmentId}/file`,
-    `${base}/${paymentAttachmentId}/download`,
-  ];
+  const payBase = `/bills/${billId}/payments/${paymentId}/attachments`;
+  const billAttBase = `/bills/${billId}/attachments`;
   const nested = storageAttachmentId?.trim();
-  if (nested && nested !== paymentAttachmentId) {
-    candidates.push(`${base}/${nested}/file`, `${base}/${nested}/download`);
+  const ids = [paymentAttachmentId, ...(nested && nested !== paymentAttachmentId ? [nested] : [])];
+
+  const candidates: string[] = [];
+  for (const id of ids) {
+    candidates.push(
+      `${payBase}/${id}/file`,
+      `${payBase}/${id}/download`,
+      `${payBase}/${id}/content`,
+      `${payBase}/${id}/stream`,
+      `${billAttBase}/${id}/file`,
+      `${billAttBase}/${id}/download`,
+      `${billAttBase}/${id}/content`,
+      `${billAttBase}/${id}/stream`,
+    );
   }
 
   let lastError: unknown;
   for (const path of candidates) {
     try {
-      return await apiFetchBlob(path);
+      const blob = await apiFetchBlob(path);
+      if (blob.size === 0) {
+        lastError = new ApiError(404, "Empty attachment body");
+        continue;
+      }
+      const unwrapped = await unwrapBlobIfJsonUrlEnvelope(blob);
+      if (unwrapped.size === 0) {
+        lastError = new ApiError(404, "Empty attachment body");
+        continue;
+      }
+      return unwrapped;
     } catch (e) {
       lastError = e;
-      if (e instanceof ApiError && e.status === 404) continue;
+      if (e instanceof ApiError && (e.status === 404 || e.status === 403)) continue;
       throw e;
     }
   }
+
+  try {
+    const auth = getAuth();
+    if (!auth?.token) throw lastError instanceof Error ? lastError : new ApiError(404, "Not authenticated");
+    const headers = new Headers();
+    headers.set("Authorization", `Bearer ${auth.token}`);
+    headers.set("X-Entity-Id", auth.entityId);
+    headers.set("Accept", "application/json");
+    const metaPaths: string[] = [];
+    for (const id of ids) {
+      metaPaths.push(`${payBase}/${id}`, `${billAttBase}/${id}`);
+    }
+    for (const metaPath of metaPaths) {
+      const res = await fetch(`${API_BASE}/api/v1${metaPath}`, { headers });
+      if (!res.ok) continue;
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      if (!/\bjson\b/.test(ct)) continue;
+      const data = (await res.json()) as Record<string, unknown>;
+      const url = extractFileUrlFromAttachmentJson(data);
+      if (!url) continue;
+      const absolute = resolveBackendFileUrl(url);
+      const out = await fetchBytesFromResolvedFileUrl(absolute);
+      if (out && out.size > 0) return out;
+    }
+  } catch {
+    /* fall through */
+  }
+
   if (lastError instanceof Error) throw lastError;
   throw new ApiError(404, "Could not download attachment");
 }

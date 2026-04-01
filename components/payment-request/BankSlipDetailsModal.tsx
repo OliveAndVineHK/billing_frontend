@@ -118,8 +118,12 @@ function BlobOrUrlPreviewContent({ fileName, url }: { fileName: string; url: str
     );
   }
   if (isPdfName(fileName)) {
+    const frameClass =
+      "h-[min(55dvh,480px)] min-h-[200px] w-full rounded-lg border border-gray-200 bg-white";
     return (
-      <iframe title={fileName} src={url} className="h-[min(55dvh,480px)] w-full rounded-lg border border-gray-200 bg-white" />
+      <object data={url} type="application/pdf" title={fileName} className={frameClass}>
+        <iframe title={fileName} src={url} className={frameClass} />
+      </object>
     );
   }
   return (
@@ -157,13 +161,29 @@ function FetchedPreviewContent({ fileName, source }: { fileName: string; source:
           source.fileAttachmentId,
         );
         if (cancelled) return;
-        const objectUrl = URL.createObjectURL(blob);
+        const rawType = (blob.type || "").toLowerCase();
+        let previewBlob = blob;
+        if (isPdfName(fileName) && (!rawType || rawType === "application/octet-stream")) {
+          previewBlob = new Blob([await blob.arrayBuffer()], { type: "application/pdf" });
+        } else if (isImageName(fileName) && (!rawType || rawType === "application/octet-stream")) {
+          const ext = fileName.trim().split(".").pop()?.toLowerCase() ?? "";
+          const imageType =
+            ext === "png"
+              ? "image/png"
+              : ext === "gif"
+                ? "image/gif"
+                : ext === "webp"
+                  ? "image/webp"
+                  : "image/jpeg";
+          previewBlob = new Blob([await blob.arrayBuffer()], { type: imageType });
+        }
+        const objectUrl = URL.createObjectURL(previewBlob);
         if (cancelled) {
           URL.revokeObjectURL(objectUrl);
           return;
         }
         urlRef.current = objectUrl;
-        setState({ status: "ready", url: objectUrl, mime: blob.type || "" });
+        setState({ status: "ready", url: objectUrl, mime: previewBlob.type || "" });
       } catch {
         if (!cancelled) setState({ status: "error" });
       }
@@ -208,8 +228,12 @@ function FetchedPreviewContent({ fileName, source }: { fileName: string; source:
     );
   }
   if (showPdf) {
+    const frameClass =
+      "h-[min(55dvh,480px)] min-h-[200px] w-full rounded-lg border border-gray-200 bg-white";
     return (
-      <iframe title={fileName} src={url} className="h-[min(55dvh,480px)] w-full rounded-lg border border-gray-200 bg-white" />
+      <object data={url} type="application/pdf" title={fileName} className={frameClass}>
+        <iframe title={fileName} src={url} className={frameClass} />
+      </object>
     );
   }
   return (
