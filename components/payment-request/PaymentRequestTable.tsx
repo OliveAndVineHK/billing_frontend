@@ -644,8 +644,31 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                           </p>
                         ) : null}
                       </div>
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center" onClick={(e) => e.stopPropagation()}>
-                        <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={40} height={40} className="h-10 w-10 object-contain" />
+                      <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
+                          <button
+                            type="button"
+                            className={`inline-flex h-10 min-h-10 cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              bankSlipDetailsBillIdRef.current = row.id;
+                              setBankSlipDetailsRowId(row.id);
+                            }}
+                            aria-label={
+                              isVoided
+                                ? `View bank slip — voided, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
+                                : isDraft
+                                  ? `View bank slip — draft, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
+                                  : `View bank slip — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`
+                            }
+                          >
+                            <span className="text-sm font-semibold tabular-nums">{row.bankslipFileCount}</span>
+                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>draft</span>
+                          </button>
+                        ) : null}
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+                          <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={40} height={40} className="h-10 w-10 object-contain" />
+                        </div>
                       </div>
                     </div>
                     <div className="mt-4 flex min-w-0 flex-col gap-2">
@@ -677,27 +700,6 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                           <button type="button" aria-label={`Record payment for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}>
                             <span className="whitespace-nowrap">Record Payment</span>
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>add</span>
-                          </button>
-                        ) : null}
-                        {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
-                          <button
-                            type="button"
-                            className={`inline-flex h-10 min-h-10 cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              bankSlipDetailsBillIdRef.current = row.id;
-                              setBankSlipDetailsRowId(row.id);
-                            }}
-                            aria-label={
-                              isVoided
-                                ? `View bank slip — voided, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
-                                : isDraft
-                                  ? `View bank slip — draft, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
-                                  : `View bank slip — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`
-                            }
-                          >
-                            <span className="text-sm font-semibold tabular-nums">{row.bankslipFileCount}</span>
-                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>draft</span>
                           </button>
                         ) : null}
                       </div>
