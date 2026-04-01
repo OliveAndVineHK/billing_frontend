@@ -354,12 +354,7 @@ export function RecordPaymentModal({
               <span className="text-sm font-medium text-primary">Amount to be Paid</span>
               <span className="text-2xl font-bold text-secondary sm:text-3xl">{formatMoney(remaining, currencyLabel)}</span>
             </div>
-            <button
-              type="button"
-              onClick={handleSavePayment}
-              disabled={pendingPayments.length === 0 || saving}
-              className="box-border h-12 min-h-[48px] w-full rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px]"
-            >
+            <button type="button" onClick={handleSavePayment} disabled={pendingPayments.length === 0 || saving} className="box-border h-12 min-h-[48px] w-full rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px]">
               {saving ? "Saving…" : "Save payment"}
             </button>
           </div>
