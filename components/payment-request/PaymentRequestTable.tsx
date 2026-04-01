@@ -619,7 +619,6 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
             const isDraft = row.status === "Draft";
             const isReturned = row.status === "Returned";
             const bankslipReadOnly = isVoided || isDraft;
-            const xeroConnected = !isDraft && row.xeroActive;
             const statusBadgeClass = isPaid
               ? statusTagPaidClass
               : isPaymentRequested
@@ -644,7 +643,38 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                           </p>
                         ) : null}
                       </div>
-                      <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      {row.status ? (
+                        <div className="shrink-0 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                          <span className={statusBadgeClass}>{row.status}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="mt-4 flex min-w-0 items-start justify-between gap-3">
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <span className="text-[10px] font-medium uppercase tracking-wide text-primary/45">Invoice date</span>
+                        <span className="text-sm font-semibold tabular-nums text-primary">{row.invoiceDate}</span>
+                      </div>
+                      {row.unpaidAmount || row.invoiceTotal ? (
+                        <div className="shrink-0 space-y-0.5 text-right">
+                          {row.unpaidAmount ? (
+                            <p className={"text-base font-semibold tabular-nums " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</p>
+                          ) : null}
+                          {row.invoiceTotal ? (
+                            <p className="text-[11px] tabular-nums text-primary/55">(Inv total HK$ {row.invoiceTotal})</p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="mt-4 flex min-h-[2.5rem] min-w-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex min-w-0 min-h-10 flex-1 flex-wrap items-center gap-2">
+                        {!isPaid && !isVoided && !isDraft ? (
+                          <button type="button" aria-label={`Record payment for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}>
+                            <span className="whitespace-nowrap">Record Payment</span>
+                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>add</span>
+                          </button>
+                        ) : null}
+                      </div>
+                      <div className="flex h-10 min-h-10 shrink-0 items-center justify-end">
                         {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
                           <button
                             type="button"
@@ -665,51 +695,12 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             <span className="text-sm font-semibold tabular-nums">{row.bankslipFileCount}</span>
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>draft</span>
                           </button>
-                        ) : null}
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center">
-                          <img src={xeroConnected ? "/xero-active.png" : "/xero-inactive.png"} alt={xeroConnected ? "Xero connected" : "Xero not connected"} width={40} height={40} className="h-10 w-10 object-contain" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex min-w-0 flex-col gap-2">
-                      {row.status ? (
-                        <div className="flex w-full justify-end">
-                          <span className={statusBadgeClass}>{row.status}</span>
-                        </div>
-                      ) : null}
-                      <div className="flex min-w-0 items-start justify-between gap-3">
-                        <div className="flex min-w-0 flex-col gap-0.5">
-                          <span className="text-[10px] font-medium uppercase tracking-wide text-primary/45">Invoice date</span>
-                          <span className="text-sm font-semibold tabular-nums text-primary">{row.invoiceDate}</span>
-                        </div>
-                        {row.unpaidAmount || row.invoiceTotal ? (
-                          <div className="shrink-0 space-y-0.5 text-right">
-                            {row.unpaidAmount ? (
-                              <p className={"text-base font-semibold tabular-nums " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</p>
-                            ) : null}
-                            {row.invoiceTotal ? (
-                              <p className="text-[11px] tabular-nums text-primary/55">(Inv total HK$ {row.invoiceTotal})</p>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="mt-4 flex min-h-[2.5rem] min-w-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex min-w-0 min-h-10 flex-1 flex-wrap items-center gap-2">
-                        {!isPaid && !isVoided && !isDraft ? (
-                          <button type="button" aria-label={`Record payment for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}>
-                            <span className="whitespace-nowrap">Record Payment</span>
-                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>add</span>
-                          </button>
-                        ) : null}
-                      </div>
-                      <div className="flex h-10 min-h-10 shrink-0 items-center justify-end">
-                        {bankslipReadOnly ? (
+                        ) : bankslipReadOnly ? (
                           <div className={uploadBankslipReadOnlyClass} aria-label={isVoided ? `Voided — upload not available for ${row.contactTitle}` : `Draft — upload not available for ${row.contactTitle}`}>
                             <span className="whitespace-nowrap">Upload</span>
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>upload_file</span>
                           </div>
-                        ) : row.bankslipFileCount != null && row.bankslipFileCount > 0 ? null : (
+                        ) : (
                           <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}>
                             <span className="whitespace-nowrap">Upload</span>
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>upload_file</span>
