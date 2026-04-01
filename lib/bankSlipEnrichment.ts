@@ -98,9 +98,13 @@ export async function fetchBillBankSlipEnrichment(billId: string, row: {
         seenAttachmentLinkIds.add(a.id);
         const uploadedAt = a.created_at?.trim() || a.attachment.created_at?.trim();
         const nestedId = a.attachment.id?.trim();
+        const size = a.attachment.file_size;
+        const fileSizeBytes =
+          typeof size === "number" && Number.isFinite(size) && size >= 0 ? Math.round(size) : undefined;
         files.push({
           id: a.id,
           name: a.attachment.original_name,
+          ...(fileSizeBytes != null ? { fileSizeBytes } : {}),
           fetchSource: {
             billId,
             paymentId: p.id,

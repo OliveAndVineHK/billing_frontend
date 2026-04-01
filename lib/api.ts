@@ -115,9 +115,19 @@ function extractFileUrlFromAttachmentJson(data: Record<string, unknown>): string
   return from(data) ?? (nested ? from(nested) : undefined);
 }
 
+function parseAttachmentFileSizeBytes(raw: unknown): number | undefined {
+  if (typeof raw === "number" && Number.isFinite(raw) && raw >= 0) return Math.round(raw);
+  if (typeof raw === "string" && raw.trim()) {
+    const n = Number.parseFloat(raw.trim());
+    if (Number.isFinite(n) && n >= 0) return Math.round(n);
+  }
+  return undefined;
+}
+
 async function fetchAttachmentDownloadJson(path: string): Promise<{
   url: string;
   mime_type?: string;
+  file_size?: number;
 } | null> {
   const auth = getAuth();
   if (!auth?.token) throw new ApiError(401, "Not authenticated");
@@ -145,7 +155,12 @@ async function fetchAttachmentDownloadJson(path: string): Promise<{
   const mime_type =
     typeof mimeRaw === "string" && mimeRaw.trim() ? mimeRaw.trim() : undefined;
 
-  return { url, mime_type };
+  const nestedAtt = data.attachment as Record<string, unknown> | undefined;
+  const file_size =
+    parseAttachmentFileSizeBytes(data.file_size) ??
+    (nestedAtt ? parseAttachmentFileSizeBytes(nestedAtt.file_size) : undefined);
+
+  return { url, mime_type, file_size };
 }
 
 async function fetchBytesFromResolvedFileUrl(absolute: string): Promise<Blob | null> {
@@ -208,8 +223,8 @@ function buildPaymentAttachmentDownloadPaths(
 }
 
 type PaymentAttachmentPreview =
-  | { kind: "embed"; url: string; mime_type?: string }
-  | { kind: "blob"; blob: Blob };
+  | { kind: "embed"; url: string; mime_type?: string; file_size?: number }
+  | { kind: "blob"; blob: Blob; file_size?: number };
 
 export async function fetchPaymentAttachmentPreview(
   billId: string,
@@ -232,7 +247,12 @@ export async function fetchPaymentAttachmentPreview(
       if (!meta) continue;
       const absolute = resolveBackendFileUrl(meta.url);
       if (isCrossOriginStoragePreviewUrl(absolute)) {
-        return { kind: "embed", url: absolute, mime_type: meta.mime_type };
+        return {
+          kind: "embed",
+          url: absolute,
+          mime_type: meta.mime_type,
+          file_size: meta.file_size,
+        };
       }
       const bytes = await fetchBytesFromResolvedFileUrl(absolute);
       if (!bytes || bytes.size === 0) {
@@ -240,13 +260,15 @@ export async function fetchPaymentAttachmentPreview(
         continue;
       }
       const t = (bytes.type || "").toLowerCase();
+      const file_size = meta.file_size ?? bytes.size;
       if (meta.mime_type && (!t || t === "application/octet-stream")) {
         return {
           kind: "blob",
           blob: new Blob([await bytes.arrayBuffer()], { type: meta.mime_type }),
+          file_size,
         };
       }
-      return { kind: "blob", blob: bytes };
+      return { kind: "blob", blob: bytes, file_size };
     } catch (e) {
       lastError = e;
       if (e instanceof ApiError && e.status === 401) throw e;

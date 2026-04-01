@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { ApiError, deletePaymentAttachment, fetchPaymentAttachmentPreview } from "@/lib/api";
+import { formatFileSize } from "@/lib/fileAttachmentPreview";
 import { AttachmentDeleteConfirmModal } from "./AttachmentDeleteConfirmModal";
 
 export type BankSlipFileRef = { id: string; name: string };
@@ -32,6 +33,7 @@ export type BankSlipFileEntry = BankSlipFileRef & {
   details?: BankSlipFileDetailsOverride;
   previewUrl?: string;
   fetchSource?: BankSlipFileFetchSource;
+  fileSizeBytes?: number;
 };
 
 /** Row-level metadata (subtitle only in the simplified modal). */
@@ -89,16 +91,24 @@ function PreviewContent({
   fileName,
   previewUrl,
   fetchSource,
+  onResolvedFileSize,
 }: {
   fileName: string;
   previewUrl?: string;
   fetchSource?: BankSlipFileFetchSource;
+  onResolvedFileSize?: (bytes: number) => void;
 }) {
   if (previewUrl) {
     return <BlobOrUrlPreviewContent fileName={fileName} url={previewUrl} />;
   }
   if (fetchSource) {
-    return <FetchedPreviewContent fileName={fileName} source={fetchSource} />;
+    return (
+      <FetchedPreviewContent
+        fileName={fileName}
+        source={fetchSource}
+        onResolvedFileSize={onResolvedFileSize}
+      />
+    );
   }
   return (
     <p className="py-8 text-center text-sm text-primary/70">No preview available for this file.</p>
@@ -140,7 +150,15 @@ function BlobOrUrlPreviewContent({ fileName, url }: { fileName: string; url: str
   );
 }
 
-function FetchedPreviewContent({ fileName, source }: { fileName: string; source: BankSlipFileFetchSource }) {
+function FetchedPreviewContent({
+  fileName,
+  source,
+  onResolvedFileSize,
+}: {
+  fileName: string;
+  source: BankSlipFileFetchSource;
+  onResolvedFileSize?: (bytes: number) => void;
+}) {
   const [state, setState] = useState<
     | { status: "loading" }
     | { status: "ready"; url: string; mime: string }
@@ -164,6 +182,10 @@ function FetchedPreviewContent({ fileName, source }: { fileName: string; source:
         if (preview.kind === "embed") {
           const mime = (preview.mime_type || "").toLowerCase();
           setState({ status: "ready", url: preview.url, mime });
+          const sz = preview.file_size;
+          if (sz != null && Number.isFinite(sz) && sz >= 0) {
+            onResolvedFileSize?.(sz);
+          }
           return;
         }
 
@@ -191,6 +213,10 @@ function FetchedPreviewContent({ fileName, source }: { fileName: string; source:
         }
         blobObjectUrlRef.current = objectUrl;
         setState({ status: "ready", url: objectUrl, mime: previewBlob.type || "" });
+        const sz = preview.file_size ?? previewBlob.size;
+        if (Number.isFinite(sz) && sz >= 0) {
+          onResolvedFileSize?.(sz);
+        }
       } catch {
         if (!cancelled) setState({ status: "error" });
       }
@@ -202,7 +228,7 @@ function FetchedPreviewContent({ fileName, source }: { fileName: string; source:
         blobObjectUrlRef.current = null;
       }
     };
-  }, [source.billId, source.paymentId, source.attachmentId, source.fileAttachmentId]);
+  }, [source.billId, source.paymentId, source.attachmentId, source.fileAttachmentId, onResolvedFileSize]);
 
   if (state.status === "loading") {
     return (
@@ -265,12 +291,31 @@ function ViewBankSlipInlinePreview({
   previewUrl,
   fetchSource,
   previewSubtitleId,
+  fileSizeBytes,
 }: {
   fileName: string;
   previewUrl?: string;
   fetchSource?: BankSlipFileFetchSource;
   previewSubtitleId: string;
+  fileSizeBytes?: number;
 }) {
+  const [fetchedSize, setFetchedSize] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    setFetchedSize(undefined);
+  }, [
+    fileName,
+    previewUrl,
+    fetchSource?.billId,
+    fetchSource?.paymentId,
+    fetchSource?.attachmentId,
+    fetchSource?.fileAttachmentId,
+  ]);
+
+  const displayBytes =
+    fileSizeBytes != null && Number.isFinite(fileSizeBytes) && fileSizeBytes >= 0
+      ? fileSizeBytes
+      : fetchedSize;
+
   const { icon, iconClass } = fileIconForName(fileName);
   return (
     <div className="flex h-full flex-col">
@@ -285,11 +330,22 @@ function ViewBankSlipInlinePreview({
           <p className="truncate text-sm font-medium text-black sm:text-base">{fileName}</p>
           <p id={previewSubtitleId} className="mt-1 text-[11px] font-medium uppercase tracking-wide text-primary/55 sm:text-xs">
             Document preview
+            {displayBytes != null && Number.isFinite(displayBytes) ? (
+              <>
+                <span className="text-primary/35"> • </span>
+                {formatFileSize(displayBytes)}
+              </>
+            ) : null}
           </p>
         </div>
       </div>
       <div className="mt-3 min-h-[min(50dvh,320px)] overflow-auto rounded-lg bg-black/5 p-2 sm:min-h-[240px] sm:p-3">
-        <PreviewContent fileName={fileName} previewUrl={previewUrl} fetchSource={fetchSource} />
+        <PreviewContent
+          fileName={fileName}
+          previewUrl={previewUrl}
+          fetchSource={fetchSource}
+          onResolvedFileSize={fetchSource ? setFetchedSize : undefined}
+        />
       </div>
     </div>
   );
@@ -485,6 +541,7 @@ export function BankSlipDetailsModal({
                   previewUrl={selectedEntry.previewUrl}
                   fetchSource={selectedEntry.fetchSource}
                   previewSubtitleId={previewSubtitleId}
+                  fileSizeBytes={selectedEntry.fileSizeBytes}
                 />
               ) : (
                 <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-primary/60">
