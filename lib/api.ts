@@ -68,35 +68,6 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   return res.json();
 }
 
-async function apiFetchBlob(path: string, init?: RequestInit): Promise<Blob> {
-  const auth = getAuth();
-  if (!auth?.token) throw new ApiError(401, "Not authenticated");
-
-  const headers = new Headers(init?.headers);
-  headers.set("Authorization", `Bearer ${auth.token}`);
-  headers.set("X-Entity-Id", auth.entityId);
-  if (!headers.has("Accept")) {
-    headers.set("Accept", "*/*");
-  }
-
-  const res = await fetch(`${API_BASE}/api/v1${path}`, { ...init, headers });
-
-  if (!res.ok) {
-    if (res.status === 401) {
-      redirectToLogin();
-      throw new ApiError(401, "Session expired. Redirecting to login.");
-    }
-    const body = await res.json().catch(() => ({ detail: res.statusText }));
-    const msg = normalizeApiErrorDetail(
-      body.detail ?? body.message,
-      res.statusText,
-    );
-    throw new ApiError(res.status, msg);
-  }
-
-  return res.blob();
-}
-
 function resolveBackendFileUrl(url: string): string {
   const base = API_BASE.replace(/\/$/, "");
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
@@ -179,12 +150,7 @@ async function fetchAttachmentDownloadJson(path: string): Promise<{
 
 async function fetchBytesFromResolvedFileUrl(absolute: string): Promise<Blob | null> {
   const auth = getAuth();
-  let apiOrigin: string;
-  try {
-    apiOrigin = new URL(API_BASE.replace(/\/$/, "")).origin;
-  } catch {
-    apiOrigin = "";
-  }
+  const apiOrigin = getApiOrigin();
   let targetOrigin: string;
   try {
     targetOrigin = new URL(absolute).origin;
@@ -216,52 +182,6 @@ async function fetchBytesFromResolvedFileUrl(absolute: string): Promise<Blob | n
   return b.size > 0 ? b : null;
 }
 
-/** Some backends return JSON `{ "url": "…" }` even from `/file` — unwrap to real bytes or embed URL. */
-async function unwrapBlobIfJsonUrlEnvelope(
-  blob: Blob,
-): Promise<Blob | { kind: "embed"; url: string }> {
-  const type = (blob.type || "").toLowerCase();
-  if (type.includes("pdf") || type.startsWith("image/")) return blob;
-  const maybeJsonEnvelope =
-    type.includes("json") ||
-    (blob.size > 0 &&
-      blob.size <= 65536 &&
-      (type === "" || type === "application/octet-stream"));
-  if (!maybeJsonEnvelope) return blob;
-
-  const text = await blob.text();
-  const t = text.trim();
-  if (!t.startsWith("{")) {
-    return new Blob([text], { type: blob.type || "application/octet-stream" });
-  }
-
-  let data: Record<string, unknown>;
-  try {
-    data = JSON.parse(t) as Record<string, unknown>;
-  } catch {
-    return new Blob([text], { type: blob.type || "application/octet-stream" });
-  }
-
-  const url = extractFileUrlFromAttachmentJson(data);
-  if (!url) {
-    return new Blob([text], { type: blob.type || "application/json" });
-  }
-
-  const absolute = resolveBackendFileUrl(url);
-  if (isCrossOriginStoragePreviewUrl(absolute)) {
-    return { kind: "embed", url: absolute };
-  }
-
-  const resolved = await fetchBytesFromResolvedFileUrl(absolute);
-  return resolved ?? new Blob([text], { type: blob.type || "application/json" });
-}
-
-function isEmbedUnwrapResult(
-  v: Blob | { kind: "embed"; url: string },
-): v is { kind: "embed"; url: string } {
-  return typeof v === "object" && v !== null && "kind" in v && (v as { kind?: string }).kind === "embed";
-}
-
 /**
  * Ordered `/download` candidates for preview (see `fetchAttachmentDownloadJson`).
  * Tries payment-attachment id on the payment route first, then bill file id on the bill route.
@@ -287,25 +207,16 @@ function buildPaymentAttachmentDownloadPaths(
   return ordered.filter((p) => (seen.has(p) ? false : !!seen.add(p)));
 }
 
-export type PaymentAttachmentPreview =
+type PaymentAttachmentPreview =
   | { kind: "embed"; url: string; mime_type?: string }
   | { kind: "blob"; blob: Blob };
 
-/**
- * Resolves a bank-slip / payment attachment for in-browser preview.
- * Uses the billing `…/attachments/{id}/download` JSON (presigned `url`) first; cross-origin URLs are returned for direct <img>/<iframe> use.
- */
 export async function fetchPaymentAttachmentPreview(
   billId: string,
   paymentId: string,
   paymentAttachmentId: string,
   storageAttachmentId?: string,
 ): Promise<PaymentAttachmentPreview> {
-  const payBase = `/bills/${billId}/payments/${paymentId}/attachments`;
-  const billAttBase = `/bills/${billId}/attachments`;
-  const nested = storageAttachmentId?.trim();
-  const ids = [paymentAttachmentId, ...(nested && nested !== paymentAttachmentId ? [nested] : [])];
-
   let lastError: unknown;
 
   const downloadPaths = buildPaymentAttachmentDownloadPaths(
@@ -341,75 +252,6 @@ export async function fetchPaymentAttachmentPreview(
       if (e instanceof ApiError && e.status === 401) throw e;
       continue;
     }
-  }
-
-  const candidates: string[] = [];
-  for (const id of ids) {
-    candidates.push(
-      `${payBase}/${id}/file`,
-      `${payBase}/${id}/content`,
-      `${payBase}/${id}/stream`,
-      `${billAttBase}/${id}/file`,
-      `${billAttBase}/${id}/content`,
-      `${billAttBase}/${id}/stream`,
-    );
-  }
-
-  for (const path of candidates) {
-    try {
-      const blob = await apiFetchBlob(path);
-      if (blob.size === 0) {
-        lastError = new ApiError(404, "Empty attachment body");
-        continue;
-      }
-      const unwrapped = await unwrapBlobIfJsonUrlEnvelope(blob);
-      if (isEmbedUnwrapResult(unwrapped)) {
-        return { kind: "embed", url: unwrapped.url };
-      }
-      const outBlob = unwrapped;
-      if (outBlob.size === 0) {
-        lastError = new ApiError(404, "Empty attachment body");
-        continue;
-      }
-      return { kind: "blob", blob: outBlob };
-    } catch (e) {
-      lastError = e;
-      if (e instanceof ApiError && (e.status === 404 || e.status === 403)) continue;
-      throw e;
-    }
-  }
-
-  try {
-    const auth = getAuth();
-    if (!auth?.token) throw lastError instanceof Error ? lastError : new ApiError(404, "Not authenticated");
-    const headers = new Headers();
-    headers.set("Authorization", `Bearer ${auth.token}`);
-    headers.set("X-Entity-Id", auth.entityId);
-    headers.set("Accept", "application/json");
-    const metaPaths: string[] = [];
-    for (const id of ids) {
-      metaPaths.push(`${payBase}/${id}`, `${billAttBase}/${id}`);
-    }
-    for (const metaPath of metaPaths) {
-      const res = await fetch(`${API_BASE}/api/v1${metaPath}`, { headers });
-      if (!res.ok) continue;
-      const ct = (res.headers.get("content-type") || "").toLowerCase();
-      if (!/\bjson\b/.test(ct)) continue;
-      const data = (await res.json()) as Record<string, unknown>;
-      const url = extractFileUrlFromAttachmentJson(data);
-      if (!url) continue;
-      const absolute = resolveBackendFileUrl(url);
-      if (isCrossOriginStoragePreviewUrl(absolute)) {
-        const mimeRaw = data.mime_type;
-        const mime_type =
-          typeof mimeRaw === "string" && mimeRaw.trim() ? mimeRaw.trim() : undefined;
-        return { kind: "embed", url: absolute, mime_type };
-      }
-      const out = await fetchBytesFromResolvedFileUrl(absolute);
-      if (out && out.size > 0) return { kind: "blob", blob: out };
-    }
-  } catch {
-    /* fall through */
   }
 
   if (lastError instanceof Error) throw lastError;
