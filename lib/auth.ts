@@ -10,7 +10,8 @@ export type AuthInfo = {
 
 export function setAuth(token: string, entityId: string, entityName: string) {
   const maxAge = 60 * 30; // 30 minutes — matches JWT exp issued by Flask
-  const opts = `path=/;max-age=${maxAge};SameSite=Lax`;
+  const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
+  const opts = `path=/;max-age=${maxAge};SameSite=Lax${isSecure ? ";Secure" : ""}`;
   document.cookie = `${TOKEN_KEY}=${encodeURIComponent(token)};${opts}`;
   document.cookie = `${ENTITY_ID_KEY}=${encodeURIComponent(entityId)};${opts}`;
   document.cookie = `${ENTITY_NAME_KEY}=${encodeURIComponent(entityName)};${opts}`;

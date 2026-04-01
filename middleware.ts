@@ -6,7 +6,12 @@ const AUTH_COOKIE = "billing_token";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/module-selection")) {
+  if (
+    pathname === "/module-selection" ||
+    pathname.startsWith("/module-selection/") ||
+    pathname === "/landing" ||
+    pathname.startsWith("/landing/")
+  ) {
     return NextResponse.next();
   }
 
