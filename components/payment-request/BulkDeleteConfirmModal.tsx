@@ -61,17 +61,17 @@ export function BulkDeleteConfirmModal({
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-lg font-semibold text-primary sm:text-xl">
-          Delete selected bills?
+          Void selected bills?
         </h2>
         <p id={descId} className="mt-3 text-sm leading-relaxed text-primary/80">
-          Are you sure you want to delete {selectedCount} selected bill{selectedCount === 1 ? "" : "s"}? This cannot be undone.
+          Are you sure you want to void {selectedCount} selected bill{selectedCount === 1 ? "" : "s"}? They will be marked as voided and can no longer be edited.
         </p>
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
           <button type="button" className={cancelClass} onClick={onClose} disabled={pending}>
             Cancel
           </button>
           <button type="button" className={deleteClass} onClick={onConfirm} disabled={pending}>
-            {pending ? "Deleting…" : "Delete"}
+            {pending ? "Voiding…" : "Void Bills"}
           </button>
         </div>
       </div>

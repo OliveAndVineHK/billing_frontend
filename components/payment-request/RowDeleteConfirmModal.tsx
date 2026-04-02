@@ -63,15 +63,15 @@ export function RowDeleteConfirmModal({
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-lg font-semibold text-primary sm:text-xl">
-          Delete this bill?
+          Void this bill?
         </h2>
         <p id={descId} className="mt-3 text-sm leading-relaxed text-primary/80">
           {trimmed ? (
             <>
-              Are you sure you want to delete <span className="font-semibold text-primary">&quot;{trimmed}&quot;</span>? This cannot be undone.
+              Are you sure you want to void <span className="font-semibold text-primary">&quot;{trimmed}&quot;</span>? The bill will be marked as voided and can no longer be edited.
             </>
           ) : (
-            <>Are you sure you want to delete this bill? This cannot be undone.</>
+            <>Are you sure you want to void this bill? It will be marked as voided and can no longer be edited.</>
           )}
         </p>
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
@@ -79,7 +79,7 @@ export function RowDeleteConfirmModal({
             Cancel
           </button>
           <button type="button" className={deleteClass} onClick={onConfirm} disabled={pending}>
-            {pending ? "Deleting…" : "Delete"}
+            {pending ? "Voiding…" : "Void Bill"}
           </button>
         </div>
       </div>

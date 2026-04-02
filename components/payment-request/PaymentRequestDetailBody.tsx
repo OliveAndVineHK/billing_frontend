@@ -459,6 +459,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             onDeleteBill={handleRequestDeleteBill}
             onPublishToXero={handlePublishToXero}
             deleteDisabled={loadingBill || !bill || isDeleting || isPublishing || bill?.status === "voided"}
+            publishDisabled={loadingBill || !bill || bill?.status === "voided"}
             publishStatus={(bill?.published as "not_published" | "published" | "failed") ?? "not_published"}
             publishPending={isPublishing}
             draftSubmit={
@@ -507,7 +508,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               data={formData}
               isEditing={isEditing}
               isSaving={isSaving}
-              disabled={!bill}
+              disabled={!bill || bill?.status === "voided"}
               billNoError={isEditing ? billNoError : null}
               accountCodeError={isEditing ? accountCodeError : null}
               accountOptions={accountOptions}
@@ -521,7 +522,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           ) : null}
 
           <button type="button"
-            disabled={loadingBill || !bill || billIsDraft}
+            disabled={loadingBill || !bill || billIsDraft || bill?.status === "voided"}
             onClick={() => setRecordPaymentOpen(true)}
             aria-label={
               billIsDraft

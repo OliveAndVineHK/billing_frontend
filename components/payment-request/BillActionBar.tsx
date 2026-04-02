@@ -6,6 +6,7 @@ type BillActionBarProps = {
   onDeleteBill?: () => void;
   onPublishToXero?: () => void;
   deleteDisabled?: boolean;
+  publishDisabled?: boolean;
   publishStatus?: "not_published" | "published" | "failed";
   publishPending?: boolean;
   draftSubmit?: {
@@ -16,15 +17,15 @@ type BillActionBarProps = {
   };
 };
 
-export function BillActionBar({ onDeleteBill, onPublishToXero, deleteDisabled, publishStatus, publishPending, draftSubmit }: BillActionBarProps) {
+export function BillActionBar({ onDeleteBill, onPublishToXero, deleteDisabled, publishDisabled, publishStatus, publishPending, draftSubmit }: BillActionBarProps) {
   const isPublished = publishStatus === "published";
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
       <button type="button" onClick={onDeleteBill} disabled={deleteDisabled} className="inline-flex h-10 min-h-[44px] w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md bg-rose-50 px-3 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-auto sm:justify-start sm:px-4">
-        Delete Bill
+        Void Bill
         <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-          delete
+          block
         </span>
       </button>
       <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-3">
@@ -33,15 +34,18 @@ export function BillActionBar({ onDeleteBill, onPublishToXero, deleteDisabled, p
         ) : null}
         <button
           type="button"
-          onClick={isPublished ? undefined : onPublishToXero}
-          disabled={isPublished || publishPending}
+          onClick={isPublished || publishDisabled ? undefined : onPublishToXero}
+          disabled={isPublished || publishPending || publishDisabled}
+          title={publishDisabled ? "Cannot publish a voided bill" : undefined}
           className={
             "inline-flex h-10 min-h-[44px] w-full max-w-full shrink-0 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:h-10 sm:w-auto sm:justify-start sm:px-4 " +
             (isPublished
               ? "border-2 border-emerald-500 bg-emerald-50 text-emerald-700 cursor-default"
-              : publishPending
-                ? "border border-primary/25 bg-white text-primary/50 cursor-wait"
-                : "border border-primary/25 bg-white text-primary cursor-pointer hover:bg-primary/5 focus-visible:outline-secondary")
+              : publishDisabled
+                ? "border border-primary/20 bg-[#F5F5F5] text-primary/40 cursor-not-allowed"
+                : publishPending
+                  ? "border border-primary/25 bg-white text-primary/50 cursor-wait"
+                  : "border border-primary/25 bg-white text-primary cursor-pointer hover:bg-primary/5 focus-visible:outline-secondary")
           }
         >
           {isPublished ? (
@@ -56,7 +60,14 @@ export function BillActionBar({ onDeleteBill, onPublishToXero, deleteDisabled, p
           ) : (
             "Publish to Xero"
           )}
-          <img src="/xero-active.png" alt="" width={40} height={40} className="h-10 w-10 shrink-0 object-contain" aria-hidden />
+          <img
+            src="/xero-active.png"
+            alt=""
+            width={40}
+            height={40}
+            className={"h-10 w-10 shrink-0 object-contain" + (publishDisabled ? " grayscale opacity-40" : "")}
+            aria-hidden
+          />
         </button>
       </div>
     </div>
