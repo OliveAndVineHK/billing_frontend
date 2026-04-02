@@ -508,7 +508,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               data={formData}
               isEditing={isEditing}
               isSaving={isSaving}
-              disabled={!bill || bill?.status === "voided" || bill?.status === "paid" || bill?.status === "authorised" || bill?.status === "submitted"}
+              disabled={!bill || bill?.status === "voided" || bill?.status === "paid" || bill?.status === "authorised"}
               billNoError={isEditing ? billNoError : null}
               accountCodeError={isEditing ? accountCodeError : null}
               accountOptions={accountOptions}
@@ -522,7 +522,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           ) : null}
 
           <button type="button"
-            disabled={loadingBill || !bill || billIsDraft || bill?.status === "voided" || bill?.status === "paid" || bill?.status === "authorised" || bill?.status === "submitted"}
+            disabled={loadingBill || !bill || billIsDraft || bill?.status === "voided" || bill?.status === "paid" || bill?.status === "authorised"}
             onClick={() => setRecordPaymentOpen(true)}
             aria-label={
               billIsDraft

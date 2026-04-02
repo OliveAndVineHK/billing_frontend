@@ -14,19 +14,23 @@ const MIN_LOADING_MS = 800;
 function ModuleSelectionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const entityId = searchParams.get("entity_id") ?? "";
-  const entityName = searchParams.get("entity_name") ?? "";
-  const token = searchParams.get("token") ?? "";
+
+  // Capture params into refs on first render so they survive the router.replace()
+  // re-render that strips them from the URL (F8 fix). Plain consts derived from
+  // searchParams become "" after the replace; refs hold the original values.
+  const tokenRef = useRef(searchParams.get("token") ?? "");
+  const entityIdRef = useRef(searchParams.get("entity_id") ?? "");
+  const entityNameRef = useRef(searchParams.get("entity_name") ?? "");
 
   const module1Href =
-    entityId && token
-      ? `${MODULE1_URL}/entity/${entityId}/enter?token=${token}`
+    entityIdRef.current && tokenRef.current
+      ? `${MODULE1_URL}/entity/${entityIdRef.current}/enter?token=${tokenRef.current}`
       : `${MODULE1_URL}/entity`;
 
   const entityBackHref = `${MODULE1_URL}/entity`;
 
-  const acronym = entityName
-    ? entityName
+  const acronym = entityNameRef.current
+    ? entityNameRef.current
         .split(/\s+/)
         .map((w) => w[0])
         .join("")
@@ -43,7 +47,13 @@ function ModuleSelectionContent() {
 
   useEffect(() => {
     setHasMounted(true);
+    const token = tokenRef.current;
+    const entityId = entityIdRef.current;
+    const entityName = entityNameRef.current;
     if (token) {
+      // Write the cookie before replacing the URL so the auth state is
+      // committed regardless of the re-render that follows router.replace().
+      setAuth(token, entityId, entityName);
       const clean = new URLSearchParams(searchParams.toString());
       clean.delete("token");
       clean.delete("entity_id");
@@ -83,7 +93,8 @@ function ModuleSelectionContent() {
 
   const navigateToModule2 = () => {
     setIsNavigating(true);
-    if (token) setAuth(token, entityId, entityName);
+    // setAuth() was already called in the mount effect before router.replace()
+    // cleaned the URL. No need to repeat it here.
     window.setTimeout(() => {
       router.push("/");
     }, MIN_LOADING_MS);
@@ -104,13 +115,13 @@ function ModuleSelectionContent() {
       <main className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 py-6 sm:gap-6 sm:p-8 md:gap-8">
         <Image src="/logo-selection.webp" alt="Logo" width={560} height={560} priority sizes="(max-width: 640px) 320px, (max-width: 768px) 400px, (max-width: 1024px) 480px, 560px" className="h-auto w-full max-w-[160px] sm:max-w-[200px] md:max-w-[240px] lg:max-w-[280px]" />
 
-        {hasMounted && entityName && (
+        {hasMounted && entityNameRef.current && (
           <a href={entityBackHref} className="flex items-center gap-3 rounded-full border border-gray-100 bg-white px-4 py-2 shadow-sm transition-colors hover:bg-gray-50">
             <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold" style={{ backgroundColor: "#E0F7FA", color: "#00838F" }}>
               {acronym}
             </span>
             <span className="text-sm font-semibold text-[#474747]">
-              {entityName}
+              {entityNameRef.current}
             </span>
           </a>
         )}
