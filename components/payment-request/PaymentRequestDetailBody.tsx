@@ -508,7 +508,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               data={formData}
               isEditing={isEditing}
               isSaving={isSaving}
-              disabled={!bill || bill?.status === "voided"}
+              disabled={!bill || bill?.status === "voided" || bill?.status === "paid" || bill?.status === "authorised" || bill?.status === "submitted"}
               billNoError={isEditing ? billNoError : null}
               accountCodeError={isEditing ? accountCodeError : null}
               accountOptions={accountOptions}
@@ -522,7 +522,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           ) : null}
 
           <button type="button"
-            disabled={loadingBill || !bill || billIsDraft || bill?.status === "voided"}
+            disabled={loadingBill || !bill || billIsDraft || bill?.status === "voided" || bill?.status === "paid" || bill?.status === "authorised" || bill?.status === "submitted"}
             onClick={() => setRecordPaymentOpen(true)}
             aria-label={
               billIsDraft
@@ -537,6 +537,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             </span>
           </button>
           <PaymentHistoryCard
+            billStatus={bill?.status ?? undefined}
             rows={payments.map((p): PaymentHistoryRow => {
               const amt = parseFloat(p.amount || "0");
               const shortDate = p.payment_date
@@ -561,6 +562,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               return {
                 id: p.id,
                 billId: p.bill_id,
+                billStatus: p.bill_status,
                 date: dateLabel,
                 amountLabel: `(${currencyLabel} ${parseFloat(p.amount || "0").toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
                 invoiceNo: ref,

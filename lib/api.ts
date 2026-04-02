@@ -469,6 +469,8 @@ export type PaymentItem = {
   bill_id: string;
   /** Invoice-style ref for the bill paid; list responses may include it. */
   bill_reference?: string;
+  /** Status of the bill that owns this payment — used for per-row delete eligibility. */
+  bill_status?: string;
   payment_date: string | null;
   amount: string;
   currency_code: string;
