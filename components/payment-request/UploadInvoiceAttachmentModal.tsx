@@ -257,12 +257,7 @@ export function UploadInvoiceAttachmentModal({ open, onClose, onUpload }: Upload
         </div>
 
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 px-4 py-3 sm:flex-row sm:justify-end sm:gap-3 sm:px-6 sm:py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={uploading}
-            className="box-border h-12 min-h-[48px] w-full rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:min-h-[44px] sm:w-auto sm:px-4"
-          >
+          <button type="button" onClick={onClose} disabled={uploading} className="box-border h-12 min-h-[48px] w-full rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:min-h-[44px] sm:w-auto sm:px-4">
             Cancel
           </button>
           <button type="button" onClick={() => void handleUploadClick()} disabled={uploading} className="box-border h-12 min-h-[48px] w-full rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px] sm:w-auto">
