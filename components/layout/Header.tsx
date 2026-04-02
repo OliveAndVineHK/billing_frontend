@@ -26,7 +26,7 @@ export function Header({
   statusBadge,
   navItems,
   companyName = "Insert Company Here",
-  companyAbbreviation = "ICH",
+  companyAbbreviation = "---",
   onLogout,
 }: HeaderProps) {
   const homeHref = brandHref === undefined ? "/" : brandHref;

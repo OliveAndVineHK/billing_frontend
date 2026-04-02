@@ -96,7 +96,7 @@ function NavMenuItemLink({
   );
 }
 
-export function NavMenu({ items, menuSections, companyAbbreviation = "ICH", onLogout }: NavMenuProps) {
+export function NavMenu({ items, menuSections, companyAbbreviation = "---", onLogout }: NavMenuProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
