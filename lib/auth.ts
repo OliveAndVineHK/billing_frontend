@@ -47,6 +47,26 @@ export function clearAuth() {
 /** Cookie name checked by Next.js middleware for auth gating. */
 export const AUTH_COOKIE_NAME = TOKEN_KEY;
 
+/**
+ * Returns true if the JWT stored in the cookie will expire within
+ * `thresholdSeconds` seconds (default 120). Returns false if the token is
+ * missing, malformed, or has no `exp` claim. Never throws.
+ */
+export function isTokenExpiringSoon(thresholdSeconds = 120): boolean {
+  try {
+    const auth = getAuth();
+    if (!auth?.token) return false;
+    const parts = auth.token.split(".");
+    if (parts.length !== 3) return false;
+    const payloadJson = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    const payload = JSON.parse(payloadJson) as Record<string, unknown>;
+    if (typeof payload.exp !== "number") return false;
+    return payload.exp - Date.now() / 1000 < thresholdSeconds;
+  } catch {
+    return false;
+  }
+}
+
 const MODULE1_URL =
   process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
 

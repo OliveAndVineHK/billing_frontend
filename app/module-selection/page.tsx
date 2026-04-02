@@ -43,6 +43,14 @@ function ModuleSelectionContent() {
 
   useEffect(() => {
     setHasMounted(true);
+    if (token) {
+      const clean = new URLSearchParams(searchParams.toString());
+      clean.delete("token");
+      clean.delete("entity_id");
+      clean.delete("entity_name");
+      const qs = clean.toString();
+      router.replace(`/module-selection${qs ? `?${qs}` : ""}`);
+    }
   }, []);
 
   useEffect(() => {

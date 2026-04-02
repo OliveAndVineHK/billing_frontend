@@ -1,4 +1,4 @@
-import { getAuth, redirectToLogin } from "./auth";
+import { getAuth, isTokenExpiringSoon, redirectToLogin } from "./auth";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://localhost:8000";
@@ -38,6 +38,11 @@ function normalizeApiErrorDetail(detail: unknown, fallback: string): string {
 // ── Core fetch wrapper ───────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  if (isTokenExpiringSoon()) {
+    redirectToLogin();
+    throw new ApiError(401, "Session expiring soon. Redirecting to login.");
+  }
+
   const auth = getAuth();
   if (!auth?.token) throw new ApiError(401, "Not authenticated");
 
