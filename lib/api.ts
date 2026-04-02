@@ -44,7 +44,10 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   }
 
   const auth = getAuth();
-  if (!auth?.token) throw new ApiError(401, "Not authenticated");
+  if (!auth?.token) {
+    redirectToLogin();
+    throw new ApiError(401, "Not authenticated");
+  }
 
   const headers = new Headers(options.headers);
   headers.set("Authorization", `Bearer ${auth.token}`);
@@ -135,7 +138,10 @@ async function fetchAttachmentDownloadJson(path: string): Promise<{
   file_size?: number;
 } | null> {
   const auth = getAuth();
-  if (!auth?.token) throw new ApiError(401, "Not authenticated");
+  if (!auth?.token) {
+    redirectToLogin();
+    throw new ApiError(401, "Not authenticated");
+  }
 
   const headers = new Headers();
   headers.set("Authorization", `Bearer ${auth.token}`);
