@@ -12,6 +12,7 @@ import {
   ApiError,
   fetchEntityBillAccounts,
   fetchEntityBillContacts,
+  fetchSuggestedBillReference,
   isDuplicateBillReferenceError,
   saveBillDraft,
   submitBill,
@@ -148,7 +149,7 @@ export function PaymentRequestModal({
   const [previewFileId, setPreviewFileId] = useState<string | null>(null);
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
   const previewFile = previewFileId ? uploadedFiles.find((x) => x.id === previewFileId)?.file ?? null : null;
-  const [billNo, setBillNo] = useState("MBIDAN-115803031626");
+  const [billNo, setBillNo] = useState("");
   const [currency, setCurrency] = useState("HK$");
   const [amount, setAmount] = useState("1,500.00");
   const [description, setDescription] = useState("");
@@ -271,6 +272,18 @@ export function PaymentRequestModal({
     setAccountCode("");
     setInvoiceDate("");
     setDueDate("");
+    setBillNo("");
+    let cancelled = false;
+    fetchSuggestedBillReference()
+      .then((r) => {
+        if (!cancelled) setBillNo(r.reference);
+      })
+      .catch(() => {
+        if (!cancelled) setBillNo("");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   useEffect(() => {
@@ -551,9 +564,17 @@ export function PaymentRequestModal({
                 type="text"
                 value={billNo ?? ""}
                 onChange={(e) => {
-                  setBillNo(e.target.value);
+                  const v = e.target.value;
                   clearFieldError("billNo");
                   setFormError(null);
+                  if (v.trim() === "") {
+                    setBillNo("");
+                    void fetchSuggestedBillReference()
+                      .then((r) => setBillNo(r.reference))
+                      .catch(() => {});
+                    return;
+                  }
+                  setBillNo(v);
                 }}
                 aria-invalid={!!fieldErrors.billNo}
                 aria-describedby={fieldErrors.billNo ? "pr-bill-no-error" : undefined}
@@ -563,7 +584,7 @@ export function PaymentRequestModal({
                     ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
                     : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
                 }
-                placeholder="MBIDAN-115803031626"
+                placeholder="MBIOVI-115803031626"
               />
               {fieldErrors.billNo ? (
                 <p id="pr-bill-no-error" className="mt-1 text-xs text-red-600" role="alert">

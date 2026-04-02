@@ -418,6 +418,11 @@ export function fetchBill(billId: string): Promise<BillDetail> {
   return apiFetch<BillDetail>(`/bills/${billId}`);
 }
 
+/** Suggested bill number from backend (MBI + 3 name letters + HK time/date). */
+export function fetchSuggestedBillReference(): Promise<{ reference: string }> {
+  return apiFetch<{ reference: string }>("/bills/suggested-reference/");
+}
+
 export function createBill(payload: BillCreatePayload): Promise<BillDetail> {
   return apiFetch<BillDetail>("/bills/", {
     method: "POST",
