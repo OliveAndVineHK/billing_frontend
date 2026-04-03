@@ -72,61 +72,78 @@ export type BankSlipEnrichment = {
   bankSlipDetails?: BankSlipDetails;
 };
 
-/**
- * Loads payment-attachment metadata for a bill so the table can show counts and the bank-slip details modal
- * can preview files via `fetchSource` + authenticated download.
- */
-export async function fetchBillBankSlipEnrichment(billId: string, row: {
+export type BankSlipRowLabels = {
   contactTitle: string;
   submittedDate: string;
   invoiceDate: string;
   paidDate: string;
   unpaidAmount: string;
   currencyCode?: string;
-}): Promise<BankSlipEnrichment> {
+};
+
+/**
+ * Uses an existing payment list (e.g. from `GET /bills/{id}/payments`) and loads
+ * `GET /bills/{id}/payments/{paymentId}/attachments` per payment — same sources as the list view bank-slip flow.
+ */
+export async function buildBankSlipDetailsFromPaymentList(
+  billId: string,
+  payments: PaymentItem[],
+  row: BankSlipRowLabels,
+): Promise<{ count: number; bankSlipDetails: BankSlipDetails | null }> {
+  const forBill = payments.filter((p) => p.bill_id === billId);
+  if (forBill.length === 0) return { count: 0, bankSlipDetails: null };
+
+  const files: BankSlipFileEntry[] = [];
+  const seenAttachmentLinkIds = new Set<string>();
+  for (const p of forBill) {
+    const attachments = await listPaymentAttachments(billId, p.id);
+    for (const a of attachments) {
+      if (seenAttachmentLinkIds.has(a.id)) continue;
+      seenAttachmentLinkIds.add(a.id);
+      const uploadedAt = a.created_at?.trim() || a.attachment.created_at?.trim();
+      const nestedId = a.attachment.id?.trim();
+      const size = a.attachment.file_size;
+      const fileSizeBytes =
+        typeof size === "number" && Number.isFinite(size) && size >= 0 ? Math.round(size) : undefined;
+      files.push({
+        id: a.id,
+        name: a.attachment.original_name,
+        ...(fileSizeBytes != null ? { fileSizeBytes } : {}),
+        fetchSource: {
+          billId,
+          paymentId: p.id,
+          attachmentId: a.id,
+          ...(nestedId ? { fileAttachmentId: nestedId } : {}),
+        },
+        ...(uploadedAt ? { details: { createdAt: formatApiDateTime(uploadedAt) } } : {}),
+      });
+    }
+  }
+
+  if (files.length === 0) return { count: 0, bankSlipDetails: null };
+
+  const primary = forBill[0];
+  const bankSlipDetails: BankSlipDetails = {
+    ...paymentToDetailsBase(row, primary),
+    files,
+  };
+
+  return { count: files.length, bankSlipDetails };
+}
+
+/**
+ * Loads payment-attachment metadata for a bill so the table can show counts and the bank-slip details modal
+ * can preview files via `fetchSource` + authenticated download.
+ */
+export async function fetchBillBankSlipEnrichment(
+  billId: string,
+  row: BankSlipRowLabels,
+): Promise<BankSlipEnrichment> {
   try {
     const { payments } = await fetchPayments(billId);
-    const forBill = payments.filter((p) => p.bill_id === billId);
-    if (forBill.length === 0) return { bankslipFileCount: 0 };
-
-    const files: BankSlipFileEntry[] = [];
-    const seenAttachmentLinkIds = new Set<string>();
-    for (const p of forBill) {
-      const attachments = await listPaymentAttachments(billId, p.id);
-      for (const a of attachments) {
-        if (seenAttachmentLinkIds.has(a.id)) continue;
-        seenAttachmentLinkIds.add(a.id);
-        const uploadedAt = a.created_at?.trim() || a.attachment.created_at?.trim();
-        const nestedId = a.attachment.id?.trim();
-        const size = a.attachment.file_size;
-        const fileSizeBytes =
-          typeof size === "number" && Number.isFinite(size) && size >= 0 ? Math.round(size) : undefined;
-        files.push({
-          id: a.id,
-          name: a.attachment.original_name,
-          ...(fileSizeBytes != null ? { fileSizeBytes } : {}),
-          fetchSource: {
-            billId,
-            paymentId: p.id,
-            attachmentId: a.id,
-            ...(nestedId ? { fileAttachmentId: nestedId } : {}),
-          },
-          ...(uploadedAt
-            ? { details: { createdAt: formatApiDateTime(uploadedAt) } }
-            : {}),
-        });
-      }
-    }
-
-    if (files.length === 0) return { bankslipFileCount: 0 };
-
-    const primary = forBill[0];
-    const details: BankSlipDetails = {
-      ...paymentToDetailsBase(row, primary),
-      files,
-    };
-
-    return { bankslipFileCount: files.length, bankSlipDetails: details };
+    const built = await buildBankSlipDetailsFromPaymentList(billId, payments, row);
+    if (built.count === 0) return { bankslipFileCount: 0 };
+    return { bankslipFileCount: built.count, bankSlipDetails: built.bankSlipDetails! };
   } catch {
     return { bankslipFileCount: 0 };
   }

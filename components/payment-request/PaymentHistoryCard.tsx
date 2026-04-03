@@ -8,7 +8,7 @@ export type PaymentHistoryRow = {
   id: string;
   /** Bill that owns this payment (required for DELETE /bills/{bill_id}/payments/{id}). */
   billId: string;
-  /** Status of the bill that owns this payment — used for per-row delete eligibility. */
+  /** Status of the bill that owns this payment (for display / future use). */
   billStatus?: string;
   date: string;
   amountLabel: string;
@@ -22,7 +22,6 @@ export type PaymentHistoryRow = {
 type PaymentHistoryCardProps = {
   rows?: PaymentHistoryRow[];
   onDeleteRow?: (row: PaymentHistoryRow) => void;
-  billStatus?: string;
   /** Whether the current user is permitted to delete payments (elevated roles only). */
   canDeletePayments?: boolean;
 };
@@ -36,7 +35,7 @@ const defaultRows: PaymentHistoryRow[] = [
   { id: "6", billId: "demo-6", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031631" },
 ];
 
-export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow, billStatus, canDeletePayments = false }: PaymentHistoryCardProps) {
+export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow, canDeletePayments = false }: PaymentHistoryCardProps) {
   const [open, setOpen] = useState(true);
   const [confirmRow, setConfirmRow] = useState<PaymentHistoryRow | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -81,8 +80,7 @@ export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow, billStatus
           <div className="min-h-0 max-h-[min(14rem,38dvh)] overflow-y-auto overscroll-y-contain [-ms-overflow-style:auto] sm:max-h-[min(17.5rem,45vh)]" role="region" aria-label="Payment history list">
             <ul className="flex flex-col gap-2 pb-0.5">
               {rows.map((row) => {
-                const rowStatus = row.billStatus ?? billStatus;
-                const isDeleteDisabled = rowStatus === "paid" || rowStatus === "authorised" || !canDeletePayments;
+                const isDeleteDisabled = !canDeletePayments;
                 return (
                   <li key={row.id} className="grid grid-cols-1 items-center gap-2 rounded-lg bg-gray-50 px-3 py-3 sm:grid-cols-[2rem_minmax(9rem,1fr)_minmax(8rem,10rem)_minmax(13rem,1fr)_2.25rem] sm:gap-4 sm:px-4">
                     <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#54D3DA]/15 text-[#54D3DA]" aria-hidden>
@@ -93,7 +91,7 @@ export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow, billStatus
                     <Link href={row.invoiceHref ?? "#"} className="block w-full min-w-0 truncate text-left text-sm font-medium text-[#54d3da] underline underline-offset-2 hover:text-[#54d3da]">
                       {row.invoiceNo}
                     </Link>
-                    <button type="button" className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors sm:justify-self-end ${isDeleteDisabled ? "cursor-not-allowed opacity-50 text-gray-400" : "text-rose-500 hover:bg-rose-100 hover:text-rose-600 disabled:opacity-50"}`} aria-label={isDeleteDisabled ? "Cannot delete a payment on a paid or authorised bill." : `Delete payment ${row.invoiceNo}`} title={isDeleteDisabled ? "Cannot delete a payment on a paid or authorised bill." : undefined} disabled={isDeleteDisabled || (deleting && confirmRow?.id === row.id)} onClick={() => { if (isDeleteDisabled || !onDeleteRow) return; setConfirmRow(row); }}>
+                    <button type="button" className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors sm:justify-self-end ${isDeleteDisabled ? "cursor-not-allowed opacity-50 text-gray-400" : "text-rose-500 hover:bg-rose-100 hover:text-rose-600 disabled:opacity-50"}`} aria-label={isDeleteDisabled ? "You do not have permission to delete payments." : `Delete payment ${row.invoiceNo}`} title={isDeleteDisabled ? "You do not have permission to delete payments." : undefined} disabled={isDeleteDisabled || (deleting && confirmRow?.id === row.id)} onClick={() => { if (isDeleteDisabled || !onDeleteRow) return; setConfirmRow(row); }}>
                       <span className="material-symbols-outlined text-[22px]">delete</span>
                     </button>
                   </li>

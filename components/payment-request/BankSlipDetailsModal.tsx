@@ -543,6 +543,10 @@ export function BankSlipDetailsModal({
                   previewSubtitleId={previewSubtitleId}
                   fileSizeBytes={selectedEntry.fileSizeBytes}
                 />
+              ) : files.length === 0 ? (
+                <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-primary/60">
+                  No bank slip files uploaded for these payments yet.
+                </div>
               ) : (
                 <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-primary/60">
                   Select a file to preview

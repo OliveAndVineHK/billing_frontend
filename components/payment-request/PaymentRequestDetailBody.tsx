@@ -72,14 +72,31 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [accountOptions, setAccountOptions] = useState<ThemedSelectOption[]>([
     { value: "", label: "Select account code" },
   ]);
-  const [contactOptions, setContactOptions] = useState<ThemedSelectOption[]>([
-    { value: "", label: "Select contact" },
-  ]);
-  const [contactById, setContactById] = useState<Map<string, EntityBillContact>>(() => new Map());
+  const [entityBillContacts, setEntityBillContacts] = useState<EntityBillContact[]>([]);
+
+  const applyEntityBillContacts = useCallback((contacts: EntityBillContact[]) => {
+    setEntityBillContacts(contacts);
+  }, []);
+
+  const refetchEntityBillContacts = useCallback(
+    async (ensureMerged?: EntityBillContact) => {
+      const list = await fetchEntityBillContacts();
+      let merged =
+        ensureMerged &&
+        !list.some((c) => c.xero_contact_id === ensureMerged.xero_contact_id)
+          ? [...list, ensureMerged]
+          : list;
+      merged = [...merged].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+      );
+      applyEntityBillContacts(merged);
+    },
+    [applyEntityBillContacts],
+  );
 
   useEffect(() => {
     let cancelled = false;
-    fetchEntityBillAccounts()
+    fetchEntityBillAccounts({ billDropdown: true })
       .then((accounts) => {
         if (cancelled) return;
         setAccountOptions([
@@ -96,19 +113,11 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     fetchEntityBillContacts()
       .then((contacts: EntityBillContact[]) => {
         if (cancelled) return;
-        const byId = new Map<string, EntityBillContact>();
-        for (const c of contacts) {
-          byId.set(c.xero_contact_id, c);
-        }
-        setContactById(byId);
-        setContactOptions([
-          { value: "", label: "Select contact" },
-          ...contacts.map((c) => ({ value: c.xero_contact_id, label: c.name })),
-        ]);
+        applyEntityBillContacts(contacts);
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, []);
+  }, [applyEntityBillContacts]);
 
   const rollbackToPaymentRequestedIfNoPayments = useCallback(
     async (nextPayments: PaymentItem[]): Promise<boolean> => {
@@ -544,8 +553,8 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               billNoError={isEditing ? billNoError : null}
               accountCodeError={isEditing ? accountCodeError : null}
               accountOptions={accountOptions}
-              contactOptions={contactOptions}
-              contactById={contactById}
+              entityBillContacts={entityBillContacts}
+              onRefetchEntityBillContacts={refetchEntityBillContacts}
               onPatchChange={isEditing ? handlePatch : undefined}
               onEdit={handleEdit}
               onCancel={handleCancel}
@@ -569,7 +578,6 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             </span>
           </button>
           <PaymentHistoryCard
-            billStatus={bill?.status ?? undefined}
             canDeletePayments={isElevated}
             rows={payments.map((p): PaymentHistoryRow => {
               const amt = parseFloat(p.amount || "0");

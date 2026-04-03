@@ -8,6 +8,7 @@ import { formatFileSize, isImageFile, isPdfFile } from "@/lib/fileAttachmentPrev
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
 
+import { BillContactPicker } from "@/components/BillContactPicker";
 import {
   ApiError,
   fetchEntityBillAccounts,
@@ -141,7 +142,9 @@ export function PaymentRequestModal({
   const [currency, setCurrency] = useState("HK$");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
+  /** Xero ContactID (empty while user is typing a new name). */
   const [contact, setContact] = useState("");
+  const [contactInput, setContactInput] = useState("");
   const [accountCode, setAccountCode] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -155,16 +158,14 @@ export function PaymentRequestModal({
     { value: "", label: "Select account code" },
   ]);
 
-  const [contactOptions, setContactOptions] = useState<ThemedSelectOption[]>([
-    { value: "", label: "Select contact" },
-  ]);
+  const [contactsList, setContactsList] = useState<EntityBillContact[]>([]);
   const [contactsMap, setContactsMap] = useState<Map<string, EntityBillContact>>(new Map());
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
 
-    fetchEntityBillAccounts()
+    fetchEntityBillAccounts({ billDropdown: true })
       .then((accounts) => {
         if (cancelled) return;
         const opts: ThemedSelectOption[] = [
@@ -193,11 +194,7 @@ export function PaymentRequestModal({
           map.set(c.xero_contact_id, c);
         }
         setContactsMap(map);
-        const opts: ThemedSelectOption[] = [
-          { value: "", label: "Select contact" },
-          ...contacts.map((c) => ({ value: c.xero_contact_id, label: c.name })),
-        ];
-        setContactOptions(opts);
+        setContactsList(contacts);
       })
       .catch(() => {});
 
@@ -258,6 +255,7 @@ export function PaymentRequestModal({
     setFormError(null);
     setAmount("");
     setContact("");
+    setContactInput("");
     setAccountCode("");
     setInvoiceDate("");
     setDueDate("");
@@ -296,6 +294,24 @@ export function PaymentRequestModal({
 
   const removeFile = (entryId: string) => {
     setUploadedFiles((prev) => prev.filter((x) => x.id !== entryId));
+  };
+
+  const refetchEntityBillContacts = async (ensureMerged?: EntityBillContact) => {
+    const list = await fetchEntityBillContacts();
+    let merged =
+      ensureMerged &&
+      !list.some((c) => c.xero_contact_id === ensureMerged.xero_contact_id)
+        ? [...list, ensureMerged]
+        : list;
+    merged = [...merged].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+    );
+    const map = new Map<string, EntityBillContact>();
+    for (const c of merged) {
+      map.set(c.xero_contact_id, c);
+    }
+    setContactsMap(map);
+    setContactsList(merged);
   };
 
   const handleSaveDraft = async () => {
@@ -630,7 +646,7 @@ export function PaymentRequestModal({
                 type="text"
                 value={description ?? ""}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Lorem ipsum Dolor"
+                placeholder="e.g. Office supplies"
                 className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
               />
             </div>
@@ -639,14 +655,17 @@ export function PaymentRequestModal({
               <FieldLabel htmlFor="pr-contact" required>
                 Contact
               </FieldLabel>
-              <ThemedSelect
+              <BillContactPicker
                 id="pr-contact"
-                value={contact ?? ""}
-                onChange={(v) => {
-                  setContact(v);
+                contacts={contactsList}
+                xeroContactId={contact}
+                contactName={contactInput}
+                onChange={({ xero_contact_id, contact: nm }) => {
+                  setContact(xero_contact_id);
+                  setContactInput(nm);
                   clearFieldError("contact");
                 }}
-                options={contactOptions}
+                refetchContacts={refetchEntityBillContacts}
                 error={!!fieldErrors.contact}
               />
               {fieldErrors.contact ? (

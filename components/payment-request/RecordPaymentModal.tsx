@@ -14,7 +14,10 @@ import {
 } from "@/lib/api";
 import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
 import { openDatePicker } from "@/lib/openDatePicker";
+import { useUserRole } from "@/lib/useUserRole";
 import { PaymentDeleteConfirmModal } from "./PaymentDeleteConfirmModal";
+import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsModal";
+import { buildBankSlipDetailsFromPaymentList } from "@/lib/bankSlipEnrichment";
 
 export type RecordPaymentModalProps = {
   open: boolean;
@@ -50,6 +53,24 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+const EMPTY_BANK_SLIP_DETAILS: BankSlipDetails = {
+  createdBy: "—",
+  createdAt: "—",
+  toName: "",
+  amount: "—",
+  fromName: "—",
+  when: "—",
+  files: [],
+};
+
+const MIN_BANK_SLIP_ROW = {
+  contactTitle: "",
+  submittedDate: "",
+  invoiceDate: "",
+  paidDate: "",
+  unpaidAmount: "",
+};
+
 export function RecordPaymentModal({
   open,
   onClose,
@@ -58,6 +79,7 @@ export function RecordPaymentModal({
   currencyLabel = "HK$",
   onPaymentSaved,
 }: RecordPaymentModalProps) {
+  const { isElevated: canDeletePayments } = useUserRole();
   const titleId = useId();
   const dateFieldId = useId();
   const amountFieldId = useId();
@@ -73,6 +95,9 @@ export function RecordPaymentModal({
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [paymentPendingDelete, setPaymentPendingDelete] = useState<PaymentItem | null>(null);
+  const [bankSlipPreviewOpen, setBankSlipPreviewOpen] = useState(false);
+  const [bankSlipFileCount, setBankSlipFileCount] = useState(0);
+  const [bankSlipDetails, setBankSlipDetails] = useState<BankSlipDetails>(EMPTY_BANK_SLIP_DETAILS);
 
   const paymentsForBill = useMemo(
     () => payments.filter((p) => p.bill_id === billId),
@@ -109,10 +134,20 @@ export function RecordPaymentModal({
     try {
       const data = await fetchPayments(billId);
       setPayments(data.payments);
+      try {
+        const built = await buildBankSlipDetailsFromPaymentList(billId, data.payments, MIN_BANK_SLIP_ROW);
+        setBankSlipFileCount(built.count);
+        setBankSlipDetails(built.bankSlipDetails ?? EMPTY_BANK_SLIP_DETAILS);
+      } catch {
+        setBankSlipFileCount(0);
+        setBankSlipDetails(EMPTY_BANK_SLIP_DETAILS);
+      }
       const rolled = await syncSubmittedIfNoPaymentsLeft(data.payments);
       if (rolled) onPaymentSaved?.();
     } catch {
       setPayments([]);
+      setBankSlipFileCount(0);
+      setBankSlipDetails(EMPTY_BANK_SLIP_DETAILS);
     } finally {
       setLoadingPayments(false);
     }
@@ -129,6 +164,9 @@ export function RecordPaymentModal({
     if (!open) {
       setPayments([]);
       setPaymentPendingDelete(null);
+      setBankSlipPreviewOpen(false);
+      setBankSlipFileCount(0);
+      setBankSlipDetails(EMPTY_BANK_SLIP_DETAILS);
     }
   }, [open, billId, loadPayments]);
 
@@ -260,8 +298,31 @@ export function RecordPaymentModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
-          <p className="text-sm font-medium text-primary">INVOICE AMOUNT</p>
-          <p className="mt-1 text-xl font-bold text-primary sm:text-2xl">{formatMoney(invoiceAmount, currencyLabel)}</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-primary">INVOICE AMOUNT</p>
+              <p className="mt-1 text-xl font-bold text-primary sm:text-2xl">{formatMoney(invoiceAmount, currencyLabel)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBankSlipPreviewOpen(true)}
+              className="relative -mr-1 -mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+              aria-label={
+                bankSlipFileCount > 0
+                  ? `View payment attachments, ${bankSlipFileCount} file${bankSlipFileCount === 1 ? "" : "s"}`
+                  : "View payment attachments"
+              }
+            >
+              <span className="material-symbols-outlined text-[24px] leading-none" aria-hidden>
+                attach_file
+              </span>
+              {bankSlipFileCount > 0 ? (
+                <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-white">
+                  {bankSlipFileCount > 99 ? "99+" : bankSlipFileCount}
+                </span>
+              ) : null}
+            </button>
+          </div>
 
           <div className="mt-5 flex gap-2">
             <button type="button" onClick={() => { setFormError(null); setPayMode("full"); }} className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "full" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Full Pay</button>
@@ -305,7 +366,21 @@ export function RecordPaymentModal({
                       )}
                     </div>
                     <span className="shrink-0 text-sm font-bold text-primary tabular-nums">({formatMoney(amt, currencyLabel)})</span>
-                    <button type="button" onClick={() => setPaymentPendingDelete(p)} disabled={deletingId === p.id} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-rose-500 transition-colors hover:bg-rose-100 hover:text-rose-600 disabled:opacity-50" aria-label="Remove this payment">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!canDeletePayments) return;
+                        setPaymentPendingDelete(p);
+                      }}
+                      disabled={!canDeletePayments || deletingId === p.id}
+                      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors disabled:opacity-50 ${canDeletePayments ? "text-rose-500 hover:bg-rose-100 hover:text-rose-600" : "cursor-not-allowed text-gray-400"}`}
+                      aria-label={
+                        canDeletePayments
+                          ? "Remove this payment"
+                          : "You do not have permission to delete payments."
+                      }
+                      title={!canDeletePayments ? "You do not have permission to delete payments." : undefined}
+                    >
                       <span className="material-symbols-outlined text-[22px]">
                         {deletingId === p.id ? "progress_activity" : "delete"}
                       </span>
@@ -353,6 +428,12 @@ export function RecordPaymentModal({
     </div>,
     document.body,
       )}
+      <BankSlipDetailsModal
+        open={bankSlipPreviewOpen}
+        onClose={() => setBankSlipPreviewOpen(false)}
+        details={bankSlipDetails}
+        allowRemoveFiles={false}
+      />
       <PaymentDeleteConfirmModal
         open={paymentPendingDelete != null}
         summary={deleteConfirmSummary}

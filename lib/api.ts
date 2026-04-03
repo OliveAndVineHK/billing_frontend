@@ -618,12 +618,19 @@ export function fetchAuditHistory(billId: string): Promise<AuditItem[]> {
 
 // ── Config ───────────────────────────────────────────────────────────
 
-/** Pass forceChartSync on Settings so Xero vs DB reconcile runs even if another list ran recently (bypasses server debounce). */
+/**
+ * Pass forceChartSync on Settings so Xero vs DB reconcile runs even if another list ran recently (bypasses server debounce).
+ * Pass billDropdown for add/edit bill flows so the API returns only EXPENSE/DIRECTCOSTS accounts (still entity-scoped, active, chart sync rules).
+ */
 export function fetchEntityBillAccounts(options?: {
   forceChartSync?: boolean;
+  billDropdown?: boolean;
 }): Promise<EntityBillAccount[]> {
-  const qs = options?.forceChartSync ? "?force_chart_sync=true" : "";
-  return apiFetch(`/entity-bill-accounts/${qs}`);
+  const params = new URLSearchParams();
+  if (options?.forceChartSync) params.set("force_chart_sync", "true");
+  if (options?.billDropdown) params.set("bill_dropdown", "true");
+  const q = params.toString();
+  return apiFetch(`/entity-bill-accounts/${q ? `?${q}` : ""}`);
 }
 
 export function updateEntityBillAccount(
@@ -647,6 +654,16 @@ export type EntityBillContact = {
 
 export function fetchEntityBillContacts(): Promise<EntityBillContact[]> {
   return apiFetch("/entity-bill-contacts/");
+}
+
+/** Create a contact in Xero and persist `xero_contact_sync` (same auth as list). */
+export function createEntityBillContact(payload: {
+  name: string;
+}): Promise<EntityBillContact> {
+  return apiFetch<EntityBillContact>("/entity-bill-contacts/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function fetchCurrencies(): Promise<CurrencyInfo[]> {

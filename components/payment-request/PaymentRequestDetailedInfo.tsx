@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useId, useRef } from "react";
+import { BillContactPicker } from "@/components/BillContactPicker";
 import { ThemedSelect } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
@@ -40,9 +41,9 @@ export type PaymentRequestDetailedInfoProps = {
   billNoError?: string | null;
   accountCodeError?: string | null;
   accountOptions?: ThemedSelectOption[];
-  contactOptions?: ThemedSelectOption[];
-  /** Maps Xero contact id → API row (names may duplicate across rows). */
-  contactById?: Map<string, EntityBillContact>;
+  /** Contacts for typeahead / create-in-Xero (edit mode). */
+  entityBillContacts?: EntityBillContact[];
+  onRefetchEntityBillContacts?: (ensureMerged?: EntityBillContact) => Promise<void>;
   onPatchChange?: (patch: Partial<PaymentRequestDetailedInfoData>) => void;
   onEdit?: () => void;
   onCancel?: () => void;
@@ -174,8 +175,8 @@ export function PaymentRequestDetailedInfo({
   onSave,
   className = "",
   accountOptions: accountOptionsProp,
-  contactOptions: contactOptionsProp,
-  contactById,
+  entityBillContacts = [],
+  onRefetchEntityBillContacts,
 }: PaymentRequestDetailedInfoProps) {
   const {
     billNo,
@@ -206,13 +207,6 @@ export function PaymentRequestDetailedInfo({
   const idBillNoError = `detail-bill-no-err-${uid}`;
   const idAccountError = `detail-account-err-${uid}`;
 
-  const fallbackContactOptions: ThemedSelectOption[] = [{ value: "", label: "Select contact" }];
-  const contactMergeValue = (xero_contact_id || contact).trim() || contact;
-  const contactOptions = mergeSelectOption(
-    contactOptionsProp ?? fallbackContactOptions,
-    contactMergeValue,
-    contact,
-  );
   const fallbackAccountOptions: ThemedSelectOption[] = [{ value: "", label: "Select account code" }];
   const accountOptions = mergeSelectOption(accountOptionsProp ?? fallbackAccountOptions, accountCode);
   const currencyOptions = currencyOptionsForEditing(currencyCode);
@@ -324,7 +318,7 @@ export function PaymentRequestDetailedInfo({
               type="text"
               value={description ?? ""}
               onChange={(e) => patch({ description: e.target.value })}
-              placeholder="Lorem ipsum Dolor"
+              placeholder="e.g. Office supplies"
               className={modalTextInputClass}
               disabled={disabled}
             />
@@ -338,23 +332,15 @@ export function PaymentRequestDetailedInfo({
             Contact<span className="text-red-500"> *</span>
           </FieldLabel>
           {isEditing ? (
-            <ThemedSelect
+            <BillContactPicker
               id={idContact}
-              value={contactMergeValue}
-              onChange={(v) => {
-                const trimmed = v.trim();
-                if (!trimmed) {
-                  patch({ contact: "", xero_contact_id: "" });
-                  return;
-                }
-                const row = contactById?.get(trimmed);
-                if (row) {
-                  patch({ contact: row.name, xero_contact_id: row.xero_contact_id });
-                  return;
-                }
-                patch({ contact: v, xero_contact_id: "" });
-              }}
-              options={contactOptions}
+              contacts={entityBillContacts}
+              xeroContactId={xero_contact_id}
+              contactName={contact}
+              onChange={(next) =>
+                patch({ contact: next.contact, xero_contact_id: next.xero_contact_id })
+              }
+              refetchContacts={onRefetchEntityBillContacts ?? (async () => {})}
               disabled={disabled}
             />
           ) : (

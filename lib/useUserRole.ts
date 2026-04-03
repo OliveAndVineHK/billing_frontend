@@ -26,7 +26,7 @@ export function useUserRole(): UserRoleInfo {
     setRole(getRoleFromToken());
   }, []);
 
-  const normalized = (role ?? "").trim().toLowerCase().replace(/ /g, "_");
+  const normalized = (role ?? "").trim().toLowerCase().replace(/ /g, "_").replace(/-/g, "_");
   return {
     role,
     isElevated: ELEVATED_ROLES.has(normalized),

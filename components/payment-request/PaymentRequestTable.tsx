@@ -1,7 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsModal";
 import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
@@ -62,6 +62,28 @@ const SORTABLE_TITLE: Partial<Record<PaymentRequestColumnTitle, SortKey>> = {
   "Paid Date": "paidDate",
 };
 
+/** Short tooltip + screen-reader text for column sort (native title + aria-describedby). */
+function sortColumnDescription(key: SortKey): string {
+  const suffix =
+    " Click again to reverse. Only rows you see now are sorted; changing the status filter resets the order.";
+  switch (key) {
+    case "contact":
+      return "Sort by supplier, then description (A–Z)." + suffix;
+    case "invoiceDate":
+      return "Sort by invoice date within each status." + suffix;
+    case "submittedDate":
+      return "Sort by submitted date within each status." + suffix;
+    case "paidDate":
+      return "Sort by paid date within each status; rows without a date go last." + suffix;
+    case "status":
+      return "Sort by status in billing order, then A–Z." + suffix;
+    case "unpaidAmount":
+      return "Sort by unpaid amount." + suffix;
+    default:
+      return "Sort this column." + suffix;
+  }
+}
+
 function dateSortValue(s: string): number | null {
   const t = s.trim();
   if (!t || t === "-") return null;
@@ -92,6 +114,27 @@ function statusSortRank(label: string): number {
   return i >= 0 ? i : STATUS_TABLE_ORDER.length;
 }
 
+/** Same ordering as the Status column when sorted ascending (workflow order, then label). */
+function compareStatusWorkflowPrimary(a: PaymentRequestRow, b: PaymentRequestRow): number {
+  const ra = statusSortRank(a.status);
+  const rb = statusSortRank(b.status);
+  if (ra !== rb) return ra - rb;
+  return a.status.localeCompare(b.status, undefined, { sensitivity: "base" });
+}
+
+function compareRowsByDateWithStatusPrimary(
+  a: PaymentRequestRow,
+  b: PaymentRequestRow,
+  dateField: "invoiceDate" | "submittedDate" | "paidDate",
+  d: 1 | -1,
+): number {
+  const primary = compareStatusWorkflowPrimary(a, b);
+  if (primary !== 0) return primary;
+  const secondary = compareNullableNumber(dateSortValue(a[dateField]), dateSortValue(b[dateField]), d);
+  if (secondary !== 0) return secondary;
+  return a.id.localeCompare(b.id);
+}
+
 function compareRows(a: PaymentRequestRow, b: PaymentRequestRow, key: SortKey, dir: "asc" | "desc"): number {
   const d = dir === "asc" ? 1 : -1;
   switch (key) {
@@ -101,11 +144,11 @@ function compareRows(a: PaymentRequestRow, b: PaymentRequestRow, key: SortKey, d
       return a.contactCaption.localeCompare(b.contactCaption, undefined, { sensitivity: "base" }) * d;
     }
     case "invoiceDate":
-      return compareNullableNumber(dateSortValue(a.invoiceDate), dateSortValue(b.invoiceDate), d);
+      return compareRowsByDateWithStatusPrimary(a, b, "invoiceDate", d);
     case "submittedDate":
-      return compareNullableNumber(dateSortValue(a.submittedDate), dateSortValue(b.submittedDate), d);
+      return compareRowsByDateWithStatusPrimary(a, b, "submittedDate", d);
     case "paidDate":
-      return compareNullableNumber(dateSortValue(a.paidDate), dateSortValue(b.paidDate), d);
+      return compareRowsByDateWithStatusPrimary(a, b, "paidDate", d);
     case "status": {
       const ra = statusSortRank(a.status);
       const rb = statusSortRank(b.status);
@@ -123,7 +166,7 @@ const DEMO_ROWS: PaymentRequestRow[] = [
   {
     id: "1",
     contactTitle: "Young Bros Transport",
-    contactCaption: "Lorem ipsum dolor sit amet",
+    contactCaption: "Corporate stationery and printer supplies",
     invoiceDate: "03 Mar 2026",
     status: "Draft",
     submittedDate: "01 Mar 2026",
@@ -373,6 +416,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   },
   ref,
 ) {
+  const sortDescriptionIdPrefix = useId();
   const { isElevated } = useUserRole();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bankslipModalRowId, setBankslipModalRowId] = useState<string | null>(null);
@@ -739,7 +783,17 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                       {sortKeyForCol ? (
                         <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
                           <span className="min-w-0 flex-1 truncate font-semibold">{title}</span>
-                          <button type="button" className={`inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${hoverSort}`} aria-label={`Sort by ${title}${sortActive ? `, ${sort.dir === "asc" ? "ascending" : "descending"}` : ""}`} onClick={() => onSortColumn(sortKeyForCol)}>
+                          <span id={`${sortDescriptionIdPrefix}-${sortKeyForCol}`} className="sr-only">
+                            {sortColumnDescription(sortKeyForCol)}
+                          </span>
+                          <button
+                            type="button"
+                            className={`inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${hoverSort}`}
+                            aria-label={`Sort by ${title}${sortActive ? `, ${sort.dir === "asc" ? "ascending" : "descending"}` : ""}`}
+                            aria-describedby={`${sortDescriptionIdPrefix}-${sortKeyForCol}`}
+                            title={sortColumnDescription(sortKeyForCol)}
+                            onClick={() => onSortColumn(sortKeyForCol)}
+                          >
                             <span className="inline-flex size-5 items-center justify-center" aria-hidden>
                               <span className={`material-symbols-outlined block text-[18px] leading-none ${sortActive ? "opacity-100" : "opacity-60"}`}>{sortActive ? (sort.dir === "asc" ? "expand_less" : "expand_more") : "expand_more"}</span>
                             </span>
