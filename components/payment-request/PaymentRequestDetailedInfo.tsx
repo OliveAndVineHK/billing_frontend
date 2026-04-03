@@ -12,6 +12,7 @@ import {
   modalCurrencyToIsoCode,
 } from "@/lib/billFormSelectOptions";
 import type { EntityBillContact } from "@/lib/api";
+import { openDatePicker } from "@/lib/openDatePicker";
 
 /** Bill / request fields shown in the “Detailed Information” card. */
 export type PaymentRequestDetailedInfoData = {
@@ -97,19 +98,6 @@ function formatLongDate(iso: string): string {
   const d = new Date(`${iso}T12:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-function openDatePicker(input: HTMLInputElement | null) {
-  if (!input) return;
-  if (typeof input.showPicker === "function") {
-    try {
-      input.showPicker();
-      return;
-    } catch {
-      /* showPicker can throw outside a user gesture in some browsers */
-    }
-  }
-  input.focus();
 }
 
 /** Read-only text row: same outer box as modal `<input>`. */
@@ -412,6 +400,7 @@ export function PaymentRequestDetailedInfo({
                   type="date"
                   value={invoiceDate ?? ""}
                   onChange={(e) => patch({ invoiceDate: e.target.value })}
+                  onClick={(e) => openDatePicker(e.currentTarget)}
                   className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm"
                   disabled={disabled}
                 />
@@ -443,6 +432,7 @@ export function PaymentRequestDetailedInfo({
                   type="date"
                   value={dueDate ?? ""}
                   onChange={(e) => patch({ dueDate: e.target.value })}
+                  onClick={(e) => openDatePicker(e.currentTarget)}
                   className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm"
                   disabled={disabled}
                 />

@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PaymentRequestModal } from "@/components/PaymentRequestModal";
 import { ThemedSelect } from "@/components/ThemedSelect";
+import { openDatePicker } from "@/lib/openDatePicker";
 
 const FILTER_DATE_TYPE_OPTIONS = [
   { value: "Invoice Date", label: "Invoice Date" },
@@ -72,19 +73,6 @@ export function PaymentRequestToolbar({
   const [dateType, setDateType] = useState("Invoice Date");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-
-  const openDatePicker = (input: HTMLInputElement | null) => {
-    if (!input) return;
-    if (typeof input.showPicker === "function") {
-      try {
-        input.showPicker();
-        return;
-      } catch {
-        /* showPicker can throw outside a user gesture in some browsers */
-      }
-    }
-    input.focus();
-  };
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -319,7 +307,7 @@ export function PaymentRequestToolbar({
                           Start Date
                         </label>
                         <div className="relative">
-                          <input ref={startDateRef} id={`${filterFieldIds}-start-date`} type="date" value={startDate ?? ""} onChange={(e) => setStartDate(e.target.value)} className={`${dateInputClass} relative z-[1] ${startDate ? "text-black " : "text-transparent "}`} />
+                          <input ref={startDateRef} id={`${filterFieldIds}-start-date`} type="date" value={startDate ?? ""} onChange={(e) => setStartDate(e.target.value)} onClick={(e) => openDatePicker(e.currentTarget)} className={`${dateInputClass} relative z-[1] ${startDate ? "text-black " : "text-transparent "}`} />
                           {!startDate ? <span className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45" aria-hidden>mm/dd/yyyy</span> : null}
                           <button type="button" onClick={() => openDatePicker(startDateRef.current)} className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for start date"><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>calendar_clock</span></button>
                         </div>
@@ -329,7 +317,7 @@ export function PaymentRequestToolbar({
                           End Date
                         </label>
                         <div className="relative">
-                          <input ref={endDateRef} id={`${filterFieldIds}-end-date`} type="date" value={endDate ?? ""} onChange={(e) => setEndDate(e.target.value)} className={`${dateInputClass} relative z-[1] ${endDate ? "text-black " : "text-transparent "}`} />
+                          <input ref={endDateRef} id={`${filterFieldIds}-end-date`} type="date" value={endDate ?? ""} onChange={(e) => setEndDate(e.target.value)} onClick={(e) => openDatePicker(e.currentTarget)} className={`${dateInputClass} relative z-[1] ${endDate ? "text-black " : "text-transparent "}`} />
                           {!endDate ? <span className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45" aria-hidden>mm/dd/yyyy</span> : null}
                           <button type="button" onClick={() => openDatePicker(endDateRef.current)} className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for end date"><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>calendar_clock</span></button>
                         </div>

@@ -105,7 +105,10 @@ body {
   }
 }
 
-/* Hide native date input calendar icon; use a single custom control + showPicker() */
+/* Hide native date icon; custom button + input onClick both call showPicker() (see lib/openDatePicker.ts). */
+input[type="date"].pr-date-input {
+  cursor: pointer;
+}
 input[type="date"].pr-date-input::-webkit-calendar-picker-indicator {
   display: none;
   -webkit-appearance: none;

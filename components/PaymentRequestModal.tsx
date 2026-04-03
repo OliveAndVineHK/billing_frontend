@@ -23,6 +23,7 @@ import {
   BILL_CURRENCY_SELECT_OPTIONS,
   modalCurrencyToIsoCode,
 } from "@/lib/billFormSelectOptions";
+import { openDatePicker } from "@/lib/openDatePicker";
 
 export type PaymentRequestModalProps = {
   open: boolean;
@@ -131,19 +132,6 @@ export function PaymentRequestModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const invoiceDateRef = useRef<HTMLInputElement>(null);
   const dueDateRef = useRef<HTMLInputElement>(null);
-
-  const openDatePicker = (input: HTMLInputElement | null) => {
-    if (!input) return;
-    if (typeof input.showPicker === "function") {
-      try {
-        input.showPicker();
-        return;
-      } catch {
-        /* showPicker can throw outside a user gesture in some browsers */
-      }
-    }
-    input.focus();
-  };
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedEntry[]>([]);
   const [previewFileId, setPreviewFileId] = useState<string | null>(null);
@@ -704,6 +692,7 @@ export function PaymentRequestModal({
                       setInvoiceDate(e.target.value);
                       clearFieldError("invoiceDate");
                     }}
+                    onClick={(e) => openDatePicker(e.currentTarget)}
                     aria-invalid={!!fieldErrors.invoiceDate}
                     className={
                       "pr-date-input relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
@@ -744,6 +733,7 @@ export function PaymentRequestModal({
                       setDueDate(e.target.value);
                       clearFieldError("dueDate");
                     }}
+                    onClick={(e) => openDatePicker(e.currentTarget)}
                     aria-invalid={!!fieldErrors.dueDate}
                     className={
                       "pr-date-input relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +

@@ -13,6 +13,7 @@ import {
   type PaymentItem,
 } from "@/lib/api";
 import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
+import { openDatePicker } from "@/lib/openDatePicker";
 import { PaymentDeleteConfirmModal } from "./PaymentDeleteConfirmModal";
 
 export type RecordPaymentModalProps = {
@@ -43,19 +44,6 @@ function parseAmount(raw: string): number | null {
   if (!t) return null;
   const n = parseFloat(t);
   return Number.isFinite(n) ? n : null;
-}
-
-function openDatePicker(input: HTMLInputElement | null) {
-  if (!input) return;
-  if (typeof input.showPicker === "function") {
-    try {
-      input.showPicker();
-      return;
-    } catch {
-      /* ignore */
-    }
-  }
-  input.focus();
 }
 
 function todayISO() {
@@ -331,7 +319,7 @@ export function RecordPaymentModal({
           <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3">
             <div className="relative w-full min-w-0">
               <label htmlFor={dateFieldId} className="sr-only">Payment date</label>
-              <input ref={dateRef} id={dateFieldId} type="date" value={draftDate ?? ""} onChange={(e) => setDraftDate(e.target.value)} className={dateInputClass} />
+              <input ref={dateRef} id={dateFieldId} type="date" value={draftDate ?? ""} onChange={(e) => setDraftDate(e.target.value)} onClick={(e) => openDatePicker(e.currentTarget)} className={dateInputClass} />
               <button type="button" onClick={() => openDatePicker(dateRef.current)} className={calendarBtnClass} aria-label="Open calendar for payment date"><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>calendar_clock</span></button>
             </div>
             <div className="min-w-0">
