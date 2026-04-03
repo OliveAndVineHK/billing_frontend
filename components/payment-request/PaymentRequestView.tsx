@@ -58,12 +58,30 @@ function mapBillToRow(bill: BillListItem): PaymentRequestRow {
   };
 }
 
+const STATUS_LABEL_TO_API: Record<string, string> = {
+  "Draft": "draft",
+  "Payment Requested": "submitted",
+  "Paid": "paid",
+  "Voided": "voided",
+  "Returned": "returned",
+};
+
+const DATE_TYPE_TO_FIELD: Record<string, string> = {
+  "Invoice Date": "invoice_date",
+  "Submitted Date": "created_at",
+};
+
 export function PaymentRequestView() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] =
     useState<PaymentRequestStatusFilter>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [minAmount, setMinAmount] = useState("");
+  const [maxAmount, setMaxAmount] = useState("");
+  const [dateType, setDateType] = useState("Invoice Date");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [rawBills, setRawBills] = useState<BillListItem[]>([]);
   const [bills, setBills] = useState<PaymentRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,9 +111,17 @@ export function PaymentRequestView() {
     setLoading(true);
     setError(null);
     try {
+      const apiStatus = statusFilter !== "All" ? STATUS_LABEL_TO_API[statusFilter] : undefined;
+      const dateField = DATE_TYPE_TO_FIELD[dateType];
       const data = await fetchBills({
         page_size: 100,
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
+        ...(apiStatus ? { status: apiStatus } : {}),
+        ...(minAmount !== "" ? { amount_min: parseFloat(minAmount) } : {}),
+        ...(maxAmount !== "" ? { amount_max: parseFloat(maxAmount) } : {}),
+        ...(dateField ? { date_field: dateField } : {}),
+        ...(startDate ? { date_from: startDate } : {}),
+        ...(endDate ? { date_to: endDate } : {}),
       });
       setRawBills(data);
       const mapped = data.map(mapBillToRow);
@@ -129,7 +155,7 @@ export function PaymentRequestView() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, statusFilter, minAmount, maxAmount, dateType, startDate, endDate]);
 
   useEffect(() => {
     loadBills();
@@ -186,6 +212,13 @@ export function PaymentRequestView() {
         bulkSelectedCount={selectedBillIds.length}
         onBulkDeleteSelected={openBulkDeleteModal}
         onBulkPublishSelected={runBulkPublishSelected}
+        onApplyFilters={(f) => {
+          setMinAmount(f.minAmount ?? "");
+          setMaxAmount(f.maxAmount ?? "");
+          setDateType(f.dateType ?? "Invoice Date");
+          setStartDate(f.startDate ?? "");
+          setEndDate(f.endDate ?? "");
+        }}
       />
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3">
         {error ? (

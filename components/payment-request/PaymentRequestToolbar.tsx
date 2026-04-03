@@ -9,7 +9,6 @@ import { openDatePicker } from "@/lib/openDatePicker";
 const FILTER_DATE_TYPE_OPTIONS = [
   { value: "Invoice Date", label: "Invoice Date" },
   { value: "Submitted Date", label: "Submitted Date" },
-  { value: "Paid Date", label: "Paid Date" },
 ] as const;
 
 const fieldLabelClass = "mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-primary sm:text-xs";
@@ -20,8 +19,16 @@ const textInputClass =
 const dateInputClass =
   "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
 
-export const PAYMENT_REQUEST_STATUS_FILTERS = ["All", "Draft", "Payment Requested", "Paid", "Voided"] as const;
+export const PAYMENT_REQUEST_STATUS_FILTERS = ["All", "Draft", "Payment Requested", "Returned", "Paid", "Voided"] as const;
 export type PaymentRequestStatusFilter = (typeof PAYMENT_REQUEST_STATUS_FILTERS)[number];
+
+type AdvancedFilters = {
+  minAmount?: string;
+  maxAmount?: string;
+  dateType?: string;
+  startDate?: string;
+  endDate?: string;
+};
 
 type PaymentRequestToolbarProps = {
   activeStatus: PaymentRequestStatusFilter;
@@ -33,6 +40,7 @@ type PaymentRequestToolbarProps = {
   bulkSelectedCount?: number;
   onBulkDeleteSelected?: () => void;
   onBulkPublishSelected?: () => void;
+  onApplyFilters?: (filters: AdvancedFilters) => void;
 };
 type FilterMenuState = { top: number; left: number; width: number };
 type BulkMenuState = { top: number; left: number; minWidth: number };
@@ -50,6 +58,7 @@ export function PaymentRequestToolbar({
   bulkSelectedCount = 0,
   onBulkDeleteSelected,
   onBulkPublishSelected,
+  onApplyFilters,
 }: PaymentRequestToolbarProps) {
   const filterFieldIds = useId();
   const [billModalOpen, setBillModalOpen] = useState(false);
@@ -196,6 +205,7 @@ export function PaymentRequestToolbar({
     setDateType("Invoice Date");
     setStartDate("");
     setEndDate("");
+    onApplyFilters?.({ minAmount: "", maxAmount: "", dateType: "Invoice Date", startDate: "", endDate: "" });
   };
 
   const toggleFilterMenu = (trigger: HTMLButtonElement) => {
@@ -328,7 +338,7 @@ export function PaymentRequestToolbar({
                 <div className="border-t border-gray-200 px-3 py-2 sm:px-4">
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <button type="button" onClick={onResetFilters} className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px]">Reset</button>
-                    <button type="button" onClick={() => setFilterOpen(false)} className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px]">Apply Filter</button>
+                    <button type="button" onClick={() => { onApplyFilters?.({ minAmount, maxAmount, dateType, startDate, endDate }); setFilterOpen(false); setFilterMenu(null); }} className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px]">Apply Filter</button>
                   </div>
                 </div>
               </div>,

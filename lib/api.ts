@@ -405,6 +405,11 @@ export function fetchBills(params?: {
   sort_by?: string;
   page?: number;
   page_size?: number;
+  amount_min?: number;
+  amount_max?: number;
+  date_field?: string;
+  date_from?: string;
+  date_to?: string;
 }): Promise<BillListItem[]> {
   const qs = new URLSearchParams();
   if (params?.status) qs.set("status", params.status);
@@ -413,6 +418,11 @@ export function fetchBills(params?: {
   if (params?.sort_by) qs.set("sort_by", params.sort_by);
   if (params?.page) qs.set("page", String(params.page));
   if (params?.page_size) qs.set("page_size", String(params.page_size));
+  if (params?.amount_min != null) qs.set("amount_min", String(params.amount_min));
+  if (params?.amount_max != null) qs.set("amount_max", String(params.amount_max));
+  if (params?.date_field) qs.set("date_field", params.date_field);
+  if (params?.date_from) qs.set("date_from", params.date_from);
+  if (params?.date_to) qs.set("date_to", params.date_to);
   const q = qs.toString();
   return apiFetch<BillListItem[]>(`/bills/${q ? `?${q}` : ""}`);
 }
