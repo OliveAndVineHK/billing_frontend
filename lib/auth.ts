@@ -48,6 +48,25 @@ export function clearAuth() {
 export const AUTH_COOKIE_NAME = TOKEN_KEY;
 
 /**
+ * Decodes the JWT payload and returns the `role` claim string, or null if the
+ * token is missing, malformed, or contains no `role` claim. Never throws.
+ */
+export function getRoleFromToken(): string | null {
+  try {
+    const auth = getAuth();
+    if (!auth?.token) return null;
+    const parts = auth.token.split(".");
+    if (parts.length !== 3) return null;
+    const payloadJson = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    const payload = JSON.parse(payloadJson) as Record<string, unknown>;
+    if (typeof payload.role !== "string" || !payload.role) return null;
+    return payload.role;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Returns true if the JWT stored in the cookie will expire within
  * `thresholdSeconds` seconds (default 120). Returns false if the token is
  * missing, malformed, or has no `exp` claim. Never throws.

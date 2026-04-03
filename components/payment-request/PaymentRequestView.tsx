@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PaymentRequestTable, type PaymentRequestRow, type PaymentRequestTableHandle } from "./PaymentRequestTable";
 import { PaymentRequestToolbar, type PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
@@ -9,6 +9,7 @@ import { RecordPaymentModal } from "./RecordPaymentModal";
 import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
 import { deleteBill, fetchBills, publishBill, type BillListItem } from "@/lib/api";
 import { fetchBillBankSlipEnrichment } from "@/lib/bankSlipEnrichment";
+import { useUserRole } from "@/lib/useUserRole";
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return "";
@@ -52,7 +53,7 @@ function mapBillToRow(bill: BillListItem): PaymentRequestRow {
         : `${symbol} 0.00`,
     invoiceTotal: bill.amount ? formatAmount(bill.amount) : "",
     payment: "",
-    paidDate: "",
+    paidDate: bill.paid_at ? formatDate(bill.paid_at) : "",
     bankslip: "",
     xeroActive: bill.published === "published",
   };
@@ -73,6 +74,7 @@ const DATE_TYPE_TO_FIELD: Record<string, string> = {
 
 export function PaymentRequestView() {
   const router = useRouter();
+  const { isElevated } = useUserRole();
   const [statusFilter, setStatusFilter] =
     useState<PaymentRequestStatusFilter>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -92,6 +94,11 @@ export function PaymentRequestView() {
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
   const tableRef = useRef<PaymentRequestTableHandle>(null);
   const bulkActionsEnabled = selectedBillIds.length >= 2;
+
+  const selectionContainsPaid = useMemo(() => {
+    const selectedSet = new Set(selectedBillIds);
+    return bills.some((row) => selectedSet.has(row.id) && row.status === "Paid");
+  }, [selectedBillIds, bills]);
 
   const onTableSelectionChange = useCallback((ids: string[]) => {
     setSelectedBillIds(ids);
@@ -219,6 +226,9 @@ export function PaymentRequestView() {
           setStartDate(f.startDate ?? "");
           setEndDate(f.endDate ?? "");
         }}
+        selectionContainsPaid={selectionContainsPaid}
+        canVoidPaid={isElevated}
+        canPublish={isElevated}
       />
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3">
         {error ? (

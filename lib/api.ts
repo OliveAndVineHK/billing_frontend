@@ -309,6 +309,7 @@ export type BillListItem = {
   published: string;
   created_at: string;
   uploaded_by: string;
+  paid_at: string | null;
 };
 
 export type BillDetail = BillListItem & {

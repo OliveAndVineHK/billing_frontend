@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { PaymentRequestModal } from "@/components/PaymentRequestModal";
 import { ThemedSelect } from "@/components/ThemedSelect";
 import { openDatePicker } from "@/lib/openDatePicker";
+import { useUserRole } from "@/lib/useUserRole";
 
 const FILTER_DATE_TYPE_OPTIONS = [
   { value: "Invoice Date", label: "Invoice Date" },
@@ -41,6 +42,12 @@ type PaymentRequestToolbarProps = {
   onBulkDeleteSelected?: () => void;
   onBulkPublishSelected?: () => void;
   onApplyFilters?: (filters: AdvancedFilters) => void;
+  /** True when the current selection contains at least one Paid bill. */
+  selectionContainsPaid?: boolean;
+  /** Whether the current user may void Paid/Authorised bills (elevated roles only). */
+  canVoidPaid?: boolean;
+  /** Whether the current user may publish to Xero (elevated roles only). */
+  canPublish?: boolean;
 };
 type FilterMenuState = { top: number; left: number; width: number };
 type BulkMenuState = { top: number; left: number; minWidth: number };
@@ -59,7 +66,11 @@ export function PaymentRequestToolbar({
   onBulkDeleteSelected,
   onBulkPublishSelected,
   onApplyFilters,
+  selectionContainsPaid = false,
+  canVoidPaid = false,
+  canPublish = false,
 }: PaymentRequestToolbarProps) {
+  const { hasAnyRole } = useUserRole();
   const filterFieldIds = useId();
   const [billModalOpen, setBillModalOpen] = useState(false);
   const [billModalMounted, setBillModalMounted] = useState(false);
@@ -244,7 +255,7 @@ export function PaymentRequestToolbar({
     <>
     <div className="flex w-full min-w-0 flex-col gap-3 bg-white px-4 py-3 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
       <div className="-mx-4 flex min-w-0 flex-wrap items-center gap-2 px-4 sm:mx-0 sm:px-0">
-        <button type="button" onClick={() => { setBillModalMounted(true); setBillModalOpen(true); }} className="box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:px-4">Add Bill<span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>add</span></button>
+        <button type="button" disabled={!hasAnyRole} onClick={() => { setBillModalMounted(true); setBillModalOpen(true); }} className="box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-[42px] sm:min-h-[42px] sm:px-4">Add Bill<span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>add</span></button>
         <div ref={statusWrapRef} className="relative min-w-0 flex-1 sm:hidden">
           <button ref={statusButtonRef} type="button" aria-label={`Status: ${activeStatus}`} aria-expanded={statusOpen ? "true" : "false"} aria-haspopup="menu" onClick={() => { if (!statusButtonRef.current) return; toggleStatusMenu(statusButtonRef.current); }} className="box-border flex h-10 min-h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-primary/25 bg-white px-3 text-left text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
             <span className="min-w-0 truncate">{activeStatus}</span>
@@ -351,8 +362,12 @@ export function PaymentRequestToolbar({
             {bulkOpen && bulkMenu && bulkActionsEnabled && typeof document !== "undefined"
               ? createPortal(
                   <div data-bulk-menu-panel role="menu" aria-label="Bulk actions" className="fixed z-[400] rounded-lg border border-gray-200 bg-white py-1 shadow-lg" style={{ top: bulkMenu.top, left: bulkMenu.left, minWidth: bulkMenu.minWidth }}>
-                    <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50" onClick={() => { onBulkDeleteSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Void</button>
-                    <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onBulkPublishSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Publish</button>
+                    {!(selectionContainsPaid && !canVoidPaid) ? (
+                      <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50" onClick={() => { onBulkDeleteSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Void</button>
+                    ) : null}
+                    {canPublish ? (
+                      <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onBulkPublishSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Publish</button>
+                    ) : null}
                   </div>,
                   document.body,
                 )

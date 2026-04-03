@@ -6,6 +6,7 @@ import type { PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsModal";
 import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
 import { UploadBankslipModal } from "./UploadBankslipModal";
+import { useUserRole } from "@/lib/useUserRole";
 
 const COLUMN_TITLES = [
   "Contact / Description",
@@ -372,6 +373,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   },
   ref,
 ) {
+  const { isElevated } = useUserRole();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bankslipModalRowId, setBankslipModalRowId] = useState<string | null>(null);
   const [bankSlipDetailsRowId, setBankSlipDetailsRowId] = useState<string | null>(null);
@@ -498,15 +500,17 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
 
   const bankslipModalRow = bankslipModalRowId ? rows.find((r) => r.id === bankslipModalRowId) : undefined;
   const rowMenuRow = rowMenu ? rows.find((r) => r.id === rowMenu.rowId) : undefined;
-  const isRowMenuDeleteDisabled = rowMenuRow?.status === "Voided";
+  const isRowMenuDeleteDisabled = rowMenuRow?.status === "Voided" || (rowMenuRow?.status === "Paid" && !isElevated);
   const rowMenuPaidOrPaymentRequested =
     rowMenuRow?.status === "Paid" || rowMenuRow?.status === "Payment Requested";
   const rowMenuPublishedToXero = rowMenuRow?.xeroActive === true;
   const showRowMenuPublish =
+    isElevated &&
     rowMenuRow != null &&
     rowMenuRow.status !== "Draft" &&
     (rowMenuPaidOrPaymentRequested ? !rowMenuPublishedToXero : true);
   const showRowMenuRepublish =
+    isElevated &&
     rowMenuRow != null &&
     rowMenuRow.status !== "Draft" &&
     (rowMenuPaidOrPaymentRequested ? rowMenuPublishedToXero : true);
@@ -667,7 +671,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                     </div>
                     <div className="mt-4 flex min-h-[2.5rem] min-w-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <div className="flex min-w-0 min-h-10 flex-1 flex-wrap items-center gap-2">
-                        {!isPaid && !isVoided && !isDraft ? (
+                        {!isPaid && !isVoided && !isDraft && isElevated ? (
                           <button type="button" aria-label={`Record payment for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}>
                             <span className="whitespace-nowrap">Record Payment</span>
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>add</span>
@@ -822,7 +826,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             <td key={title} className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}>
                               <button
                                 type="button"
-                                disabled={isPaid || isVoided || isDraft}
+                                disabled={isPaid || isVoided || isDraft || !isElevated}
                                 aria-label={
                                   isVoided
                                     ? `Voided — record payment not available for ${row.contactTitle}`
@@ -830,11 +834,13 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                                       ? `Draft — record payment not available for ${row.contactTitle}`
                                       : isPaid
                                         ? `Already paid — ${row.contactTitle}`
-                                        : `Record payment for ${row.contactTitle}`
+                                        : !isElevated
+                                          ? `Insufficient permissions — record payment not available for ${row.contactTitle}`
+                                          : `Record payment for ${row.contactTitle}`
                                 }
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (isPaid || isVoided || isDraft) return;
+                                  if (isPaid || isVoided || isDraft || !isElevated) return;
                                   onRecordPayment?.(row.id);
                                 }}
                                 className={recordPaymentButtonClass}

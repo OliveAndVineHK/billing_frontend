@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useUserRole } from "@/lib/useUserRole";
 import {
   ApiError,
   deleteBill,
@@ -45,6 +46,7 @@ export type PaymentRequestDetailBodyProps = {
 export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetailBodyProps) {
   const params = useParams();
   const requestId = typeof params?.id === "string" ? params.id : "";
+  const { isElevated } = useUserRole();
 
   const [bill, setBill] = useState<BillDetail | null>(null);
   const [loadingBill, setLoadingBill] = useState(true);
@@ -488,8 +490,8 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           <BillActionBar
             onDeleteBill={handleRequestDeleteBill}
             onPublishToXero={handlePublishToXero}
-            deleteDisabled={loadingBill || !bill || isDeleting || isPublishing || bill?.status === "voided"}
-            publishDisabled={loadingBill || !bill || bill?.status === "voided"}
+            deleteDisabled={loadingBill || !bill || isDeleting || isPublishing || bill?.status === "voided" || ((bill?.status === "paid" || bill?.status === "authorised") && !isElevated)}
+            publishDisabled={loadingBill || !bill || bill?.status === "voided" || !isElevated}
             publishStatus={(bill?.published as "not_published" | "published" | "failed") ?? "not_published"}
             publishPending={isPublishing}
             draftSubmit={
@@ -538,7 +540,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               data={formData}
               isEditing={isEditing}
               isSaving={isSaving}
-              disabled={!bill || bill?.status === "voided" || bill?.status === "paid" || bill?.status === "authorised"}
+              disabled={!bill || bill?.status === "voided" || ((bill?.status === "paid" || bill?.status === "authorised") && !isElevated)}
               billNoError={isEditing ? billNoError : null}
               accountCodeError={isEditing ? accountCodeError : null}
               accountOptions={accountOptions}
@@ -552,7 +554,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           ) : null}
 
           <button type="button"
-            disabled={loadingBill || !bill || billIsDraft || bill?.status === "voided" || bill?.status === "paid" || bill?.status === "authorised"}
+            disabled={loadingBill || !bill || billIsDraft || bill?.status === "voided" || bill?.status === "paid" || bill?.status === "authorised" || !isElevated}
             onClick={() => setRecordPaymentOpen(true)}
             aria-label={
               billIsDraft
@@ -568,6 +570,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           </button>
           <PaymentHistoryCard
             billStatus={bill?.status ?? undefined}
+            canDeletePayments={isElevated}
             rows={payments.map((p): PaymentHistoryRow => {
               const amt = parseFloat(p.amount || "0");
               const shortDate = p.payment_date
