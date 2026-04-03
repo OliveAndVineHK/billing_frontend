@@ -176,13 +176,7 @@ export function UploadInvoiceAttachmentModal({ open, onClose, onUpload }: Upload
                   const { icon, iconClass } = getUploadedFileIconInfo(file.name);
                   const selected = previewFileId === id;
                   return (
-                    <li
-                      key={id}
-                      className={
-                        "relative flex items-center justify-start rounded-lg border bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3 " +
-                        (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-gray-200")
-                      }
-                    >
+                    <li key={id} className={"relative flex items-center justify-start rounded-lg border bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3 " + (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-gray-200")}>
                       <button
                         type="button"
                         onClick={() => setPreviewFileId(id)}
