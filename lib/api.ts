@@ -496,6 +496,8 @@ export type PaymentItem = {
   note: string;
   xero_payment_id: string;
   created_by: string;
+  /** Resolved full name of the user who recorded the payment; populated by the list endpoint. */
+  created_by_name?: string;
   created_at: string;
   updated_at: string;
 };

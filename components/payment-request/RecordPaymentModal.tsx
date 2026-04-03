@@ -188,6 +188,7 @@ export function RecordPaymentModal({
         payment_status: "pending",
       });
       await loadPayments();
+      onPaymentSaved?.();
       if (payMode === "partial") setDraftAmount("");
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Failed to add payment.");
@@ -235,6 +236,7 @@ export function RecordPaymentModal({
           updatePayment(p.bill_id, p.id, { payment_status: "completed" }),
         ),
       );
+      await loadPayments();
       onPaymentSaved?.();
       onClose();
     } catch (err) {

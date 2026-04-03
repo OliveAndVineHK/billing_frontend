@@ -64,12 +64,13 @@ export function buildBillUpdatePayload(
 
   const line0 = bill.line_items?.[0];
   if (line0) {
+    const ua = Number.isFinite(amount) ? amount : Number(line0.unit_amount);
     payload.line_items = [
       {
         description: line0.description,
         quantity: Number(line0.quantity),
-        unit_amount: Number(line0.unit_amount),
-        line_amount: Number(line0.line_amount),
+        unit_amount: ua,
+        line_amount: ua,
         account_code,
         account_name: account_name || line0.account_name,
       },

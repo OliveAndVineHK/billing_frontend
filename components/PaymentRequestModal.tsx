@@ -151,7 +151,7 @@ export function PaymentRequestModal({
   const previewFile = previewFileId ? uploadedFiles.find((x) => x.id === previewFileId)?.file ?? null : null;
   const [billNo, setBillNo] = useState("");
   const [currency, setCurrency] = useState("HK$");
-  const [amount, setAmount] = useState("1,500.00");
+  const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [contact, setContact] = useState("");
   const [accountCode, setAccountCode] = useState("");
@@ -268,6 +268,7 @@ export function PaymentRequestModal({
     if (!open) return;
     setFieldErrors({});
     setFormError(null);
+    setAmount("");
     setContact("");
     setAccountCode("");
     setInvoiceDate("");

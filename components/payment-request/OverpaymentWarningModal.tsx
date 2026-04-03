@@ -1,0 +1,205 @@
+"use client";
+
+import { createPortal } from "react-dom";
+import { useEffect, useId } from "react";
+import { pushAppScrollLock } from "@/lib/appScrollRoot";
+import type { PaymentItem } from "@/lib/api";
+
+export type OverpaymentWarningModalProps = {
+  open: boolean;
+  payments: PaymentItem[];
+  newAmount: number;
+  totalPaid: number;
+  currencyLabel: string;
+  pending?: boolean;
+  onProceed: () => void;
+  onCancel: () => void;
+};
+
+const overlayClass =
+  "fixed inset-0 z-[440] flex items-center justify-center overflow-x-hidden overscroll-x-none bg-black/45 p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4";
+
+const shellClass =
+  "relative z-[1] w-full min-w-0 max-w-[440px] rounded-xl bg-white p-5 shadow-xl ring-1 ring-black/5 sm:rounded-2xl sm:p-6";
+
+const focusRing =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary";
+
+const cancelClass = `box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing} sm:h-11 sm:min-h-[44px] sm:w-auto`;
+
+const proceedClass = `box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity duration-200 ease-out hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:opacity-60 ${focusRing} sm:h-11 sm:min-h-[44px] sm:w-auto`;
+
+function formatMoney(amount: number, currencyLabel: string): string {
+  return `${currencyLabel} ${amount.toLocaleString("en-HK", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatPaymentDateTime(dateStr: string | null): string {
+  if (!dateStr) return "—";
+  // payment_date is a date-only string (YYYY-MM-DD); display it clearly
+  const d = new Date(dateStr + "T12:00:00");
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Hong_Kong",
+  });
+}
+
+function formatCreatedAt(isoStr: string | null | undefined): string {
+  if (!isoStr) return "";
+  const d = new Date(isoStr);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Hong_Kong",
+  });
+}
+
+export function OverpaymentWarningModal({
+  open,
+  payments,
+  newAmount,
+  totalPaid,
+  currencyLabel,
+  pending = false,
+  onProceed,
+  onCancel,
+}: OverpaymentWarningModalProps) {
+  const titleId = useId();
+  const descId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    return pushAppScrollLock();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !pending) onCancel();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onCancel, pending]);
+
+  if (!open || typeof document === "undefined") return null;
+
+  const overpaymentAmount = Math.round((totalPaid - newAmount) * 100) / 100;
+
+  return createPortal(
+    <div
+      className={overlayClass}
+      role="presentation"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !pending) onCancel();
+      }}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descId}
+        className={shellClass}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-secondary"
+            aria-hidden
+          >
+            <span className="material-symbols-outlined text-[20px] leading-none">info</span>
+          </span>
+          <h2 id={titleId} className="text-lg font-semibold text-primary sm:text-xl">
+            Overpayment
+          </h2>
+        </div>
+
+        <p id={descId} className="mt-3 text-sm leading-relaxed text-primary/80">
+          This bill already has{" "}
+          {payments.length === 1 ? "a payment" : `${payments.length} payments`} recorded totalling{" "}
+          <span className="font-semibold text-primary">
+            {formatMoney(totalPaid, currencyLabel)}
+          </span>
+          . Setting the bill amount to{" "}
+          <span className="font-semibold text-primary">
+            {formatMoney(newAmount, currencyLabel)}
+          </span>{" "}
+          would result in an overpayment of{" "}
+          <span className="font-semibold text-secondary">
+            {formatMoney(overpaymentAmount, currencyLabel)}
+          </span>
+          .
+        </p>
+
+        <ul className="mt-4 flex max-h-60 flex-col gap-2 overflow-y-auto">
+          {payments.map((p) => {
+            const amt = parseFloat(p.amount || "0");
+            const createdAtFormatted = formatCreatedAt(p.created_at);
+            const paymentDateFormatted = formatPaymentDateTime(p.payment_date);
+            const payerName = p.created_by_name?.trim() || p.created_by?.trim() || "Unknown";
+            return (
+              <li
+                key={p.id}
+                className="flex items-start gap-3 rounded-xl bg-secondary/8 px-3 py-3 ring-1 ring-secondary/20"
+              >
+                <span
+                  className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-secondary"
+                  aria-hidden
+                >
+                  <span className="material-symbols-outlined text-[18px] leading-none">
+                    payments
+                  </span>
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-primary">{payerName}</p>
+                  <p className="mt-0.5 text-xs text-primary/70">
+                    Payment date: {paymentDateFormatted}
+                    {createdAtFormatted ? (
+                      <span className="ml-2 text-primary/50">· Recorded {createdAtFormatted}</span>
+                    ) : null}
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-bold text-primary tabular-nums">
+                  ({formatMoney(amt, currencyLabel)})
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+
+        <p className="mt-4 text-sm leading-relaxed text-primary/70">
+          The bill will be marked as <span className="font-semibold text-primary">paid</span> since
+          the existing payment already covers the new amount. Do you want to proceed?
+        </p>
+
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+          <button
+            type="button"
+            className={cancelClass}
+            onClick={onCancel}
+            disabled={pending}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={proceedClass}
+            onClick={onProceed}
+            disabled={pending}
+          >
+            {pending ? "Saving…" : "Proceed"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}

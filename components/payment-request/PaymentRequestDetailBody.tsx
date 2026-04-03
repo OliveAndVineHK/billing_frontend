@@ -26,6 +26,7 @@ import { ActivityHistoryAccordion } from "./ActivityHistoryAccordion";
 import { BillActionBar } from "./BillActionBar";
 import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { InvoiceAttachmentToolbar } from "./InvoiceAttachmentToolbar";
+import { OverpaymentWarningModal } from "./OverpaymentWarningModal";
 import { PaymentHistoryCard, type PaymentHistoryRow } from "./PaymentHistoryCard";
 import { RecordPaymentModal } from "./RecordPaymentModal";
 import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
@@ -62,6 +63,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [deleteBillConfirmOpen, setDeleteBillConfirmOpen] = useState(false);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
+  const [overpaymentWarningOpen, setOverpaymentWarningOpen] = useState(false);
   const [auditRefresh, setAuditRefresh] = useState(0);
   const bumpAudit = useCallback(() => setAuditRefresh((n) => n + 1), []);
 
@@ -259,6 +261,37 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     setDraft((d) => (d ? { ...d, ...patch } : null));
   }, []);
 
+  const executeSave = useCallback(
+    async (overrideStatus?: string) => {
+      if (!requestId || !bill || !draft) return;
+      setIsSaving(true);
+      try {
+        const payload = buildBillUpdatePayload(bill, draft);
+        if (overrideStatus) {
+          (payload as typeof payload & { status?: string }).status = overrideStatus;
+        }
+        const updated = await updateBill(requestId, payload);
+        setBill(updated);
+        onBillUpdated?.();
+        await loadPayments();
+        setIsEditing(false);
+        setDraft(null);
+        setBillNoError(null);
+        setAccountCodeError(null);
+        bumpAudit();
+      } catch (e) {
+        if (isDuplicateBillReferenceError(e)) {
+          setBillNoError(e.message);
+        } else {
+          setActionError(e instanceof ApiError ? e.message : "Could not save changes.");
+        }
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [requestId, bill, draft, bumpAudit, loadPayments, onBillUpdated],
+  );
+
   const handleSave = useCallback(async () => {
     if (!requestId || !bill || !draft) return;
     setActionError(null);
@@ -268,28 +301,25 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       setAccountCodeError("Please select an account code.");
       return;
     }
-    setIsSaving(true);
-    try {
-      const payload = buildBillUpdatePayload(bill, draft);
-      const updated = await updateBill(requestId, payload);
-      setBill(updated);
-      onBillUpdated?.();
-      await loadPayments();
-      setIsEditing(false);
-      setDraft(null);
-      setBillNoError(null);
-      setAccountCodeError(null);
-      bumpAudit();
-    } catch (e) {
-      if (isDuplicateBillReferenceError(e)) {
-        setBillNoError(e.message);
-      } else {
-        setActionError(e instanceof ApiError ? e.message : "Could not save changes.");
+
+    // Overpayment check: warn if new amount is less than what has already been paid.
+    const completedPayments = payments.filter(
+      (p) => p.bill_id === requestId && p.payment_status !== "pending",
+    );
+    if (completedPayments.length > 0) {
+      const totalPaid = completedPayments.reduce(
+        (sum, p) => sum + parseFloat(p.amount || "0"),
+        0,
+      );
+      const newAmount = Number.parseFloat(draft.amount.replace(/,/g, ""));
+      if (Number.isFinite(newAmount) && newAmount < totalPaid - 1e-9) {
+        setOverpaymentWarningOpen(true);
+        return;
       }
-    } finally {
-      setIsSaving(false);
     }
-  }, [requestId, bill, draft, bumpAudit, loadPayments, onBillUpdated]);
+
+    await executeSave();
+  }, [requestId, bill, draft, payments, executeSave]);
 
   const handleRequestDeleteBill = useCallback(() => {
     setDeleteBillConfirmOpen(true);
@@ -391,10 +421,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     try {
       await removeAttachmentBlobs(requestId, itemsToDelete.map((x) => x.name));
     } catch {
-      // best-effort
+      setActionError("Failed to delete attachment(s). Please try again.");
+      return;
     }
 
-    // Update UI immediately
     setAttachments((prev) => prev.filter((_, idx) => !selectedAttachmentIndices.includes(idx)));
     setSelectedAttachmentIndices([]);
   }, [attachments, removeAttachmentBlobs, requestId, selectedAttachmentIndices]);
@@ -609,6 +639,27 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           await loadPayments();
           await reloadBill();
           bumpAudit();
+        }}
+      />
+      <OverpaymentWarningModal
+        open={overpaymentWarningOpen}
+        payments={payments.filter(
+          (p) => p.bill_id === requestId && p.payment_status !== "pending",
+        )}
+        newAmount={
+          draft ? Number.parseFloat(draft.amount.replace(/,/g, "")) || 0 : 0
+        }
+        totalPaid={payments
+          .filter((p) => p.bill_id === requestId && p.payment_status !== "pending")
+          .reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0)}
+        currencyLabel={currencyLabel}
+        pending={isSaving}
+        onCancel={() => {
+          if (!isSaving) setOverpaymentWarningOpen(false);
+        }}
+        onProceed={async () => {
+          setOverpaymentWarningOpen(false);
+          await executeSave("paid");
         }}
       />
     </>

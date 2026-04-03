@@ -22,7 +22,7 @@ export function PaymentRequestDetailStatusBadge({ refreshSignal = 0 }: PaymentRe
         if (!cancelled) setLabel(billStatusToDisplayLabel(bill.status));
       })
       .catch(() => {
-        if (!cancelled) setLabel(null);
+        // Keep stale label on error so the badge does not disappear
       });
     return () => {
       cancelled = true;
