@@ -715,8 +715,8 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
           })
         )}
       </div>
-      <div className="hidden overflow-hidden rounded-lg border border-gray-200 sm:block">
-        <div className="overflow-x-auto touch-pan-x [-webkit-overflow-scrolling:touch]">
+      <div className="hidden rounded-lg border border-gray-200 sm:block">
+        <div className="overflow-x-auto touch-auto [-webkit-overflow-scrolling:touch]">
           <table className="min-w-[82rem] w-full border-collapse text-left">
             <thead>
               <tr>
