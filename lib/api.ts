@@ -400,6 +400,8 @@ export type CurrencyInfo = {
 export function fetchBills(params?: {
   status?: string;
   contact?: string;
+  /** Matches contact or bill description (case-insensitive). */
+  search?: string;
   sort_by?: string;
   page?: number;
   page_size?: number;
@@ -407,6 +409,7 @@ export function fetchBills(params?: {
   const qs = new URLSearchParams();
   if (params?.status) qs.set("status", params.status);
   if (params?.contact) qs.set("contact", params.contact);
+  if (params?.search) qs.set("search", params.search);
   if (params?.sort_by) qs.set("sort_by", params.sort_by);
   if (params?.page) qs.set("page", String(params.page));
   if (params?.page_size) qs.set("page_size", String(params.page_size));

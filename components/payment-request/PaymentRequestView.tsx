@@ -95,7 +95,7 @@ export function PaymentRequestView() {
     try {
       const data = await fetchBills({
         page_size: 100,
-        ...(debouncedSearch ? { contact: debouncedSearch } : {}),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
       });
       setRawBills(data);
       const mapped = data.map(mapBillToRow);
