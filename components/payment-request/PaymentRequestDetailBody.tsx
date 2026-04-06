@@ -21,6 +21,7 @@ import {
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
+import { enrichAccountCodeWithOptions } from "@/lib/billFormSelectOptions";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
 import { loadAttachmentBlobs, removeAttachmentBlobs, saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ActivityHistoryAccordion } from "./ActivityHistoryAccordion";
@@ -236,7 +237,14 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     };
   }, [requestId]);
 
-  const viewData = useMemo(() => (bill ? billToDetailedInfo(bill) : null), [bill]);
+  const viewData = useMemo(() => {
+    if (!bill) return null;
+    const base = billToDetailedInfo(bill);
+    return {
+      ...base,
+      accountCode: enrichAccountCodeWithOptions(base.accountCode, accountOptions),
+    };
+  }, [bill, accountOptions]);
 
   const formData = isEditing && draft ? draft : viewData;
 
@@ -247,12 +255,16 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
 
   const handleEdit = useCallback(() => {
     if (!bill) return;
-    setDraft(billToDetailedInfo(bill));
+    const base = billToDetailedInfo(bill);
+    setDraft({
+      ...base,
+      accountCode: enrichAccountCodeWithOptions(base.accountCode, accountOptions),
+    });
     setIsEditing(true);
     setActionError(null);
     setBillNoError(null);
     setAccountCodeError(null);
-  }, [bill]);
+  }, [bill, accountOptions]);
 
   const handleCancel = useCallback(() => {
     setIsEditing(false);
@@ -357,7 +369,8 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
 
   const handleSubmitDraft = useCallback(async () => {
     if (!requestId || !bill) return;
-    const info = isEditing && draft ? draft : billToDetailedInfo(bill);
+    const info = isEditing && draft ? draft : viewData;
+    if (!info) return;
     setActionError(null);
     setBillNoError(null);
     setAccountCodeError(null);
@@ -390,7 +403,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     } finally {
       setIsSubmittingDraft(false);
     }
-  }, [requestId, bill, isEditing, draft, loadPayments, bumpAudit, onBillUpdated]);
+  }, [requestId, bill, isEditing, draft, viewData, loadPayments, bumpAudit, onBillUpdated]);
 
   const handlePublishToXero = useCallback(async () => {
     if (!requestId || !bill || isPublishing) return;

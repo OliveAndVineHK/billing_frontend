@@ -49,3 +49,31 @@ export function mergeSelectOption(
   if (!value || options.some((o) => o.value === value)) return options;
   return [{ value, label: label ?? value }, ...options];
 }
+
+/**
+ * Line items often return only `account_code` with an empty `account_name`. Resolve to the same
+ * "CODE - Name" value as the account dropdown when the entity chart has been loaded.
+ */
+export function enrichAccountCodeWithOptions(
+  stored: string,
+  options: ThemedSelectOption[],
+): string {
+  const s = stored.trim();
+  if (!s) return "";
+
+  const sepIdx = s.indexOf(" - ");
+  const namePart = sepIdx >= 0 ? s.slice(sepIdx + 3).trim() : "";
+  if (namePart) return s;
+
+  const code = sepIdx >= 0 ? s.slice(0, sepIdx).trim() : s;
+  if (!code) return s;
+
+  for (const o of options) {
+    const v = o.value.trim();
+    if (!v) continue;
+    if (v === code || v.startsWith(`${code} -`)) {
+      return v;
+    }
+  }
+  return s;
+}
