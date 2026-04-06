@@ -202,7 +202,7 @@ export function InvoiceAttachmentPreview({
   const scrollArea = (
     <div
       ref={scrollRef}
-      className="relative flex min-h-[min(60vh,32rem)] min-w-0 flex-1 flex-col overflow-auto rounded-lg border border-gray-200 bg-gray-100 touch-pan-x touch-pan-y"
+      className="visible-scrollbar relative flex min-h-[min(60vh,32rem)] min-w-0 flex-1 flex-col overflow-auto rounded-lg border border-gray-200 bg-gray-100 touch-pan-x touch-pan-y"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
