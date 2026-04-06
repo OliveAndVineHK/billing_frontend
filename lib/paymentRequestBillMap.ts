@@ -14,9 +14,10 @@ function formatAmountForInput(raw: string): string {
 
 export function billToDetailedInfo(bill: BillDetail): PaymentRequestDetailedInfoData {
   const line0 = bill.line_items?.[0];
-  const accountCode = line0
-    ? `${line0.account_code} - ${line0.account_name}`.replace(/\s+-\s*$/, "").trim()
-    : "";
+  const code = (line0?.account_code ?? bill.xero_account_code ?? "").trim();
+  const name = (line0?.account_name ?? "").trim();
+  const accountCode =
+    code && name ? `${code} - ${name}` : code;
   return {
     billNo: bill.reference,
     amount: formatAmountForInput(bill.amount),
