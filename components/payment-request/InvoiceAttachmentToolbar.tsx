@@ -5,7 +5,7 @@ type InvoiceAttachmentToolbarProps = {
   deleteReadOnly?: boolean;
   onUpload?: () => void;
   uploadReadOnly?: boolean;
-  showUpload?: boolean;
+  showAddMore?: boolean;
 };
 
 export function InvoiceAttachmentToolbar({
@@ -13,7 +13,7 @@ export function InvoiceAttachmentToolbar({
   deleteReadOnly = false,
   onUpload,
   uploadReadOnly = false,
-  showUpload = false,
+  showAddMore = false,
 }: InvoiceAttachmentToolbarProps) {
   const btnClass =
     "inline-flex h-9 min-h-[44px] shrink-0 items-center gap-1.5 rounded-md border border-primary/25 bg-white px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-10 sm:min-h-0 sm:px-3.5 sm:text-sm";
@@ -35,19 +35,19 @@ export function InvoiceAttachmentToolbar({
             delete
           </span>
         </button>
-        {showUpload ? (
+        {showAddMore && onUpload ? (
           <button
             type="button"
-            className={`${btnClass} ${uploadReadOnly ? "cursor-not-allowed opacity-50 hover:bg-white" : ""}`}
+            className={`${btnClass} ${uploadReadOnly ? "cursor-not-allowed opacity-50 hover:bg-white" : "cursor-pointer"}`}
             onClick={onUpload}
-            aria-label="Upload attachment"
+            aria-label="Add more attachments"
             disabled={uploadReadOnly}
             aria-disabled={uploadReadOnly}
-            title={uploadReadOnly ? "Enable Edit to upload attachments" : undefined}
+            title={uploadReadOnly ? "Cannot add attachments" : undefined}
           >
-            Upload
+            Add More
             <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-              upload
+              attach_file
             </span>
           </button>
         ) : null}

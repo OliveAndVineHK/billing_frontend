@@ -23,7 +23,7 @@ import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
 import { enrichAccountCodeWithOptions } from "@/lib/billFormSelectOptions";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
-import { loadAttachmentBlobs, removeAttachmentBlobs, saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
+import { appendAttachmentBlobs, loadAttachmentBlobs, removeAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ActivityHistoryAccordion } from "./ActivityHistoryAccordion";
 import { BillActionBar } from "./BillActionBar";
 import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
@@ -468,7 +468,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             deleteReadOnly={selectedAttachmentIndices.length === 0 || deleteAttachmentPending}
             onUpload={handleOpenUploadAttachment}
             uploadReadOnly={false}
-            showUpload={attachmentsReady && attachments.length === 0}
+            showAddMore={attachmentsReady}
           />
           <AttachmentDeleteConfirmModal
             open={deleteAttachmentConfirmOpen}
@@ -493,8 +493,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             onClose={() => setUploadAttachmentOpen(false)}
             onUpload={async (files) => {
               if (!requestId) return;
-              // UI-only: store for preview + reload from local store
-              await saveAttachmentBlobs(requestId, files);
+              await appendAttachmentBlobs(requestId, files);
               const blobs = await loadAttachmentBlobs(requestId);
               attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
               attachmentUrlsRef.current = [];
