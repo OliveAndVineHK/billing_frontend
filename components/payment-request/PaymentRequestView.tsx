@@ -63,6 +63,7 @@ const STATUS_LABEL_TO_API: Record<string, string> = {
   "Draft": "draft",
   "Payment Requested": "submitted",
   "Paid": "paid",
+  "Partially paid": "partially_paid",
   "Voided": "voided",
   "Returned": "returned",
 };
@@ -97,7 +98,10 @@ export function PaymentRequestView() {
 
   const selectionContainsPaid = useMemo(() => {
     const selectedSet = new Set(selectedBillIds);
-    return bills.some((row) => selectedSet.has(row.id) && row.status === "Paid");
+    return bills.some(
+      (row) =>
+        selectedSet.has(row.id) && (row.status === "Paid" || row.status === "Partially paid"),
+    );
   }, [selectedBillIds, bills]);
 
   const onTableSelectionChange = useCallback((ids: string[]) => {

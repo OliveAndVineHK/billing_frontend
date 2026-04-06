@@ -136,7 +136,7 @@ function compareNullableNumber(a: number | null, b: number | null, dir: 1 | -1):
   return 0;
 }
 
-const STATUS_TABLE_ORDER = ["Payment Requested", "Returned", "Paid", "Draft", "Voided"] as const;
+const STATUS_TABLE_ORDER = ["Payment Requested", "Returned", "Paid", "Partially paid", "Draft", "Voided"] as const;
 
 function statusSortRank(label: string): number {
   const i = (STATUS_TABLE_ORDER as readonly string[]).indexOf(label);
@@ -336,11 +336,17 @@ const statusTagClass =
 const statusTagPaidClass =
   "inline-flex items-center rounded-lg bg-secondary/10 px-2.5 py-1 text-xs font-semibold text-secondary sm:text-sm";
 
+const statusTagPartiallyPaidClass =
+  "inline-flex items-center rounded-lg bg-[#70ebba]/10 px-2.5 py-1 text-xs font-semibold text-[#70ebba] sm:text-sm";
+
 const statusTagPaymentRequestedClass =
   "inline-flex items-center rounded-lg bg-[#FF6B6B]/10 px-2.5 py-1 text-xs font-semibold text-[#FF6B6B] sm:text-sm";
 
 const statusTagReturnedClass =
   "inline-flex items-center rounded-lg bg-[#EA9713]/10 px-2.5 py-1 text-xs font-semibold text-[#EA9713] sm:text-sm";
+
+const statusTagVoidedClass =
+  "inline-flex items-center rounded-lg bg-[#8587c5]/10 px-2.5 py-1 text-xs font-semibold text-[#8587c5] sm:text-sm";
 
 const recordPaymentButtonClass =
   "box-border inline-flex h-10 min-h-10 w-max max-w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-xs font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-[#EDEDED] disabled:text-[#C0C0C0] disabled:shadow-none disabled:hover:opacity-100 sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm";
@@ -356,7 +362,9 @@ const rowMenuButtonClass =
 
 function unpaidAmountTextClass(status: string): string {
   if (status === "Paid") return "text-secondary";
+  if (status === "Partially paid") return "text-[#70ebba]";
   if (status === "Payment Requested") return "text-[#FF6B6B]";
+  if (status === "Voided") return "text-[#8587c5]";
   if (status === "Draft") return "text-[#C0C0C0]";
   if (status === "Returned") return "text-[#EA9713]";
   return "text-[#C0C0C0]";
@@ -579,9 +587,13 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
 
   const bankslipModalRow = bankslipModalRowId ? rows.find((r) => r.id === bankslipModalRowId) : undefined;
   const rowMenuRow = rowMenu ? rows.find((r) => r.id === rowMenu.rowId) : undefined;
-  const isRowMenuDeleteDisabled = rowMenuRow?.status === "Voided" || (rowMenuRow?.status === "Paid" && !isElevated);
+  const isRowMenuDeleteDisabled =
+    rowMenuRow?.status === "Voided" ||
+    ((rowMenuRow?.status === "Paid" || rowMenuRow?.status === "Partially paid") && !isElevated);
   const rowMenuPaidOrPaymentRequested =
-    rowMenuRow?.status === "Paid" || rowMenuRow?.status === "Payment Requested";
+    rowMenuRow?.status === "Paid" ||
+    rowMenuRow?.status === "Partially paid" ||
+    rowMenuRow?.status === "Payment Requested";
   const rowMenuPublishedToXero = rowMenuRow?.xeroActive === true;
   const showRowMenuPublish =
     isElevated &&
@@ -697,6 +709,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
         ) : (
           sortedVisibleRows.map((row) => {
             const isPaid = row.status === "Paid";
+            const isPartiallyPaid = row.status === "Partially paid";
             const isVoided = row.status === "Voided";
             const isPaymentRequested = row.status === "Payment Requested";
             const isDraft = row.status === "Draft";
@@ -704,12 +717,16 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
             const bankslipReadOnly = isVoided || isDraft;
             const statusBadgeClass = isPaid
               ? statusTagPaidClass
-              : isPaymentRequested
-                ? statusTagPaymentRequestedClass
-                : isReturned
-                  ? statusTagReturnedClass
-                  : statusTagClass;
-            const articleClassName = `rounded-xl border border-gray-200 p-4 shadow-sm transition-colors ${isPaid ? "bg-[#54D3DA]/10" : isPaymentRequested ? "bg-[#FF6B6B]/10" : "bg-[#F5F5F5]"} ${isVoided ? "cursor-default opacity-90" : isPaid ? "cursor-pointer active:bg-[#54D3DA]/20" : isPaymentRequested ? "cursor-pointer active:bg-[#FF6B6B]/20" : "cursor-pointer active:bg-gray-200/60"}`;
+              : isPartiallyPaid
+                ? statusTagPartiallyPaidClass
+                : isVoided
+                  ? statusTagVoidedClass
+                  : isPaymentRequested
+                    ? statusTagPaymentRequestedClass
+                    : isReturned
+                      ? statusTagReturnedClass
+                      : statusTagClass;
+            const articleClassName = `rounded-xl border border-gray-200 p-4 shadow-sm transition-colors ${isVoided ? "bg-[#8587c5]/10" : isPaid ? "bg-[#54D3DA]/10" : isPartiallyPaid ? "bg-[#70ebba]/10" : isPaymentRequested ? "bg-[#FF6B6B]/10" : "bg-[#F5F5F5]"} ${isVoided ? "cursor-default opacity-90" : isPaid ? "cursor-pointer active:bg-[#54D3DA]/20" : isPartiallyPaid ? "cursor-pointer active:bg-[#70ebba]/20" : isPaymentRequested ? "cursor-pointer active:bg-[#FF6B6B]/20" : "cursor-pointer active:bg-gray-200/60"}`;
             return (
               <article key={row.id} role="listitem" className={articleClassName} onClick={() => { if (isVoided) return; onRowClick?.(row.id); }}>
                 <div className="flex gap-3">
@@ -865,6 +882,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
               ) : null}
               {sortedVisibleRows.map((row) => {
                 const isPaid = row.status === "Paid";
+                const isPartiallyPaid = row.status === "Partially paid";
                 const isVoided = row.status === "Voided";
                 const isPaymentRequested = row.status === "Payment Requested";
                 const isDraft = row.status === "Draft";
@@ -894,7 +912,25 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                         case "Status":
                           return (
                             <td key={title} className={singleLineStatusCellClass}>
-                              {row.status ? <span className={isPaid ? statusTagPaidClass : isPaymentRequested ? statusTagPaymentRequestedClass : isReturned ? statusTagReturnedClass : statusTagClass}>{row.status}</span> : null}
+                              {row.status ? (
+                                <span
+                                  className={
+                                    isPaid
+                                      ? statusTagPaidClass
+                                      : isPartiallyPaid
+                                        ? statusTagPartiallyPaidClass
+                                        : isVoided
+                                          ? statusTagVoidedClass
+                                          : isPaymentRequested
+                                            ? statusTagPaymentRequestedClass
+                                            : isReturned
+                                              ? statusTagReturnedClass
+                                              : statusTagClass
+                                  }
+                                >
+                                  {row.status}
+                                </span>
+                              ) : null}
                             </td>
                           );
                         case "Submitted Date":
