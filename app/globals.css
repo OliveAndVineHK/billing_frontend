@@ -116,3 +116,25 @@ input[type="date"].pr-date-input::-webkit-calendar-picker-indicator {
 input[type="date"].pr-date-input::-moz-calendar-picker-indicator {
   display: none;
 }
+
+/* Scroll areas: make track + thumb visible (overlay scrollbars are often invisible until drag). */
+.visible-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #c4c4c4 #f0f0f0;
+}
+.visible-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.visible-scrollbar::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 9999px;
+}
+.visible-scrollbar::-webkit-scrollbar-thumb {
+  background: #c4c4c4;
+  border-radius: 9999px;
+  border: 2px solid #f0f0f0;
+}
+.visible-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a3a3a3;
+}

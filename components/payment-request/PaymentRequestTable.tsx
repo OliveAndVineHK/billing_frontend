@@ -70,9 +70,9 @@ function sortColumnDescription(key: SortKey): string {
     case "contact":
       return "Sort by supplier, then description (A–Z)." + suffix;
     case "invoiceDate":
-      return "Sort by invoice date within each status." + suffix;
+      return "Sort by invoice date (oldest first or newest first)." + suffix;
     case "submittedDate":
-      return "Sort by submitted date within each status." + suffix;
+      return "Sort by submitted date (oldest first or newest first)." + suffix;
     case "paidDate":
       return "Sort by paid date within each status; rows without a date go last." + suffix;
     case "status":
@@ -84,11 +84,40 @@ function sortColumnDescription(key: SortKey): string {
   }
 }
 
+/** English short months from `toLocaleDateString("en-GB", { month: "short" })` (e.g. "03 Mar 2026"). */
+const SHORT_MONTH_TO_INDEX: Record<string, number> = {
+  jan: 0,
+  feb: 1,
+  mar: 2,
+  apr: 3,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  aug: 7,
+  sep: 8,
+  oct: 9,
+  nov: 10,
+  dec: 11,
+};
+
 function dateSortValue(s: string): number | null {
   const t = s.trim();
-  if (!t || t === "-") return null;
-  const ms = Date.parse(t);
-  return Number.isNaN(ms) ? null : ms;
+  if (!t || t === "-" || t === "—") return null;
+  const parsed = Date.parse(t);
+  if (!Number.isNaN(parsed)) return parsed;
+  // Display format from formatDate() — Date.parse is not reliable for this across engines.
+  const m = /^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/.exec(t);
+  if (m) {
+    const day = Number.parseInt(m[1], 10);
+    const year = Number.parseInt(m[3], 10);
+    const monKey = m[2].slice(0, 3).toLowerCase();
+    const month = SHORT_MONTH_TO_INDEX[monKey];
+    if (Number.isFinite(day) && Number.isFinite(year) && month !== undefined) {
+      const utc = Date.UTC(year, month, day);
+      return Number.isNaN(utc) ? null : utc;
+    }
+  }
+  return null;
 }
 
 function unpaidSortValue(s: string): number | null {
@@ -125,7 +154,7 @@ function compareStatusWorkflowPrimary(a: PaymentRequestRow, b: PaymentRequestRow
 function compareRowsByDateWithStatusPrimary(
   a: PaymentRequestRow,
   b: PaymentRequestRow,
-  dateField: "invoiceDate" | "submittedDate" | "paidDate",
+  dateField: "paidDate",
   d: 1 | -1,
 ): number {
   const primary = compareStatusWorkflowPrimary(a, b);
@@ -143,10 +172,16 @@ function compareRows(a: PaymentRequestRow, b: PaymentRequestRow, key: SortKey, d
       if (t !== 0) return t * d;
       return a.contactCaption.localeCompare(b.contactCaption, undefined, { sensitivity: "base" }) * d;
     }
-    case "invoiceDate":
-      return compareRowsByDateWithStatusPrimary(a, b, "invoiceDate", d);
-    case "submittedDate":
-      return compareRowsByDateWithStatusPrimary(a, b, "submittedDate", d);
+    case "invoiceDate": {
+      const byDate = compareNullableNumber(dateSortValue(a.invoiceDate), dateSortValue(b.invoiceDate), d);
+      if (byDate !== 0) return byDate;
+      return a.id.localeCompare(b.id);
+    }
+    case "submittedDate": {
+      const byDate = compareNullableNumber(dateSortValue(a.submittedDate), dateSortValue(b.submittedDate), d);
+      if (byDate !== 0) return byDate;
+      return a.id.localeCompare(b.id);
+    }
     case "paidDate":
       return compareRowsByDateWithStatusPrimary(a, b, "paidDate", d);
     case "status": {

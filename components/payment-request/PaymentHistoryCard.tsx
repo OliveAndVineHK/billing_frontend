@@ -15,7 +15,7 @@ export type PaymentHistoryRow = {
   invoiceNo: string;
   /** Link target for invoice ref; omit or "#" for current bill. */
   invoiceHref?: string;
-  /** Payment applies to a different bill than the page context. */
+  /** Payment applies to a different bill than the page context.  */
   isOtherBill?: boolean;
 };
 

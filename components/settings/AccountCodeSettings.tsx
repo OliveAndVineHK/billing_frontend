@@ -142,34 +142,64 @@ export function AccountCodeSettings() {
               </span>
             </div>
 
-            <div className="flex items-center justify-between gap-3 px-3 sm:pl-4 sm:pr-[31px]">
-              <span className="min-w-0 flex-1 text-right text-sm font-medium text-primary">Select all</span>
-              <input
-                ref={selectAllRef}
-                type="checkbox"
-                checked={allFilteredSelected}
-                onChange={toggleSelectAllFiltered}
-                disabled={filtered.length === 0}
-                className={CHECKBOX_CLASS}
-                aria-label="Select all visible account codes"
-              />
-            </div>
-
             {loading ? (
-              <div className="flex flex-col gap-3 py-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="flex animate-pulse items-center justify-between gap-3 px-3">
-                    <div className="h-4 flex-1 rounded bg-gray-100" />
-                    <div className="h-4 w-4 rounded bg-gray-100" />
-                  </div>
-                ))}
-              </div>
+              <>
+                <div className="flex items-center justify-between gap-3 px-3 sm:px-4">
+                  <span className="min-w-0 flex-1 text-right text-sm font-medium text-primary">Select all</span>
+                  <input
+                    ref={selectAllRef}
+                    type="checkbox"
+                    checked={false}
+                    disabled
+                    className={CHECKBOX_CLASS}
+                    aria-label="Select all visible account codes"
+                    aria-busy
+                  />
+                </div>
+                <div className="flex flex-col gap-3 py-4">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex animate-pulse items-center justify-between gap-3 px-3 sm:px-4">
+                      <div className="h-4 flex-1 rounded bg-gray-100" />
+                      <div className="h-4 w-4 shrink-0 rounded bg-gray-100" />
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : rows.length === 0 ? (
               <p className="py-8 text-center text-sm text-primary/60">No account codes available. Please ensure Xero is connected.</p>
             ) : filtered.length === 0 ? (
-              <p className="text-center text-sm text-primary/60">No codes match your search.</p>
+              <>
+                <div className="flex items-center justify-between gap-3 px-3 sm:px-4">
+                  <span className="min-w-0 flex-1 text-right text-sm font-medium text-primary">Select all</span>
+                  <input
+                    ref={selectAllRef}
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={toggleSelectAllFiltered}
+                    disabled
+                    className={CHECKBOX_CLASS}
+                    aria-label="Select all visible account codes"
+                  />
+                </div>
+                <p className="text-center text-sm text-primary/60">No codes match your search.</p>
+              </>
             ) : (
-              <ul className="max-h-[min(24rem,50vh)] divide-y divide-gray-100 overflow-y-auto overscroll-contain rounded-lg border border-gray-100"aria-label="Account codes">
+              <ul
+                className="visible-scrollbar max-h-[min(24rem,50vh)] divide-y divide-gray-100 overflow-y-auto overscroll-contain rounded-lg border border-gray-100 [scrollbar-gutter:stable]"
+                aria-label="Account codes"
+              >
+                <li className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-gray-100 bg-white px-3 py-3 sm:px-4">
+                  <span className="min-w-0 flex-1 text-right text-sm font-medium text-primary">Select all</span>
+                  <input
+                    ref={selectAllRef}
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={toggleSelectAllFiltered}
+                    disabled={filtered.length === 0}
+                    className={CHECKBOX_CLASS}
+                    aria-label="Select all visible account codes"
+                  />
+                </li>
                 {filtered.map((row) => {
                   const isChecked = selectedIds.has(row.id);
                   const wasSaved = savedIds.has(row.id);
