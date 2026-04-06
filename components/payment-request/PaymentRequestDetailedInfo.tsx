@@ -59,6 +59,7 @@ const fieldLabelClass =
 const modalTextInputClass =
   "box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm";
 
+/** Edit mode: same size as other detail fields (Bill No., Description). */
 const amountValueInputClass =
   "box-border h-11 min-h-[44px] min-w-0 w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:border-l-0 sm:text-sm focus:border-secondary focus:ring-secondary/25";
 
@@ -104,13 +105,13 @@ function formatLongDate(iso: string): string {
 /** Read-only text row: same outer box as modal `<input>`. */
 function ReadOnlyTextBox({
   children,
-  emphasis = "semibold",
+  emphasis = "normal",
 }: {
   children: React.ReactNode;
   emphasis?: "normal" | "semibold";
 }) {
   return (
-    <div className={`flex h-11 min-h-[44px] w-full items-center rounded-lg bg-transparent px-3 text-base text-black sm:min-h-11 sm:text-sm ${emphasis === "semibold" ? "font-semibold" : ""}`}>
+    <div className={`flex h-11 min-h-[44px] w-full items-center rounded-lg bg-transparent px-3 text-base text-black sm:min-h-11 sm:text-sm ${emphasis === "semibold" ? "font-semibold" : "font-normal"}`}>
       <span className="min-w-0 flex-1 truncate">{children}</span>
     </div>
   );
@@ -120,7 +121,7 @@ function ReadOnlyTextBox({
 function ReadOnlySelectShell({ value }: { value?: string | null }) {
   const display = (value ?? "").trim() || "—";
   return (
-    <div className="box-border flex h-11 min-h-[44px] min-w-0 w-full cursor-default overflow-hidden rounded-lg bg-transparent p-0 text-left text-base font-semibold text-black sm:min-h-11 sm:text-sm" aria-readonly="true">
+    <div className="box-border flex h-11 min-h-[44px] min-w-0 w-full cursor-default overflow-hidden rounded-lg bg-transparent p-0 text-left text-base font-normal text-black sm:min-h-11 sm:text-sm" aria-readonly="true">
       <span className="flex min-h-[44px] min-w-0 flex-1 items-center py-0 pl-3 pr-3 sm:min-h-11">
         <span className="min-w-0 flex-1 truncate">{display}</span>
       </span>
@@ -137,11 +138,11 @@ function ReadOnlyAmountRow({
   amount: string;
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-0">
+    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-0">
       <div className="box-border flex h-11 min-h-[44px] w-full shrink-0 items-center justify-between gap-2 rounded-lg bg-transparent px-2 pl-3 pr-2 text-base font-semibold text-[#656565] sm:w-24 sm:rounded-l-lg sm:rounded-r-none sm:px-3 sm:text-sm" aria-label="Currency">
         <span className="min-w-0 flex-1 truncate">{currencyDisplayLabel}</span>
       </div>
-      <div className="box-border flex h-11 min-h-[44px] min-w-0 w-full items-center rounded-lg bg-transparent px-3 text-base font-semibold text-black sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:text-sm" aria-readonly="true">
+      <div className="box-border flex min-h-[52px] min-w-0 w-full items-center rounded-lg bg-transparent px-3 py-1 text-xl font-semibold tabular-nums text-black sm:min-h-14 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:text-2xl sm:leading-snug" aria-readonly="true">
         <span className="min-w-0 flex-1 truncate">{amount || "—"}</span>
       </div>
     </div>
@@ -271,8 +272,75 @@ export function PaymentRequestDetailedInfo({
               ) : null}
             </>
           ) : (
-            <ReadOnlyTextBox emphasis="semibold">{billNo}</ReadOnlyTextBox>
+            <ReadOnlyTextBox>{billNo}</ReadOnlyTextBox>
           )}
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
+          <div>
+            <FieldLabel htmlFor={idInvoiceDate} editing={isEditing}>
+              Invoice Date<span className="text-red-500"> *</span>
+            </FieldLabel>
+            {isEditing ? (
+              <div className="relative">
+                <input
+                  ref={invoiceDateRef}
+                  id={idInvoiceDate}
+                  type="date"
+                  value={invoiceDate ?? ""}
+                  onChange={(e) => patch({ invoiceDate: e.target.value })}
+                  onClick={(e) => openDatePicker(e.currentTarget)}
+                  className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm"
+                  disabled={disabled}
+                />
+                <button
+                  type="button"
+                  onClick={() => openDatePicker(invoiceDateRef.current)}
+                  className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                  aria-label="Open calendar for invoice date"
+                  disabled={disabled}
+                >
+                  <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+                    calendar_clock
+                  </span>
+                </button>
+              </div>
+            ) : (
+              <ReadOnlyDateRow display={formatLongDate(invoiceDate)} />
+            )}
+          </div>
+          <div>
+            <FieldLabel htmlFor={idDueDate} editing={isEditing}>
+              Due Date<span className="text-red-500"> *</span>
+            </FieldLabel>
+            {isEditing ? (
+              <div className="relative">
+                <input
+                  ref={dueDateRef}
+                  id={idDueDate}
+                  type="date"
+                  value={dueDate ?? ""}
+                  onChange={(e) => patch({ dueDate: e.target.value })}
+                  onClick={(e) => openDatePicker(e.currentTarget)}
+                  className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm"
+                  disabled={disabled}
+                />
+                <button
+                  type="button"
+                  onClick={() => openDatePicker(dueDateRef.current)}
+                  className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                  aria-label="Open calendar for due date"
+                  disabled={disabled}
+                >
+                  <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+                    calendar_clock
+                  </span>
+                </button>
+              </div>
+            ) : (
+              <ReadOnlyDateRow display={formatLongDate(dueDate)} />
+            )}
+          </div>
         </div>
 
         <div>
@@ -371,73 +439,6 @@ export function PaymentRequestDetailedInfo({
           ) : (
             <ReadOnlySelectShell value={accountCode} />
           )}
-        </div>
-
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
-          <div>
-            <FieldLabel htmlFor={idInvoiceDate} editing={isEditing}>
-              Invoice Date<span className="text-red-500"> *</span>
-            </FieldLabel>
-            {isEditing ? (
-              <div className="relative">
-                <input
-                  ref={invoiceDateRef}
-                  id={idInvoiceDate}
-                  type="date"
-                  value={invoiceDate ?? ""}
-                  onChange={(e) => patch({ invoiceDate: e.target.value })}
-                  onClick={(e) => openDatePicker(e.currentTarget)}
-                  className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm"
-                  disabled={disabled}
-                />
-                <button
-                  type="button"
-                  onClick={() => openDatePicker(invoiceDateRef.current)}
-                  className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
-                  aria-label="Open calendar for invoice date"
-                  disabled={disabled}
-                >
-                  <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                    calendar_clock
-                  </span>
-                </button>
-              </div>
-            ) : (
-              <ReadOnlyDateRow display={formatLongDate(invoiceDate)} />
-            )}
-          </div>
-          <div>
-            <FieldLabel htmlFor={idDueDate} editing={isEditing}>
-              Due Date<span className="text-red-500"> *</span>
-            </FieldLabel>
-            {isEditing ? (
-              <div className="relative">
-                <input
-                  ref={dueDateRef}
-                  id={idDueDate}
-                  type="date"
-                  value={dueDate ?? ""}
-                  onChange={(e) => patch({ dueDate: e.target.value })}
-                  onClick={(e) => openDatePicker(e.currentTarget)}
-                  className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm"
-                  disabled={disabled}
-                />
-                <button
-                  type="button"
-                  onClick={() => openDatePicker(dueDateRef.current)}
-                  className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
-                  aria-label="Open calendar for due date"
-                  disabled={disabled}
-                >
-                  <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                    calendar_clock
-                  </span>
-                </button>
-              </div>
-            ) : (
-              <ReadOnlyDateRow display={formatLongDate(dueDate)} />
-            )}
-          </div>
         </div>
       </div>
     </section>
