@@ -21,14 +21,14 @@ export function BillActionBar({ onDeleteBill, onPublishToXero, deleteDisabled, p
   const isPublished = publishStatus === "published";
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-      <button type="button" onClick={onDeleteBill} disabled={deleteDisabled} className="inline-flex h-10 min-h-[44px] w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md bg-rose-50 px-3 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-auto sm:justify-start sm:px-4">
+    <div className="flex w-full min-w-0 flex-row items-center justify-between gap-2 sm:gap-3">
+      <button type="button" onClick={onDeleteBill} disabled={deleteDisabled} className="inline-flex h-10 min-h-[44px] w-auto shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md bg-rose-50 px-3 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4">
         Void Bill
         <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
           block
         </span>
       </button>
-      <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+      <div className="flex min-w-0 flex-1 flex-row flex-wrap items-center justify-end gap-2 sm:gap-3">
         {draftSubmit?.show ? (
           <BillDraftSubmitButton onClick={draftSubmit.onClick} disabled={draftSubmit.disabled} pending={draftSubmit.pending} />
         ) : null}
@@ -38,7 +38,7 @@ export function BillActionBar({ onDeleteBill, onPublishToXero, deleteDisabled, p
           disabled={isPublished || publishPending || publishDisabled}
           title={publishDisabled ? "Cannot publish a voided bill" : undefined}
           className={
-            "inline-flex h-10 min-h-[44px] w-full max-w-full shrink-0 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:h-10 sm:w-auto sm:justify-start sm:px-4 " +
+            "inline-flex h-10 min-h-[44px] w-auto max-w-full shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:gap-2 sm:px-4 " +
             (isPublished
               ? "border-2 border-emerald-500 bg-emerald-50 text-emerald-700 cursor-default"
               : publishDisabled
