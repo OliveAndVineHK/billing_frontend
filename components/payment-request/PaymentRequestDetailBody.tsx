@@ -8,6 +8,7 @@ import {
   deleteBill,
   fetchBill,
   fetchEntityBillAccounts,
+  dedupeEntityBillContactsForPicker,
   fetchEntityBillContacts,
   fetchPayments,
   deletePayment as apiDeletePayment,
@@ -76,15 +77,19 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [entityBillContacts, setEntityBillContacts] = useState<EntityBillContact[]>([]);
 
   const applyEntityBillContacts = useCallback((contacts: EntityBillContact[]) => {
-    setEntityBillContacts(contacts);
+    setEntityBillContacts(dedupeEntityBillContactsForPicker(contacts));
   }, []);
 
   const refetchEntityBillContacts = useCallback(
     async (ensureMerged?: EntityBillContact) => {
       const list = await fetchEntityBillContacts();
+      const mergedId = (ensureMerged?.xero_contact_id || "").trim().toUpperCase();
       let merged =
         ensureMerged &&
-        !list.some((c) => c.xero_contact_id === ensureMerged.xero_contact_id)
+        mergedId &&
+        !list.some(
+          (c) => (c.xero_contact_id || "").trim().toUpperCase() === mergedId,
+        )
           ? [...list, ensureMerged]
           : list;
       merged = [...merged].sort((a, b) =>

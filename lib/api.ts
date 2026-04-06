@@ -652,6 +652,44 @@ export type EntityBillContact = {
   category: string | null;
 };
 
+/** Collapse duplicate API rows that share the same Xero ContactID (trim, case-insensitive). */
+export function dedupeEntityBillContactsByXeroId(
+  contacts: EntityBillContact[],
+): EntityBillContact[] {
+  const seen = new Set<string>();
+  const out: EntityBillContact[] = [];
+  for (const c of contacts) {
+    const raw = (c.xero_contact_id || "").trim();
+    if (raw) {
+      const key = raw.toUpperCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
+    out.push(c);
+  }
+  return out;
+}
+
+/** ID dedupe then normalized display name (matches `get_entity_bill_contacts` picker output). */
+export function dedupeEntityBillContactsForPicker(
+  contacts: EntityBillContact[],
+): EntityBillContact[] {
+  const byId = dedupeEntityBillContactsByXeroId(contacts);
+  const seenNames = new Set<string>();
+  const out: EntityBillContact[] = [];
+  for (const c of byId) {
+    const nameKey = c.name.trim().replace(/\s+/g, " ").toLowerCase();
+    if (!nameKey) {
+      out.push(c);
+      continue;
+    }
+    if (seenNames.has(nameKey)) continue;
+    seenNames.add(nameKey);
+    out.push(c);
+  }
+  return out;
+}
+
 export function fetchEntityBillContacts(): Promise<EntityBillContact[]> {
   return apiFetch("/entity-bill-contacts/");
 }

@@ -11,6 +11,7 @@ import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect
 import { BillContactPicker } from "@/components/BillContactPicker";
 import {
   ApiError,
+  dedupeEntityBillContactsForPicker,
   fetchEntityBillAccounts,
   fetchEntityBillContacts,
   fetchSuggestedBillReference,
@@ -189,12 +190,13 @@ export function PaymentRequestModal({
     fetchEntityBillContacts()
       .then((contacts) => {
         if (cancelled) return;
+        const deduped = dedupeEntityBillContactsForPicker(contacts);
         const map = new Map<string, EntityBillContact>();
-        for (const c of contacts) {
+        for (const c of deduped) {
           map.set(c.xero_contact_id, c);
         }
         setContactsMap(map);
-        setContactsList(contacts);
+        setContactsList(deduped);
       })
       .catch(() => {});
 
@@ -298,13 +300,19 @@ export function PaymentRequestModal({
 
   const refetchEntityBillContacts = async (ensureMerged?: EntityBillContact) => {
     const list = await fetchEntityBillContacts();
+    const mergedId = (ensureMerged?.xero_contact_id || "").trim().toUpperCase();
     let merged =
       ensureMerged &&
-      !list.some((c) => c.xero_contact_id === ensureMerged.xero_contact_id)
+      mergedId &&
+      !list.some(
+        (c) => (c.xero_contact_id || "").trim().toUpperCase() === mergedId,
+      )
         ? [...list, ensureMerged]
         : list;
-    merged = [...merged].sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+    merged = dedupeEntityBillContactsForPicker(
+      [...merged].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+      ),
     );
     const map = new Map<string, EntityBillContact>();
     for (const c of merged) {
