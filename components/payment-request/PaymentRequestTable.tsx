@@ -74,7 +74,7 @@ function sortColumnDescription(key: SortKey): string {
     case "submittedDate":
       return "Sort by submitted date (oldest first or newest first)." + suffix;
     case "paidDate":
-      return "Sort by paid date within each status; rows without a date go last." + suffix;
+      return "Sort by paid date (oldest first or newest first); rows without a date go last." + suffix;
     case "status":
       return "Sort by status in billing order, then A–Z." + suffix;
     case "unpaidAmount":
@@ -143,27 +143,6 @@ function statusSortRank(label: string): number {
   return i >= 0 ? i : STATUS_TABLE_ORDER.length;
 }
 
-/** Same ordering as the Status column when sorted ascending (workflow order, then label). */
-function compareStatusWorkflowPrimary(a: PaymentRequestRow, b: PaymentRequestRow): number {
-  const ra = statusSortRank(a.status);
-  const rb = statusSortRank(b.status);
-  if (ra !== rb) return ra - rb;
-  return a.status.localeCompare(b.status, undefined, { sensitivity: "base" });
-}
-
-function compareRowsByDateWithStatusPrimary(
-  a: PaymentRequestRow,
-  b: PaymentRequestRow,
-  dateField: "paidDate",
-  d: 1 | -1,
-): number {
-  const primary = compareStatusWorkflowPrimary(a, b);
-  if (primary !== 0) return primary;
-  const secondary = compareNullableNumber(dateSortValue(a[dateField]), dateSortValue(b[dateField]), d);
-  if (secondary !== 0) return secondary;
-  return a.id.localeCompare(b.id);
-}
-
 function compareRows(a: PaymentRequestRow, b: PaymentRequestRow, key: SortKey, dir: "asc" | "desc"): number {
   const d = dir === "asc" ? 1 : -1;
   switch (key) {
@@ -182,8 +161,11 @@ function compareRows(a: PaymentRequestRow, b: PaymentRequestRow, key: SortKey, d
       if (byDate !== 0) return byDate;
       return a.id.localeCompare(b.id);
     }
-    case "paidDate":
-      return compareRowsByDateWithStatusPrimary(a, b, "paidDate", d);
+    case "paidDate": {
+      const byDate = compareNullableNumber(dateSortValue(a.paidDate), dateSortValue(b.paidDate), d);
+      if (byDate !== 0) return byDate;
+      return a.id.localeCompare(b.id);
+    }
     case "status": {
       const ra = statusSortRank(a.status);
       const rb = statusSortRank(b.status);

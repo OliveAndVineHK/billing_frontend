@@ -55,9 +55,8 @@ export function BillContactPicker({
     trimmedName.length > 0 &&
     contacts.some((c) => c.name.trim().toLowerCase() === trimmedName.toLowerCase());
 
-  /** Keep trailing control visible while Xero create runs (loading icon). */
-  const showAffix = trimmedName.length > 0 && (!nameMatchesExisting || creating);
-  const showAddClickable = showAffix && !creating;
+  const showAddNewRow = trimmedName.length > 0 && !nameMatchesExisting;
+  const menuHasContent = filtered.length > 0 || showAddNewRow;
 
   const updatePosition = useCallback(() => {
     const el = inputRef.current;
@@ -133,8 +132,12 @@ export function BillContactPicker({
     ? "border-red-500 focus:border-red-500 focus:ring-red-200/50 "
     : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25 ";
 
+  const addRowText = creating
+    ? "Creating contact…"
+    : `+ Add '${trimmedName}' as a new contact`;
+
   const menu =
-    open && filtered.length > 0 ? (
+    open && menuHasContent ? (
       <ul
         ref={menuRef}
         id={listboxId}
@@ -165,10 +168,30 @@ export function BillContactPicker({
             {c.name}
           </li>
         ))}
+        {showAddNewRow ? (
+          <li
+            role="option"
+            aria-selected={false}
+            aria-label={creating ? "Creating contact in Xero" : `Add ${trimmedName} as a new contact`}
+            className={
+              "cursor-pointer px-3 py-2.5 text-left text-sm font-medium text-primary transition-colors " +
+              (filtered.length > 0 ? "border-t border-gray-100 " : "") +
+              (creating || disabled
+                ? "cursor-not-allowed opacity-60"
+                : "hover:bg-secondary/10")
+            }
+            onMouseDown={(e) => {
+              e.preventDefault();
+            }}
+            onClick={() => {
+              if (!disabled && !creating) void handleAddToXero();
+            }}
+          >
+            {addRowText}
+          </li>
+        ) : null}
       </ul>
     ) : null;
-
-  const addLabel = `Add "${trimmedName}" to Xero`;
 
   return (
     <div ref={wrapRef} className="w-full min-w-0">
@@ -190,24 +213,8 @@ export function BillContactPicker({
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
-          className={inputClass + borderTone + (showAffix ? " pr-11 " : "")}
+          className={inputClass + borderTone}
         />
-        {showAffix ? (
-          <button
-            type="button"
-            onClick={() => {
-              if (showAddClickable) void handleAddToXero();
-            }}
-            disabled={disabled || creating || !showAddClickable}
-            title={creating ? "Creating contact in Xero…" : addLabel}
-            aria-label={creating ? "Creating contact in Xero" : addLabel}
-            className="absolute right-0 top-0 z-[1] flex h-11 min-h-[44px] w-11 items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-11"
-          >
-            <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
-              {creating ? "hourglass_empty" : "add"}
-            </span>
-          </button>
-        ) : null}
       </div>
       {createError ? (
         <p className="mt-1 text-xs text-red-600" role="alert">
