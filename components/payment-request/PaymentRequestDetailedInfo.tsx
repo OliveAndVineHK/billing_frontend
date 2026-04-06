@@ -59,7 +59,6 @@ const fieldLabelClass =
 const modalTextInputClass =
   "box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm";
 
-/** Edit mode: same size as other detail fields (Bill No., Description). */
 const amountValueInputClass =
   "box-border h-11 min-h-[44px] min-w-0 w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:border-l-0 sm:text-sm focus:border-secondary focus:ring-secondary/25";
 
@@ -283,27 +282,8 @@ export function PaymentRequestDetailedInfo({
             </FieldLabel>
             {isEditing ? (
               <div className="relative">
-                <input
-                  ref={invoiceDateRef}
-                  id={idInvoiceDate}
-                  type="date"
-                  value={invoiceDate ?? ""}
-                  onChange={(e) => patch({ invoiceDate: e.target.value })}
-                  onClick={(e) => openDatePicker(e.currentTarget)}
-                  className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm"
-                  disabled={disabled}
-                />
-                <button
-                  type="button"
-                  onClick={() => openDatePicker(invoiceDateRef.current)}
-                  className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
-                  aria-label="Open calendar for invoice date"
-                  disabled={disabled}
-                >
-                  <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                    calendar_clock
-                  </span>
-                </button>
+                <input ref={invoiceDateRef} id={idInvoiceDate} type="date" value={invoiceDate ?? ""} onChange={(e) => patch({ invoiceDate: e.target.value })} onClick={(e) => openDatePicker(e.currentTarget)} className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm" disabled={disabled} />
+                <button type="button" onClick={() => openDatePicker(invoiceDateRef.current)} className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for invoice date" disabled={disabled}><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>calendar_clock</span></button>
               </div>
             ) : (
               <ReadOnlyDateRow display={formatLongDate(invoiceDate)} />
@@ -315,27 +295,8 @@ export function PaymentRequestDetailedInfo({
             </FieldLabel>
             {isEditing ? (
               <div className="relative">
-                <input
-                  ref={dueDateRef}
-                  id={idDueDate}
-                  type="date"
-                  value={dueDate ?? ""}
-                  onChange={(e) => patch({ dueDate: e.target.value })}
-                  onClick={(e) => openDatePicker(e.currentTarget)}
-                  className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm"
-                  disabled={disabled}
-                />
-                <button
-                  type="button"
-                  onClick={() => openDatePicker(dueDateRef.current)}
-                  className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
-                  aria-label="Open calendar for due date"
-                  disabled={disabled}
-                >
-                  <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                    calendar_clock
-                  </span>
-                </button>
+                <input ref={dueDateRef} id={idDueDate} type="date" value={dueDate ?? ""} onChange={(e) => patch({ dueDate: e.target.value })} onClick={(e) => openDatePicker(e.currentTarget)} className="pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm" disabled={disabled} />
+                <button type="button" onClick={() => openDatePicker(dueDateRef.current)} className="absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for due date" disabled={disabled}><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>calendar_clock</span></button>
               </div>
             ) : (
               <ReadOnlyDateRow display={formatLongDate(dueDate)} />
@@ -349,27 +310,8 @@ export function PaymentRequestDetailedInfo({
           </FieldLabel>
           {isEditing ? (
             <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-0">
-              <ThemedSelect
-                id={idCurrency}
-                ariaLabel="Currency"
-                value={currencyModalValue ?? ""}
-                onChange={(v) => patch({ currencyCode: modalCurrencyToIsoCode(v) })}
-                options={currencyOptions}
-                className="w-full shrink-0 sm:w-24"
-                fullWidth
-                uniformFill
-                triggerClassName="w-full px-2 sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3"
-                disabled={disabled}
-              />
-              <input
-                id={idAmount}
-                type="text"
-                inputMode="decimal"
-                value={amount ?? ""}
-                onChange={(e) => patch({ amount: e.target.value })}
-                className={amountValueInputClass}
-                disabled={disabled}
-              />
+              <ThemedSelect id={idCurrency} ariaLabel="Currency" value={currencyModalValue ?? ""} onChange={(v) => patch({ currencyCode: modalCurrencyToIsoCode(v) })} options={currencyOptions} className="w-full shrink-0 sm:w-24" fullWidth uniformFill triggerClassName="w-full px-2 sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3" disabled={disabled} />
+              <input id={idAmount} type="text" inputMode="decimal" value={amount ?? ""} onChange={(e) => patch({ amount: e.target.value })} className={amountValueInputClass} disabled={disabled} />
             </div>
           ) : (
             <ReadOnlyAmountRow currencyDisplayLabel={currencyDisplayLabel} amount={amount} />
@@ -422,19 +364,8 @@ export function PaymentRequestDetailedInfo({
           </FieldLabel>
           {isEditing ? (
             <>
-              <ThemedSelect
-                id={idAccount}
-                value={accountCode ?? ""}
-                onChange={(v) => patch({ accountCode: v })}
-                options={accountOptions}
-                disabled={disabled}
-                error={!!accountCodeError}
-              />
-              {accountCodeError ? (
-                <p id={idAccountError} className="mt-1 text-xs text-red-600" role="alert">
-                  {accountCodeError}
-                </p>
-              ) : null}
+              <ThemedSelect id={idAccount} value={accountCode ?? ""} onChange={(v) => patch({ accountCode: v })} options={accountOptions} disabled={disabled} error={!!accountCodeError} />
+              {accountCodeError ? <p id={idAccountError} className="mt-1 text-xs text-red-600" role="alert">{accountCodeError}</p> : null}
             </>
           ) : (
             <ReadOnlySelectShell value={accountCode} />
