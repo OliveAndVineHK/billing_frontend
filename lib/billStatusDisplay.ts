@@ -20,12 +20,15 @@ export function statusDisplayBadgeClass(displayLabel: string): string {
   switch (displayLabel) {
     case "Paid":
       return `${base} bg-secondary/10 text-secondary`;
+    case "Partially paid":
+      return `${base} bg-[#70ebba]/10 text-[#70ebba]`;
     case "Payment Requested":
       return `${base} bg-[#FFF0F0] text-[#FF6B6B]`;
     case "Returned":
       return `${base} bg-[#EA9713]/10 text-[#EA9713]`;
-    case "Draft":
     case "Voided":
+      return `${base} bg-[#8587c5]/10 font-semibold text-[#8587c5]`;
+    case "Draft":
       return `${base} bg-[#EDEDED] font-medium text-[#C0C0C0]`;
     default:
       return `${base} bg-[#EDEDED] font-medium text-[#C0C0C0]`;
