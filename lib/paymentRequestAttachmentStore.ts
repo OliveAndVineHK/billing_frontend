@@ -18,6 +18,55 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
+function uniquifyFileName(original: string, used: Set<string>): string {
+  if (!used.has(original)) return original;
+  const lastDot = original.lastIndexOf(".");
+  const base = lastDot > 0 ? original.slice(0, lastDot) : original;
+  const ext = lastDot > 0 ? original.slice(lastDot) : "";
+  let n = 1;
+  for (;;) {
+    const candidate = `${base} (${n})${ext}`;
+    if (!used.has(candidate)) return candidate;
+    n += 1; 
+  }
+}
+
+export async function appendAttachmentBlobs(requestId: string, files: File[]): Promise<void> {
+  if (files.length === 0) return;
+  const existingLoaded = await loadAttachmentBlobs(requestId);
+  const usedNames = new Set(existingLoaded.map((x) => x.name));
+  const existingStored: StoredFile[] = await Promise.all(
+    existingLoaded.map(async (x) => ({
+      name: x.name,
+      type: x.type,
+      buffer: await x.blob.arrayBuffer(),
+    })),
+  );
+  const added: StoredFile[] = await Promise.all(
+    files.map(async (f) => {
+      const name = uniquifyFileName(f.name.trim() || "attachment", usedNames);
+      usedNames.add(name);
+      return {
+        name,
+        type: f.type || "application/octet-stream",
+        buffer: await f.arrayBuffer(),
+      };
+    }),
+  );
+  const merged = [...existingStored, ...added];
+  const db = await openDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.objectStore(STORE).put({ files: merged }, requestId);
+    });
+  } finally {
+    db.close();
+  }
+}
+
 /** Persist uploaded files for a payment request id so the details page can preview after navigation. */
 export async function saveAttachmentBlobs(requestId: string, files: File[]): Promise<void> {
   const db = await openDb();

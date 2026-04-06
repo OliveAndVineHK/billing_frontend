@@ -5,7 +5,10 @@ type InvoiceAttachmentToolbarProps = {
   deleteReadOnly?: boolean;
   onUpload?: () => void;
   uploadReadOnly?: boolean;
+  /** First attachment(s) when the list is empty */
   showUpload?: boolean;
+  /** Additional files when at least one attachment is already shown */
+  showAddMore?: boolean;
 };
 
 export function InvoiceAttachmentToolbar({
@@ -14,6 +17,7 @@ export function InvoiceAttachmentToolbar({
   onUpload,
   uploadReadOnly = false,
   showUpload = false,
+  showAddMore = false,
 }: InvoiceAttachmentToolbarProps) {
   const btnClass =
     "inline-flex h-9 min-h-[44px] shrink-0 items-center gap-1.5 rounded-md border border-primary/25 bg-white px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-10 sm:min-h-0 sm:px-3.5 sm:text-sm";
@@ -37,10 +41,10 @@ export function InvoiceAttachmentToolbar({
             </span>
           </button>
         ) : null}
-        {showUpload ? (
+        {showUpload && onUpload ? (
           <button
             type="button"
-            className={`${btnClass} ${uploadReadOnly ? "cursor-not-allowed opacity-50 hover:bg-white" : ""}`}
+            className={`${btnClass} ${uploadReadOnly ? "cursor-not-allowed opacity-50 hover:bg-white" : "cursor-pointer"}`}
             onClick={onUpload}
             aria-label="Upload attachment"
             disabled={uploadReadOnly}
@@ -50,6 +54,22 @@ export function InvoiceAttachmentToolbar({
             Upload
             <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
               upload
+            </span>
+          </button>
+        ) : null}
+        {showAddMore && onUpload ? (
+          <button
+            type="button"
+            className={`${btnClass} ${uploadReadOnly ? "cursor-not-allowed opacity-50 hover:bg-white" : "cursor-pointer"}`}
+            onClick={onUpload}
+            aria-label="Add more attachments"
+            disabled={uploadReadOnly}
+            aria-disabled={uploadReadOnly}
+            title={uploadReadOnly ? "Enable Edit to add attachments" : undefined}
+          >
+            Add More
+            <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+              attach_file
             </span>
           </button>
         ) : null}

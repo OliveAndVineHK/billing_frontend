@@ -26,6 +26,7 @@ import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequest
 import {
   loadAttachmentBlobs,
   replaceAttachmentBlobsFromPreviewItems,
+  uniquifyFileName,
 } from "@/lib/paymentRequestAttachmentStore";
 import { ActivityHistoryAccordion } from "./ActivityHistoryAccordion";
 import { BillActionBar } from "./BillActionBar";
@@ -510,9 +511,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           <InvoiceAttachmentToolbar
             onDelete={isEditing ? handleConfirmDeleteAttachments : undefined}
             deleteReadOnly={selectedAttachmentIndices.length === 0 || deleteAttachmentPending}
-            onUpload={handleOpenUploadAttachment}
-            uploadReadOnly={!isEditing}
-            showUpload={isEditing && attachmentsReady && attachments.length === 0}
+            onUpload={isEditing ? handleOpenUploadAttachment : undefined}
+            uploadReadOnly={false}
+            showUpload={attachmentsReady && attachments.length === 0}
+            showAddMore={attachmentsReady && attachments.length > 0}
           />
           <AttachmentDeleteConfirmModal
             open={deleteAttachmentConfirmOpen}
@@ -537,12 +539,19 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             onClose={() => setUploadAttachmentOpen(false)}
             onUpload={(files) => {
               if (!requestId) return;
-              const next: InvoiceAttachmentPreviewItem[] = files.map((f) => {
-                const url = URL.createObjectURL(f);
-                attachmentUrlsRef.current.push(url);
-                return { url, name: f.name, mime: f.type || "application/octet-stream" };
+              setAttachments((prev) => {
+                const usedNames = new Set(prev.map((x) => x.name));
+                const added: InvoiceAttachmentPreviewItem[] = [];
+                for (const f of files) {
+                  const base = f.name.trim() || "attachment";
+                  const name = uniquifyFileName(base, usedNames);
+                  usedNames.add(name);
+                  const url = URL.createObjectURL(f);
+                  attachmentUrlsRef.current.push(url);
+                  added.push({ url, name, mime: f.type || "application/octet-stream" });
+                }
+                return [...prev, ...added];
               });
-              setAttachments(next);
               setAttachmentsReady(true);
             }}
           />
