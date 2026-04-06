@@ -23,7 +23,10 @@ import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
 import { enrichAccountCodeWithOptions } from "@/lib/billFormSelectOptions";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
-import { loadAttachmentBlobs, removeAttachmentBlobs, saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
+import {
+  loadAttachmentBlobs,
+  replaceAttachmentBlobsFromPreviewItems,
+} from "@/lib/paymentRequestAttachmentStore";
 import { ActivityHistoryAccordion } from "./ActivityHistoryAccordion";
 import { BillActionBar } from "./BillActionBar";
 import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
@@ -201,41 +204,55 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   }, [requestId]);
 
   useEffect(() => {
-    attachmentUrlsRef.current = [];
-    let cancelled = false;
-
-    if (!requestId) {
-      setAttachments([]);
-      setAttachmentsReady(true);
-      return () => {
-        cancelled = true;
-      };
+    if (!isEditing) {
+      setSelectedAttachmentIndices([]);
+      setDeleteAttachmentConfirmOpen(false);
     }
+  }, [isEditing]);
 
-    setAttachmentsReady(false);
-    (async () => {
+  const loadAttachmentsFromIndexedDb = useCallback(
+    async (opts?: { abandoned?: () => boolean }) => {
+      const abandoned = opts?.abandoned;
+      if (!requestId) {
+        attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+        attachmentUrlsRef.current = [];
+        if (!abandoned?.()) setAttachments([]);
+        if (!abandoned?.()) setAttachmentsReady(true);
+        return;
+      }
+      if (!abandoned?.()) setAttachmentsReady(false);
       try {
         const blobs = await loadAttachmentBlobs(requestId);
-        if (cancelled) return;
+        if (abandoned?.()) return;
+        attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+        attachmentUrlsRef.current = [];
         const next: InvoiceAttachmentPreviewItem[] = blobs.map((b) => {
           const url = URL.createObjectURL(b.blob);
           attachmentUrlsRef.current.push(url);
           return { url, name: b.name, mime: b.type };
         });
-        if (!cancelled) setAttachments(next);
+        setAttachments(next);
       } catch {
-        if (!cancelled) setAttachments([]);
+        if (abandoned?.()) return;
+        attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+        attachmentUrlsRef.current = [];
+        setAttachments([]);
       } finally {
-        if (!cancelled) setAttachmentsReady(true);
+        if (!abandoned?.()) setAttachmentsReady(true);
       }
-    })();
+    },
+    [requestId],
+  );
 
+  useEffect(() => {
+    let cancelled = false;
+    void loadAttachmentsFromIndexedDb({ abandoned: () => cancelled });
     return () => {
       cancelled = true;
       attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
       attachmentUrlsRef.current = [];
     };
-  }, [requestId]);
+  }, [requestId, loadAttachmentsFromIndexedDb]);
 
   const viewData = useMemo(() => {
     if (!bill) return null;
@@ -272,7 +289,8 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     setActionError(null);
     setBillNoError(null);
     setAccountCodeError(null);
-  }, []);
+    void loadAttachmentsFromIndexedDb();
+  }, [loadAttachmentsFromIndexedDb]);
 
   const handlePatch = useCallback((patch: Partial<PaymentRequestDetailedInfoData>) => {
     if (Object.prototype.hasOwnProperty.call(patch, "billNo")) {
@@ -297,6 +315,14 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         setBill(updated);
         onBillUpdated?.();
         await loadPayments();
+        try {
+          await replaceAttachmentBlobsFromPreviewItems(requestId, attachments);
+        } catch {
+          await loadAttachmentsFromIndexedDb();
+          setActionError(
+            "Saved bill details but could not update stored invoice attachments. Try editing attachments again.",
+          );
+        }
         setIsEditing(false);
         setDraft(null);
         setBillNoError(null);
@@ -312,7 +338,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         setIsSaving(false);
       }
     },
-    [requestId, bill, draft, bumpAudit, loadPayments, onBillUpdated],
+    [requestId, bill, draft, attachments, bumpAudit, loadPayments, loadAttachmentsFromIndexedDb, onBillUpdated],
   );
 
   const handleSave = useCallback(async () => {
@@ -388,6 +414,14 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       const updated = await updateBill(requestId, { ...payload, status: "submitted" });
       setBill(updated);
       onBillUpdated?.();
+      try {
+        await replaceAttachmentBlobsFromPreviewItems(requestId, attachments);
+      } catch {
+        await loadAttachmentsFromIndexedDb();
+        setActionError(
+          "Bill was submitted but could not update stored invoice attachments. Try editing attachments again.",
+        );
+      }
       setIsEditing(false);
       setDraft(null);
       setAccountCodeError(null);
@@ -403,7 +437,18 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     } finally {
       setIsSubmittingDraft(false);
     }
-  }, [requestId, bill, isEditing, draft, viewData, loadPayments, bumpAudit, onBillUpdated]);
+  }, [
+    requestId,
+    bill,
+    isEditing,
+    draft,
+    viewData,
+    attachments,
+    loadPayments,
+    loadAttachmentsFromIndexedDb,
+    bumpAudit,
+    onBillUpdated,
+  ]);
 
   const handlePublishToXero = useCallback(async () => {
     if (!requestId || !bill || isPublishing) return;
@@ -434,24 +479,23 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     setDeleteAttachmentConfirmOpen(true);
   }, [selectedAttachmentIndices.length]);
 
-  const executeDeleteSelectedAttachments = useCallback(async () => {
-    if (!requestId) return;
+  const executeDeleteSelectedAttachments = useCallback(() => {
     if (selectedAttachmentIndices.length === 0) return;
     const itemsToDelete = selectedAttachmentIndices
       .map((i) => attachments[i])
       .filter((x): x is InvoiceAttachmentPreviewItem => Boolean(x));
     if (itemsToDelete.length === 0) return;
 
-    try {
-      await removeAttachmentBlobs(requestId, itemsToDelete.map((x) => x.name));
-    } catch {
-      setActionError("Failed to delete attachment(s). Please try again.");
-      return;
-    }
-
-    setAttachments((prev) => prev.filter((_, idx) => !selectedAttachmentIndices.includes(idx)));
+    const removeSet = new Set(selectedAttachmentIndices);
+    setAttachments((prev) => {
+      const next = prev.filter((_, idx) => !removeSet.has(idx));
+      for (let i = 0; i < prev.length; i++) {
+        if (removeSet.has(i)) URL.revokeObjectURL(prev[i].url);
+      }
+      return next;
+    });
     setSelectedAttachmentIndices([]);
-  }, [attachments, removeAttachmentBlobs, requestId, selectedAttachmentIndices]);
+  }, [attachments, selectedAttachmentIndices]);
 
   return (
     <>
@@ -464,11 +508,11 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       <div className="mx-auto grid w-full min-w-0 max-w-[1920px] grid-cols-1 gap-4 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-1 sm:gap-5 sm:px-6 lg:grid-cols-2 lg:grid-rows-[auto_minmax(20rem,1fr)] lg:gap-x-6 lg:gap-y-4 lg:px-8 xl:gap-x-8 2xl:gap-x-10">
         <div className="min-w-0 max-lg:order-2 lg:order-none lg:col-start-1 lg:row-start-1">
           <InvoiceAttachmentToolbar
-            onDelete={handleConfirmDeleteAttachments}
+            onDelete={isEditing ? handleConfirmDeleteAttachments : undefined}
             deleteReadOnly={selectedAttachmentIndices.length === 0 || deleteAttachmentPending}
             onUpload={handleOpenUploadAttachment}
-            uploadReadOnly={false}
-            showUpload={attachmentsReady && attachments.length === 0}
+            uploadReadOnly={!isEditing}
+            showUpload={isEditing && attachmentsReady && attachments.length === 0}
           />
           <AttachmentDeleteConfirmModal
             open={deleteAttachmentConfirmOpen}
@@ -477,11 +521,11 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             onClose={() => {
               if (!deleteAttachmentPending) setDeleteAttachmentConfirmOpen(false);
             }}
-            onConfirm={async () => {
+            onConfirm={() => {
               if (deleteAttachmentPending) return;
               setDeleteAttachmentPending(true);
               try {
-                await executeDeleteSelectedAttachments();
+                executeDeleteSelectedAttachments();
               } finally {
                 setDeleteAttachmentPending(false);
                 setDeleteAttachmentConfirmOpen(false);
@@ -491,17 +535,12 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           <UploadInvoiceAttachmentModal
             open={uploadAttachmentOpen}
             onClose={() => setUploadAttachmentOpen(false)}
-            onUpload={async (files) => {
+            onUpload={(files) => {
               if (!requestId) return;
-              // UI-only: store for preview + reload from local store
-              await saveAttachmentBlobs(requestId, files);
-              const blobs = await loadAttachmentBlobs(requestId);
-              attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
-              attachmentUrlsRef.current = [];
-              const next: InvoiceAttachmentPreviewItem[] = blobs.map((b) => {
-                const url = URL.createObjectURL(b.blob);
+              const next: InvoiceAttachmentPreviewItem[] = files.map((f) => {
+                const url = URL.createObjectURL(f);
                 attachmentUrlsRef.current.push(url);
-                return { url, name: b.name, mime: b.type };
+                return { url, name: f.name, mime: f.type || "application/octet-stream" };
               });
               setAttachments(next);
               setAttachmentsReady(true);
@@ -537,7 +576,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           <InvoiceAttachmentPreview
             attachments={attachments}
             isLoadingAttachments={!attachmentsReady}
-            editMode={true}
+            editMode={isEditing}
             selectedIndices={selectedAttachmentIndices}
             onSelectedIndicesChange={setSelectedAttachmentIndices}
             className="min-h-[min(45dvh,22rem)] sm:min-h-[min(55dvh,30rem)] lg:min-h-[min(70vh,40rem)]"

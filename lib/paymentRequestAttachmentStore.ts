@@ -71,6 +71,38 @@ export async function loadAttachmentBlobs(requestId: string): Promise<LoadedAtta
   }
 }
 
+export async function replaceAttachmentBlobsFromPreviewItems(
+  requestId: string,
+  items: Array<{ url: string; name: string; mime: string }>,
+): Promise<void> {
+  if (items.length === 0) {
+    await saveAttachmentBlobs(requestId, []);
+    return;
+  }
+  const stored: StoredFile[] = await Promise.all(
+    items.map(async (item) => {
+      const res = await fetch(item.url);
+      const buffer = await res.arrayBuffer();
+      return {
+        name: item.name,
+        type: item.mime || "application/octet-stream",
+        buffer,
+      };
+    }),
+  );
+  const db = await openDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.objectStore(STORE).put({ files: stored }, requestId);
+    });
+  } finally {
+    db.close();
+  }
+}
+
 export async function removeAttachmentBlobs(requestId: string, namesToRemove: string[]): Promise<void> {
   if (namesToRemove.length === 0) return;
   const remove = new Set(namesToRemove);

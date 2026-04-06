@@ -21,20 +21,22 @@ export function InvoiceAttachmentToolbar({
   return (
     <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 sm:flex-nowrap">
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-initial">
-        <button
-          type="button"
-          className={`${btnClass} ${deleteReadOnly ? "cursor-not-allowed opacity-50 hover:bg-white" : ""}`}
-          onClick={onDelete}
-          aria-label="Delete attachment"
-          disabled={deleteReadOnly}
-          aria-disabled={deleteReadOnly}
-          title={deleteReadOnly ? "Enable Edit to delete attachments" : undefined}
-        >
-          Delete
-          <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-            delete
-          </span>
-        </button>
+        {onDelete ? (
+          <button
+            type="button"
+            className={`${btnClass} ${deleteReadOnly ? "cursor-not-allowed opacity-50 hover:bg-white" : "cursor-pointer"}`}
+            onClick={onDelete}
+            aria-label="Delete attachment"
+            disabled={deleteReadOnly}
+            aria-disabled={deleteReadOnly}
+            title={deleteReadOnly ? "Select attachment(s) to delete" : undefined}
+          >
+            Delete
+            <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+              delete
+            </span>
+          </button>
+        ) : null}
         {showUpload ? (
           <button
             type="button"
