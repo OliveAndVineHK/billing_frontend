@@ -147,11 +147,18 @@ export function InvoiceAttachmentPreview({
         ? imageSrcs.map((url) => ({ url, name: "", mime: "image/png" }))
         : [null];
 
+  const attachmentCount = items.filter((item): item is InvoiceAttachmentPreviewItem => item != null).length;
+  const multiAttachmentScroll = !isLoadingAttachments && attachmentCount >= 2;
+
+  const scrollAreaMinMaxClass = multiAttachmentScroll
+    ? fullscreen
+      ? "min-h-0"
+      : "min-h-[min(60vh,32rem)] max-h-[min(85dvh,52rem)] sm:max-h-[min(88dvh,56rem)] lg:max-h-[min(90vh,60rem)]"
+    : "min-h-[min(60vh,32rem)]";
+
   const inner = (
     <div
-      className="flex min-h-0 w-full flex-col gap-4 p-2 sm:p-3"
-      style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}
-    >
+      className="flex w-full shrink-0 flex-col gap-4 p-2 sm:p-3" style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}>
       {isLoadingAttachments ? (
         <div className="flex w-full min-w-0 flex-col gap-3 rounded border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="h-4 w-[75%] animate-pulse rounded bg-gray-200" />

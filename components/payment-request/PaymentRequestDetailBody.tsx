@@ -449,7 +449,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       ) : null}
 
       <div className="mx-auto grid w-full min-w-0 max-w-[1920px] grid-cols-1 gap-4 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-1 sm:gap-5 sm:px-6 lg:grid-cols-2 lg:grid-rows-[auto_minmax(20rem,1fr)] lg:gap-x-6 lg:gap-y-4 lg:px-8 xl:gap-x-8 2xl:gap-x-10">
-        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+        <div className="min-w-0 max-lg:order-2 lg:order-none lg:col-start-1 lg:row-start-1">
           <InvoiceAttachmentToolbar
             onDelete={handleConfirmDeleteAttachments}
             deleteReadOnly={selectedAttachmentIndices.length === 0 || deleteAttachmentPending}
@@ -495,7 +495,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             }}
           />
         </div>
-        <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:self-center">
+        <div className="min-w-0 max-lg:order-1 lg:order-none lg:col-start-2 lg:row-start-1 lg:self-center">
           <BillActionBar
             onDeleteBill={handleRequestDeleteBill}
             onPublishToXero={handlePublishToXero}
@@ -520,7 +520,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             }
           />
         </div>
-        <div className="flex min-h-0 min-w-0 flex-col lg:col-start-1 lg:row-start-2">
+        <div className="flex min-h-0 min-w-0 max-lg:order-3 flex-col lg:order-none lg:col-start-1 lg:row-start-2">
           <InvoiceAttachmentPreview
             attachments={attachments}
             isLoadingAttachments={!attachmentsReady}
@@ -530,7 +530,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             className="min-h-[min(45dvh,22rem)] sm:min-h-[min(55dvh,30rem)] lg:min-h-[min(70vh,40rem)]"
           />
         </div>
-        <div className="flex min-w-0 flex-col gap-4 sm:gap-5 lg:col-start-2 lg:row-start-2">
+        <div className="flex min-w-0 max-lg:order-4 flex-col gap-4 sm:gap-5 lg:order-none lg:col-start-2 lg:row-start-2">
           {loadingBill ? (
             <div className="animate-pulse rounded-xl border border-gray-200/90 bg-white p-6">
               <div className="mb-4 h-6 w-48 rounded bg-gray-100" />
