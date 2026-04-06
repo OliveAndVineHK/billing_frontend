@@ -18,7 +18,7 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-function uniquifyFileName(original: string, used: Set<string>): string {
+export function uniquifyFileName(original: string, used: Set<string>): string {
   if (!used.has(original)) return original;
   const lastDot = original.lastIndexOf(".");
   const base = lastDot > 0 ? original.slice(0, lastDot) : original;
