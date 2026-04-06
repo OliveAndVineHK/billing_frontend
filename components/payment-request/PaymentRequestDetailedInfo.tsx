@@ -49,6 +49,7 @@ export type PaymentRequestDetailedInfoProps = {
   onCancel?: () => void;
   onSave?: () => void;
   className?: string;
+  editInCardHeader?: boolean;
 };
 
 /** Same as Add Payment Request modal field labels — used in view and edit so spacing matches. */
@@ -148,16 +149,10 @@ function ReadOnlyAmountRow({
   );
 }
 
-/** Same chrome as date field + calendar strip in modal; read-only text. */
 function ReadOnlyDateRow({ display }: { display: string }) {
   return (
-    <div className="relative">
-      <div className="flex h-11 min-h-[44px] w-full items-center rounded-lg bg-transparent py-0 pl-3 pr-11 text-base font-semibold text-black sm:min-h-11 sm:text-sm">
-        <span className="min-w-0 flex-1 truncate">{display}</span>
-      </div>
-      <div className="pointer-events-none absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-r-lg text-primary sm:min-h-11" aria-hidden>
-        <span className="material-symbols-outlined text-[20px] leading-none">calendar_clock</span>
-      </div>
+    <div className="flex h-11 min-h-[44px] w-full items-center rounded-lg bg-transparent px-3 text-base font-semibold text-black sm:min-h-11 sm:text-sm">
+      <span className="min-w-0 flex-1 truncate">{display}</span>
     </div>
   );
 }
@@ -177,6 +172,7 @@ export function PaymentRequestDetailedInfo({
   accountOptions: accountOptionsProp,
   entityBillContacts = [],
   onRefetchEntityBillContacts,
+  editInCardHeader = true,
 }: PaymentRequestDetailedInfoProps) {
   const {
     billNo,
@@ -217,29 +213,33 @@ export function PaymentRequestDetailedInfo({
 
   return (
     <section className={`rounded-xl border border-gray-200/90 bg-white p-4 sm:p-5 md:p-6 ${className}`}>
-      <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <div
+        className={`mb-4 flex flex-col gap-3 sm:mb-5 ${isEditing || editInCardHeader ? "sm:flex-row sm:items-start sm:justify-between sm:gap-4" : ""}`}
+      >
         <h2 className="min-w-0 text-base font-medium leading-snug text-[#5c5c5c] sm:text-lg">
           Detailed Information
         </h2>
-        <div className={headerActionsClass}>
-          {isEditing ? (
-            <>
-              <button type="button" onClick={onCancel} className={cancelButtonClass} disabled={disabled || isSaving}>
-                Cancel
+        {(isEditing || editInCardHeader) && (
+          <div className={headerActionsClass}>
+            {isEditing ? (
+              <>
+                <button type="button" onClick={onCancel} className={cancelButtonClass} disabled={disabled || isSaving}>
+                  Cancel
+                </button>
+                <button type="button" onClick={onSave} className={saveButtonClass} disabled={disabled || isSaving}>
+                  {isSaving ? "Saving…" : "Save Changes"}
+                </button>
+              </>
+            ) : (
+              <button type="button" onClick={onEdit} className={editToggleButtonClass} disabled={disabled}>
+                Edit
+                <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>
+                  edit_document
+                </span>
               </button>
-              <button type="button" onClick={onSave} className={saveButtonClass} disabled={disabled || isSaving}>
-                {isSaving ? "Saving…" : "Save Changes"}
-              </button>
-            </>
-          ) : (
-            <button type="button" onClick={onEdit} className={editToggleButtonClass} disabled={disabled}>
-              Edit
-              <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>
-                edit_document
-              </span>
-            </button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-5">
