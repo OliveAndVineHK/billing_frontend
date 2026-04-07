@@ -11,8 +11,8 @@ import { useUserRole } from "@/lib/useUserRole";
 const COLUMN_TITLES = [
   "Contact / Description",
   "Submitted Date",
-  "Status",
   "Invoice Date",
+  "Status",
   "Unpaid Amount",
   "Payment",
   "Paid Date",
@@ -383,8 +383,8 @@ type ColumnSelectorKey = "contact" | "submittedDate" | "invoiceDate" | "status" 
 const COLUMN_SELECTOR_ITEMS: Array<{ key: ColumnSelectorKey; label: string }> = [
   { key: "contact", label: "Contact / Description" },
   { key: "submittedDate", label: "Submitted Date" },
-  { key: "status", label: "Status" },
   { key: "invoiceDate", label: "Invoice Date" },
+  { key: "status", label: "Status" },
   { key: "unpaidAmount", label: "Unpaid Amount" },
 ];
 
