@@ -87,7 +87,7 @@ export function PaymentRequestView() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
-  const [dateType, setDateType] = useState("Invoice Date");
+  const [dateType, setDateType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [rawBills, setRawBills] = useState<BillListItem[]>([]);
@@ -231,7 +231,7 @@ export function PaymentRequestView() {
         onApplyFilters={(f) => {
           setMinAmount(f.minAmount ?? "");
           setMaxAmount(f.maxAmount ?? "");
-          setDateType(f.dateType ?? "Invoice Date");
+          setDateType(f.dateType ?? "");
           setStartDate(f.startDate ?? "");
           setEndDate(f.endDate ?? "");
         }}

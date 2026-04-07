@@ -496,24 +496,30 @@ export function PaymentRequestModal({
             <input
               ref={fileInputRef}
               type="file"
-              className="absolute inset-0 z-20 h-full min-h-[88px] w-full cursor-pointer opacity-0 sm:min-h-[104px]"
+              className="absolute inset-0 z-20 h-full min-h-[156px] w-full cursor-pointer opacity-0 sm:min-h-[176px]"
               multiple
               accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.xlsm,application/pdf,image/jpeg,image/png,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={handleFilesSelected}
               aria-label="Choose files to upload"
             />
             <div className="pointer-events-none">
-              <div className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[#EDEDED] bg-white px-3 py-3 sm:min-h-[104px] sm:py-4">
-                <span className="material-symbols-outlined text-2xl leading-none text-secondary sm:text-3xl" aria-hidden>
-                  library_add
+              <div className="flex min-h-[156px] flex-col items-center justify-center gap-3 overflow-visible rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 py-5 sm:min-h-[176px] sm:gap-4 sm:py-6">
+                <span
+                  className="material-symbols-outlined inline-block origin-center text-[48px] leading-none text-primary/45 [font-variation-settings:'FILL'_0,'wght'_400,'GRAD'_0,'opsz'_48] scale-[1.78] sm:text-[48px] sm:scale-[2.02]"
+                  aria-hidden
+                >
+                  cloud_upload
                 </span>
-                <span className="text-center text-xs font-medium text-secondary sm:text-sm">Add from Library</span>
+                <div className="flex flex-col items-center">
+                  <p className="px-2 text-center text-[14px] font-medium leading-tight text-black">Click to upload or drag and drop</p>
+                  <p className="mt-1 px-2 text-center text-[12px] leading-tight text-primary/55">PDF, JPEG, PNG, XLS, XLSX (Max 5MB)</p>
+                </div>
               </div>
             </div>
           </div>
 
           <div className="mb-2 mt-5 flex items-baseline justify-between gap-3">
-            <p className="min-w-0 text-[11px] font-semibold tracking-wide text-primary/80">
+            <p className="min-w-0 text-[11px] font-semibold uppercase tracking-wide text-primary/80">
               Uploaded files ({uploadedFiles.length})
             </p>
             {uploadedFiles.length > 0 ? (
@@ -626,9 +632,10 @@ export function PaymentRequestModal({
                     setAmount(e.target.value);
                     clearFieldError("amount");
                   }}
+                  placeholder="0.00"
                   aria-invalid={!!fieldErrors.amount}
                   className={
-                    "box-border h-11 min-h-[44px] min-w-0 w-full rounded-lg border bg-white px-3 text-base text-black focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:border-l-0 sm:text-sm " +
+                    "box-border h-11 min-h-[44px] min-w-0 w-full rounded-lg border bg-white px-3 text-base text-black placeholder:text-primary/45 focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:border-l-0 sm:text-sm " +
                     (fieldErrors.amount
                       ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
                       : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
@@ -798,11 +805,11 @@ export function PaymentRequestModal({
                   getUploadedFileIconInfo={getUploadedFileIconInfo}
                 />
               ) : previewFile && !previewObjectUrl ? (
-                <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-sm text-primary/60">
+                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
                   Loading preview…
                 </div>
               ) : (
-                <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-primary/60">
+                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
                   Select a file to preview
                 </div>
               )}

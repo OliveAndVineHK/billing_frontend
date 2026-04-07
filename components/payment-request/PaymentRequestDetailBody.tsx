@@ -646,14 +646,14 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             overflowVoidDisabled={actionOverflowVoidDisabled}
           />
         </div>
-        <div className="flex min-h-0 min-w-0 max-lg:order-3 flex-col lg:order-none lg:col-start-1 lg:row-start-2">
+        <div className="flex h-full min-h-0 min-w-0 max-lg:order-3 flex-col lg:order-none lg:col-start-1 lg:row-start-2">
           <InvoiceAttachmentPreview
             attachments={attachments}
             isLoadingAttachments={!attachmentsReady}
             editMode={isEditing}
             selectedIndices={selectedAttachmentIndices}
             onSelectedIndicesChange={setSelectedAttachmentIndices}
-            className="min-h-[min(45dvh,22rem)] sm:min-h-[min(55dvh,30rem)] lg:min-h-[min(70vh,40rem)]"
+            className="h-full min-h-[min(45dvh,22rem)] sm:min-h-[min(55dvh,30rem)] lg:min-h-[min(70vh,40rem)]"
           />
         </div>
         <div className="flex min-w-0 max-lg:order-4 flex-col gap-4 sm:gap-5 lg:order-none lg:col-start-2 lg:row-start-2">

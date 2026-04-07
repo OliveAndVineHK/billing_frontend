@@ -6,12 +6,13 @@ export type BillDraftSubmitButtonProps = {
   pending?: boolean;
 };
 
-const focusRing =
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary";
+/** Matches the payment request detail “Edit” pill (BillActionBar `endRowPrefix`). */
+const submitButtonClass =
+  "inline-flex h-10 min-h-[44px] w-auto max-w-full shrink-0 cursor-pointer items-center justify-center rounded-full border border-primary/25 bg-white px-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:px-4";
 
 export function BillDraftSubmitButton({ onClick, disabled, pending }: BillDraftSubmitButtonProps) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled || pending} className={`inline-flex h-10 min-h-[44px] w-auto shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full border border-transparent bg-secondary px-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 ${focusRing}`} aria-busy={pending ? true : undefined}>
+    <button type="button" onClick={onClick} disabled={disabled || pending} className={submitButtonClass} aria-busy={pending ? true : undefined}>
       {pending ? "Submitting…" : "Submit"}
     </button>
   );

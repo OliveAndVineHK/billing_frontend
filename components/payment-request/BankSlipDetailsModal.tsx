@@ -277,8 +277,11 @@ function FetchedPreviewContent({
         target="_blank"
         rel="noopener noreferrer"
         download={fileName}
-        className={`mt-2 inline-block text-sm font-semibold text-secondary underline ${focusRing} rounded`}
+        className={`mt-2 inline-flex items-center gap-2 text-sm font-semibold text-secondary underline ${focusRing} rounded`}
       >
+        <span className="material-symbols-outlined text-[28px] leading-none sm:text-[32px]" aria-hidden>
+          download
+        </span>
         Download file
       </a>
     </div>
@@ -544,11 +547,11 @@ export function BankSlipDetailsModal({
                   fileSizeBytes={selectedEntry.fileSizeBytes}
                 />
               ) : files.length === 0 ? (
-                <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-primary/60">
+                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
                   No bank slip files uploaded for these payments yet.
                 </div>
               ) : (
-                <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-primary/60">
+                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
                   Select a file to preview
                 </div>
               )}

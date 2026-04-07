@@ -148,9 +148,10 @@ export function InvoiceAttachmentPreview({
         : [null];
 
   const attachmentCount = items.filter((item): item is InvoiceAttachmentPreviewItem => item != null).length;
-  const multiAttachmentScroll = !isLoadingAttachments && attachmentCount >= 2;
+  /** Bound height so multiple files (or tall PDFs) scroll inside the gray panel instead of stretching the page. */
+  const constrainScrollHeight = isLoadingAttachments || attachmentCount >= 1;
 
-  const scrollAreaMinMaxClass = multiAttachmentScroll
+  const scrollAreaMinMaxClass = constrainScrollHeight
     ? fullscreen
       ? "min-h-0"
       : "min-h-[min(60vh,32rem)] max-h-[min(85dvh,52rem)] sm:max-h-[min(88dvh,56rem)] lg:max-h-[min(90vh,60rem)]"
@@ -209,7 +210,7 @@ export function InvoiceAttachmentPreview({
   const scrollArea = (
     <div
       ref={scrollRef}
-      className="visible-scrollbar relative flex min-h-[min(60vh,32rem)] min-w-0 flex-1 flex-col overflow-auto rounded-lg border border-gray-200 bg-gray-100 touch-pan-x touch-pan-y"
+      className={`visible-scrollbar relative flex min-h-0 min-w-0 flex-1 flex-col overflow-auto rounded-lg border border-gray-200 bg-gray-100 touch-pan-x touch-pan-y ${scrollAreaMinMaxClass}`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -250,5 +251,5 @@ export function InvoiceAttachmentPreview({
     );
   }
 
-  return <div className={`flex min-h-0 flex-1 flex-col ${className}`}>{scrollArea}</div>;
+  return <div className={`flex min-h-0 w-full flex-1 flex-col ${className}`}>{scrollArea}</div>;
 }

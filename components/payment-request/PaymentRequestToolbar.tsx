@@ -91,7 +91,7 @@ export function PaymentRequestToolbar({
   const endDateRef = useRef<HTMLInputElement>(null);
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
-  const [dateType, setDateType] = useState("Invoice Date");
+  const [dateType, setDateType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -214,10 +214,10 @@ export function PaymentRequestToolbar({
   const onResetFilters = () => {
     setMinAmount("");
     setMaxAmount("");
-    setDateType("Invoice Date");
+    setDateType("");
     setStartDate("");
     setEndDate("");
-    onApplyFilters?.({ minAmount: "", maxAmount: "", dateType: "Invoice Date", startDate: "", endDate: "" });
+    onApplyFilters?.({ minAmount: "", maxAmount: "", dateType: "", startDate: "", endDate: "" });
   };
 
   const toggleFilterMenu = (trigger: HTMLButtonElement) => {
@@ -321,7 +321,14 @@ export function PaymentRequestToolbar({
                       <label htmlFor={`${filterFieldIds}-date-type`} className={fieldLabelClass}>
                         Date Type
                       </label>
-                      <ThemedSelect id={`${filterFieldIds}-date-type`} value={dateType ?? ""} onChange={setDateType} options={[...FILTER_DATE_TYPE_OPTIONS]} ariaLabel="Date type" />
+                      <ThemedSelect
+                        id={`${filterFieldIds}-date-type`}
+                        value={dateType ?? ""}
+                        onChange={setDateType}
+                        options={[...FILTER_DATE_TYPE_OPTIONS]}
+                        placeholder="Select date type"
+                        ariaLabel="Date type"
+                      />
                     </div>
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
                       <div>

@@ -144,20 +144,24 @@ export function UploadInvoiceAttachmentModal({ open, onClose, onUpload }: Upload
                 <input
                   ref={fileInputRef}
                   type="file"
-                  className="absolute inset-0 z-20 h-full min-h-[88px] w-full cursor-pointer opacity-0 sm:min-h-[104px]"
+                  className="absolute inset-0 z-20 h-full min-h-[156px] w-full cursor-pointer opacity-0 sm:min-h-[176px]"
                   multiple
                   accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
                   onChange={handleFilesSelected}
                   aria-label="Choose attachment files to upload"
                 />
                 <div className="pointer-events-none">
-                  <div className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 bg-white px-3 py-3 sm:min-h-[104px] sm:py-4">
-                    <span className="material-symbols-outlined text-2xl leading-none text-secondary sm:text-3xl" aria-hidden>
-                      upload_file
+                  <div className="flex min-h-[156px] flex-col items-center justify-center gap-3 overflow-visible rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 py-5 sm:min-h-[176px] sm:gap-4 sm:py-6">
+                    <span
+                      className="material-symbols-outlined inline-block origin-center text-[48px] leading-none text-primary/45 [font-variation-settings:'FILL'_0,'wght'_400,'GRAD'_0,'opsz'_48] scale-[1.78] sm:text-[48px] sm:scale-[2.02]"
+                      aria-hidden
+                    >
+                      cloud_upload
                     </span>
-                    <span className="text-center text-xs font-medium text-secondary sm:text-sm">
-                      Tap or drop files (PDF, JPG, PNG)
-                    </span>
+                    <div className="flex flex-col items-center">
+                      <p className="px-2 text-center text-[14px] font-medium leading-tight text-black">Click to upload or drag and drop</p>
+                      <p className="mt-1 px-2 text-center text-[12px] leading-tight text-primary/55">PDF, JPEG, PNG (Max 5MB)</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -167,7 +171,7 @@ export function UploadInvoiceAttachmentModal({ open, onClose, onUpload }: Upload
                   Selected files ({uploadedFiles.length})
                 </p>
                 {uploadedFiles.length > 0 ? (
-                  <span className="shrink-0 text-[10px] font-medium text-primary/55 sm:text-[11px]">Click to preview</span>
+                  <span className="shrink-0 text-[10px] font-medium text-primary/55 sm:text-[11px]">Click the file to preview</span>
                 ) : null}
               </div>
 
@@ -235,7 +239,7 @@ export function UploadInvoiceAttachmentModal({ open, onClose, onUpload }: Upload
                   </div>
                 </div>
               ) : (
-                <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-primary/60">
+                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
                   Select a file to preview
                 </div>
               )}
