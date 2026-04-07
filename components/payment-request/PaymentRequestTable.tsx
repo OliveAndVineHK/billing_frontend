@@ -572,21 +572,19 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   const isRowMenuDeleteDisabled =
     rowMenuRow?.status === "Voided" ||
     ((rowMenuRow?.status === "Paid" || rowMenuRow?.status === "Partially paid") && !isElevated);
-  const rowMenuPaidOrPaymentRequested =
-    rowMenuRow?.status === "Paid" ||
-    rowMenuRow?.status === "Partially paid" ||
-    rowMenuRow?.status === "Payment Requested";
   const rowMenuPublishedToXero = rowMenuRow?.xeroActive === true;
   const showRowMenuPublish =
     isElevated &&
     rowMenuRow != null &&
     rowMenuRow.status !== "Draft" &&
-    (rowMenuPaidOrPaymentRequested ? !rowMenuPublishedToXero : true);
+    rowMenuRow.status !== "Voided" &&
+    !rowMenuPublishedToXero;
   const showRowMenuRepublish =
     isElevated &&
     rowMenuRow != null &&
     rowMenuRow.status !== "Draft" &&
-    (rowMenuPaidOrPaymentRequested ? rowMenuPublishedToXero : true);
+    rowMenuRow.status !== "Voided" &&
+    rowMenuPublishedToXero;
   const rowDeleteContactTitle = useMemo(() => {
     if (!rowDeleteConfirmId) return "";
     return rows.find((r) => r.id === rowDeleteConfirmId)?.contactTitle ?? "";
@@ -1051,15 +1049,15 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
       {rowMenu
         ? createPortal(
             <div data-row-menu-panel role="menu" aria-label="Row actions" className="fixed z-[400] rounded-lg border border-gray-200 bg-white py-1 shadow-lg" style={{ top: rowMenu.top, left: rowMenu.left, minWidth: ROW_MENU_MIN_WIDTH_PX }}>
-              <button type="button" role="menuitem" disabled={isRowMenuDeleteDisabled} className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => { if (isRowMenuDeleteDisabled) return; const id = rowMenu.rowId; setRowMenu(null); setRowDeleteConfirmId(id); }}>
+              <button type="button" role="menuitem" disabled={isRowMenuDeleteDisabled} className="block w-full cursor-pointer px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => { if (isRowMenuDeleteDisabled) return; const id = rowMenu.rowId; setRowMenu(null); setRowDeleteConfirmId(id); }}>
                 Void
               </button>
               {showRowMenuPublish ? (
-                <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onRowPublish?.(rowMenu.rowId); setRowMenu(null); }}>
+                <button type="button" role="menuitem" className="block w-full cursor-pointer px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onRowPublish?.(rowMenu.rowId); setRowMenu(null); }}>
                   Publish
                 </button>
               ) : null}
-              {showRowMenuRepublish ? <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onRowRepublish?.(rowMenu.rowId); setRowMenu(null); }}>Republish</button> : null}
+              {showRowMenuRepublish ? <button type="button" role="menuitem" className="block w-full cursor-pointer px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onRowRepublish?.(rowMenu.rowId); setRowMenu(null); }}>Republish</button> : null}
             </div>,
             document.body,
           )

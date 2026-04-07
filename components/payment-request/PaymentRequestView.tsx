@@ -38,6 +38,11 @@ function formatAmount(value: string | number): string {
 function mapBillToRow(bill: BillListItem): PaymentRequestRow {
   const status = billStatusToDisplayLabel(bill.status);
   const symbol = bill.currency_code || "HK$";
+  const statusNorm = (bill.status ?? "").trim().toLowerCase().replace(/-/g, "_");
+  const xeroActive =
+    (bill.published ?? "").trim() === "published" ||
+    statusNorm === "authorised" ||
+    statusNorm === "authorized";
 
   return {
     id: bill.id,
@@ -55,7 +60,7 @@ function mapBillToRow(bill: BillListItem): PaymentRequestRow {
     payment: "",
     paidDate: bill.paid_at ? formatDate(bill.paid_at) : "",
     bankslip: "",
-    xeroActive: bill.published === "published",
+    xeroActive,
   };
 }
 

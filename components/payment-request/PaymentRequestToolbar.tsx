@@ -268,7 +268,7 @@ export function PaymentRequestToolbar({
                   {PAYMENT_REQUEST_STATUS_FILTERS.map((label) => {
                     const isActive = activeStatus === label;
                     return (
-                      <button key={label} type="button" role="menuitem" className={`block w-full px-3 py-2.5 text-left text-sm font-medium transition-colors ${isActive ? "bg-secondary/15 text-secondary" : "text-primary hover:bg-gray-100"}`} onClick={() => { onActiveStatusChange(label); setStatusOpen(false); setStatusMenu(null); }}>
+                      <button key={label} type="button" role="menuitem" className={`block w-full cursor-pointer px-3 py-2.5 text-left text-sm font-medium transition-colors ${isActive ? "bg-secondary/15 text-secondary" : "text-primary hover:bg-gray-100"}`} onClick={() => { onActiveStatusChange(label); setStatusOpen(false); setStatusMenu(null); }}>
                         {label}
                       </button>
                     );
@@ -364,10 +364,10 @@ export function PaymentRequestToolbar({
               ? createPortal(
                   <div data-bulk-menu-panel role="menu" aria-label="Bulk actions" className="fixed z-[400] rounded-lg border border-gray-200 bg-white py-1 shadow-lg" style={{ top: bulkMenu.top, left: bulkMenu.left, minWidth: bulkMenu.minWidth }}>
                     {!(selectionContainsPaid && !canVoidPaid) ? (
-                      <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50" onClick={() => { onBulkDeleteSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Void</button>
+                      <button type="button" role="menuitem" className="block w-full cursor-pointer px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50" onClick={() => { onBulkDeleteSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Void</button>
                     ) : null}
                     {canPublish ? (
-                      <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onBulkPublishSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Publish</button>
+                      <button type="button" role="menuitem" className="block w-full cursor-pointer px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onBulkPublishSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Publish</button>
                     ) : null}
                   </div>,
                   document.body,

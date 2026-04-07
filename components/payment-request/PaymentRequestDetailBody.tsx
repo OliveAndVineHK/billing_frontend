@@ -21,6 +21,7 @@ import {
 } from "@/lib/api";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
 import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
 import { enrichAccountCodeWithOptions } from "@/lib/billFormSelectOptions";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
@@ -39,7 +40,6 @@ import {
   PaymentRequestDetailedInfo,
   type PaymentRequestDetailedInfoData,
 } from "./PaymentRequestDetailedInfo";
-
 export type PaymentRequestDetailBodyProps = {
   /** Called after the bill is refreshed from the server so the header status badge can update. */
   onBillUpdated?: () => void;
@@ -427,6 +427,46 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
 
   const billIsDraft = (bill?.status ?? "").toLowerCase() === "draft";
 
+  const billDisplayStatus = useMemo(() => (bill ? billStatusToDisplayLabel(bill.status) : ""), [bill]);
+  const billStatusNormalized = useMemo(
+    () => (bill?.status ?? "").trim().toLowerCase().replace(/-/g, "_"),
+    [bill?.status],
+  );
+  const xeroPublishedToMenu = useMemo(() => {
+    if (!bill) return false;
+    if ((bill.published ?? "").trim() === "published") return true;
+    return billStatusNormalized === "authorised" || billStatusNormalized === "authorized";
+  }, [bill, billStatusNormalized]);
+  const actionOverflowShowPublish = useMemo(
+    () =>
+      !xeroPublishedToMenu &&
+      isElevated &&
+      !!bill &&
+      billDisplayStatus !== "Draft" &&
+      billDisplayStatus !== "Voided",
+    [isElevated, bill, billDisplayStatus, xeroPublishedToMenu],
+  );
+  const actionOverflowShowRepublish = useMemo(
+    () =>
+      xeroPublishedToMenu &&
+      isElevated &&
+      !!bill &&
+      billDisplayStatus !== "Draft" &&
+      billDisplayStatus !== "Voided",
+    [isElevated, bill, billDisplayStatus, xeroPublishedToMenu],
+  );
+  const actionOverflowVoidDisabled = useMemo(
+    () =>
+      loadingBill ||
+      !bill ||
+      isDeleting ||
+      isPublishing ||
+      billDisplayStatus === "Voided" ||
+      ((billDisplayStatus === "Paid" || billDisplayStatus === "Partially paid") && !isElevated),
+    [loadingBill, bill, isDeleting, isPublishing, billDisplayStatus, isElevated],
+  );
+  const actionOverflowTriggerDisabled = loadingBill || !bill || bill?.status === "voided";
+
   const handleOpenUploadAttachment = useCallback(() => {
     setUploadAttachmentOpen(true);
   }, []);
@@ -510,7 +550,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             }}
           />
         </div>
-        <div className="min-w-0 max-lg:order-1 lg:order-none lg:col-start-2 lg:row-start-1 lg:self-center">
+        <div className="min-w-0 w-full max-w-full max-lg:order-1 lg:order-none lg:col-start-2 lg:row-start-1 lg:self-center">
           <BillActionBar
             onDeleteBill={handleRequestDeleteBill}
             onPublishToXero={handlePublishToXero}
@@ -518,6 +558,24 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             publishDisabled={loadingBill || !bill || bill?.status === "voided" || !isElevated}
             publishStatus={(bill?.published as "not_published" | "published" | "failed") ?? "not_published"}
             publishPending={isPublishing}
+            showVoidBill={false}
+            endRowPrefix={
+              !isEditing ? (
+                <button
+                  type="button"
+                  onClick={handleEdit}
+                  disabled={
+                    loadingBill ||
+                    !bill ||
+                    bill?.status === "voided" ||
+                    ((bill?.status === "paid" || bill?.status === "authorised") && !isElevated)
+                  }
+                  className="inline-flex h-10 min-h-[44px] w-auto max-w-full shrink-0 cursor-pointer items-center justify-center rounded-full border border-primary/25 bg-white px-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+                >
+                  Edit
+                </button>
+              ) : null
+            }
             draftSubmit={
               billIsDraft
                 ? {
@@ -533,6 +591,11 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
                   }
                 : undefined
             }
+            useActionsOverflowMenu
+            overflowShowPublish={actionOverflowShowPublish}
+            overflowShowRepublish={actionOverflowShowRepublish}
+            overflowMenuTriggerDisabled={actionOverflowTriggerDisabled}
+            overflowVoidDisabled={actionOverflowVoidDisabled}
           />
         </div>
         <div className="flex min-h-0 min-w-0 max-lg:order-3 flex-col lg:order-none lg:col-start-1 lg:row-start-2">
@@ -574,6 +637,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               onEdit={handleEdit}
               onCancel={handleCancel}
               onSave={handleSave}
+              editInCardHeader={false}
             />
           ) : null}
 

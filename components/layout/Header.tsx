@@ -11,6 +11,7 @@ type HeaderProps = {
   backHref?: string;
   backLabel?: string;
   statusBadge?: ReactNode;
+  titleActions?: ReactNode;
   navItems?: { href: string; label: string }[];
   companyName?: string;
   companyAbbreviation?: string;
@@ -24,6 +25,7 @@ export function Header({
   backHref,
   backLabel = "Bills",
   statusBadge,
+  titleActions,
   navItems,
   companyName = "Insert Company Here",
   companyAbbreviation = "---",
@@ -55,6 +57,7 @@ export function Header({
         ) : null}
         <span className="min-w-0 cursor-default truncate text-base font-semibold text-black sm:text-lg">{title}</span>
         {statusBadge}
+        {titleActions}
       </div>
     </div>
   ) : homeHref ? (
