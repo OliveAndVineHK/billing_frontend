@@ -291,6 +291,7 @@ export function PaymentRequestModal({
       file,
     }));
     setUploadedFiles((prev) => [...prev, ...added]);
+    setPreviewFileId(added[added.length - 1]?.id ?? null);
     clearFieldError("attachments");
     e.target.value = "";
   };
@@ -529,7 +530,7 @@ export function PaymentRequestModal({
               Uploaded files ({uploadedFiles.length})
             </p>
             {uploadedFiles.length > 0 ? (
-              <span className="shrink-0 text-[10px] font-medium text-primary/55 sm:text-[11px]">Click to preview</span>
+              <span className="shrink-0 text-[10px] font-medium text-primary/55 sm:text-[11px]">Click the file to preview</span>
             ) : null}
           </div>
           <ul className="flex flex-col gap-2">
