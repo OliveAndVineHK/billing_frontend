@@ -97,7 +97,7 @@ export function PaymentRequestView() {
   const [bills, setBills] = useState<PaymentRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [recordPaymentBillId, setRecordPaymentBillId] = useState<string | null>(null);
+  const [recordPaymentTarget, setRecordPaymentTarget] = useState<{ billId: string; readOnly: boolean } | null>(null);
   const [selectedBillIds, setSelectedBillIds] = useState<string[]>([]);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
@@ -262,7 +262,7 @@ export function PaymentRequestView() {
             statusFilter={statusFilter}
             loading={loading}
             onSelectionChange={onTableSelectionChange}
-            onRecordPayment={(rowId) => setRecordPaymentBillId(rowId)}
+            onRecordPayment={(rowId, readOnly) => setRecordPaymentTarget({ billId: rowId, readOnly: readOnly ?? false })}
             onRowClick={(rowId) => router.push(`/payment-request/${rowId}`)}
             onRowDelete={async (rowId) => {
               try {
@@ -296,17 +296,18 @@ export function PaymentRequestView() {
         onConfirm={executeBulkDelete}
       />
       <RecordPaymentModal
-        open={recordPaymentBillId != null}
-        onClose={() => setRecordPaymentBillId(null)}
-        billId={recordPaymentBillId ?? ""}
+        open={recordPaymentTarget != null}
+        onClose={() => setRecordPaymentTarget(null)}
+        billId={recordPaymentTarget?.billId ?? ""}
+        readOnly={recordPaymentTarget?.readOnly ?? false}
         invoiceAmount={
-          recordPaymentBillId
-            ? parseFloat(rawBills.find((b) => b.id === recordPaymentBillId)?.amount ?? "0")
+          recordPaymentTarget
+            ? parseFloat(rawBills.find((b) => b.id === recordPaymentTarget.billId)?.amount ?? "0")
             : 0
         }
         currencyCode={
-          recordPaymentBillId
-            ? rawBills.find((b) => b.id === recordPaymentBillId)?.currency_code?.trim() || "HKD"
+          recordPaymentTarget
+            ? rawBills.find((b) => b.id === recordPaymentTarget.billId)?.currency_code?.trim() || "HKD"
             : "HKD"
         }
         onPaymentSaved={loadBills}

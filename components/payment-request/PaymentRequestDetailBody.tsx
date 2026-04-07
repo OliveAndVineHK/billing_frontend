@@ -69,6 +69,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
 
   const [isPublishing, setIsPublishing] = useState(false);
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [recordPaymentReadOnly, setRecordPaymentReadOnly] = useState(false);
   const [deleteBillConfirmOpen, setDeleteBillConfirmOpen] = useState(false);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [overpaymentWarningOpen, setOverpaymentWarningOpen] = useState(false);
@@ -689,21 +690,62 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             />
           ) : null}
 
-          <button type="button"
-            disabled={loadingBill || !bill || billIsDraft || bill?.status === "voided" || bill?.status === "paid" || bill?.status === "authorised" || !isElevated}
-            onClick={() => setRecordPaymentOpen(true)}
-            aria-label={
-              billIsDraft
-                ? "Draft — add payment not available"
-                : "Add payment"
-            }
-            className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
-          >
-            Add Payment
-            <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
-              add
-            </span>
-          </button>
+          {loadingBill || !bill ? (
+            <button
+              type="button"
+              disabled
+              aria-label={loadingBill ? "Loading bill" : "Add payment"}
+              className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
+            >
+              Add Payment
+              <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
+                add
+              </span>
+            </button>
+          ) : billIsDraft || bill?.status === "voided" ? (
+            <button
+              type="button"
+              disabled
+              aria-label={billIsDraft ? "Draft — add payment not available" : "Voided — add payment not available"}
+              className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
+            >
+              Add Payment
+              <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
+                add
+              </span>
+            </button>
+          ) : bill?.status === "paid" || bill?.status === "authorised" ? (
+            <button
+              type="button"
+              disabled={!isElevated}
+              onClick={() => {
+                setRecordPaymentReadOnly(true);
+                setRecordPaymentOpen(true);
+              }}
+              aria-label={
+                isElevated ? "View payments" : "Insufficient permissions — view payments not available"
+              }
+              className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-lg border-0 bg-secondary/15 px-3 text-left text-base font-medium text-secondary transition-colors hover:bg-secondary/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-[#F5F5F5] disabled:text-primary/40 disabled:hover:bg-[#F5F5F5] sm:h-[46px] sm:self-start sm:px-3.5"
+            >
+              View payments
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={!isElevated}
+              onClick={() => {
+                setRecordPaymentReadOnly(false);
+                setRecordPaymentOpen(true);
+              }}
+              aria-label="Add payment"
+              className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
+            >
+              Add Payment
+              <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
+                add
+              </span>
+            </button>
+          )}
           <PaymentHistoryCard
             canDeletePayments={isElevated}
             rows={payments.map((p): PaymentHistoryRow => {
@@ -769,8 +811,12 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       />
       <RecordPaymentModal
         open={recordPaymentOpen}
-        onClose={() => setRecordPaymentOpen(false)}
+        onClose={() => {
+          setRecordPaymentOpen(false);
+          setRecordPaymentReadOnly(false);
+        }}
         billId={requestId}
+        readOnly={recordPaymentReadOnly}
         invoiceAmount={invoiceTotalMajor}
         currencyCode={formData?.currencyCode ?? "HKD"}
         onPaymentSaved={async () => {

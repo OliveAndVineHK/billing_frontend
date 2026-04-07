@@ -344,6 +344,9 @@ const statusTagVoidedClass =
 const recordPaymentButtonClass =
   "box-border inline-flex h-10 min-h-10 w-max max-w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-xs font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-[#EDEDED] disabled:text-[#C0C0C0] disabled:shadow-none disabled:hover:opacity-100 sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm";
 
+const viewPaymentsButtonClass =
+  "box-border inline-flex h-10 min-h-10 w-max max-w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-0 bg-secondary/15 px-3 text-xs font-medium text-secondary transition-colors hover:bg-secondary/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-[#F5F5F5] disabled:text-primary/40 disabled:hover:bg-[#F5F5F5] sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm";
+
 const uploadBankslipButtonClass =
   "box-border inline-flex h-10 min-h-10 w-max max-w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-secondary bg-white px-3 text-xs font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm";
 
@@ -365,14 +368,13 @@ function unpaidAmountTextClass(status: string): string {
 
 type PaymentRequestTableProps = {
   rows?: PaymentRequestRow[];
-  onRecordPayment?: (rowId: string) => void;
+  onRecordPayment?: (rowId: string, readOnly?: boolean) => void;
   statusFilter?: PaymentRequestStatusFilter;
   onRowDelete?: (rowId: string) => void;
   onRowPublish?: (rowId: string) => void;
   onRowRepublish?: (rowId: string) => void;
   onRowClick?: (rowId: string) => void;
   loading?: boolean;
-  /** Called whenever the set of selected row ids changes (for toolbar bulk actions). */
   onSelectionChange?: (selectedIds: string[]) => void;
   /** After bank slip files are uploaded via API for a bill. */
   onBankSlipUploaded?: () => void;
@@ -793,10 +795,20 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                     </div>
                     <div className="mt-4 flex min-h-[2.5rem] min-w-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <div className="flex min-w-0 min-h-10 flex-1 flex-wrap items-center gap-2">
-                        {!isPaid && !isVoided && !isDraft && isElevated ? (
-                          <button type="button" aria-label={`Record payment for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}>
-                            <span className="whitespace-nowrap">Record Payment</span>
-                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>add</span>
+                        {!isVoided && !isDraft && isElevated ? (
+                          isPaid ? (
+                            <button type="button" aria-label={`View payments for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); onRecordPayment?.(row.id, true); }} className={viewPaymentsButtonClass}>
+                              <span className="whitespace-nowrap">View payments</span>
+                            </button>
+                          ) : (
+                            <button type="button" aria-label={`Record payment for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); onRecordPayment?.(row.id); }} className={recordPaymentButtonClass}>
+                              <span className="whitespace-nowrap">Record Payment</span>
+                              <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>add</span>
+                            </button>
+                          )
+                        ) : !isVoided && !isDraft && isPaid && !isElevated ? (
+                          <button type="button" disabled aria-label={`Insufficient permissions — view payments not available for ${row.contactTitle}`} className={viewPaymentsButtonClass}>
+                            <span className="whitespace-nowrap">View payments</span>
                           </button>
                         ) : null}
                       </div>
@@ -976,35 +988,48 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                               ) : null}
                             </td>
                           );
-                        case "Payment":
+                        case "Payment": {
+                          const canViewPaid = isPaid && !isVoided && !isDraft && isElevated;
+                          const canRecord = !isPaid && !isVoided && !isDraft && isElevated;
+                          const disabledViewPaid = isPaid && !isVoided && !isDraft && !isElevated;
                           return (
                             <td key={title} className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}>
                               <button
                                 type="button"
-                                disabled={isPaid || isVoided || isDraft || !isElevated}
+                                disabled={!canViewPaid && !canRecord}
                                 aria-label={
                                   isVoided
                                     ? `Voided — record payment not available for ${row.contactTitle}`
                                     : isDraft
                                       ? `Draft — record payment not available for ${row.contactTitle}`
-                                      : isPaid
-                                        ? `Already paid — ${row.contactTitle}`
-                                        : !isElevated
-                                          ? `Insufficient permissions — record payment not available for ${row.contactTitle}`
-                                          : `Record payment for ${row.contactTitle}`
+                                      : canViewPaid
+                                        ? `View payments for ${row.contactTitle}`
+                                        : disabledViewPaid
+                                          ? `Insufficient permissions — view payments not available for ${row.contactTitle}`
+                                          : !isElevated
+                                            ? `Insufficient permissions — record payment not available for ${row.contactTitle}`
+                                            : `Record payment for ${row.contactTitle}`
                                 }
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (isPaid || isVoided || isDraft || !isElevated) return;
-                                  onRecordPayment?.(row.id);
+                                  if (canViewPaid) {
+                                    onRecordPayment?.(row.id, true);
+                                    return;
+                                  }
+                                  if (canRecord) onRecordPayment?.(row.id);
                                 }}
-                                className={recordPaymentButtonClass}
+                                className={canViewPaid || disabledViewPaid ? viewPaymentsButtonClass : recordPaymentButtonClass}
                               >
-                                <span className="whitespace-nowrap">Record Payment</span>
-                                <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>add</span>
+                                <span className="whitespace-nowrap">{canViewPaid || disabledViewPaid ? "View payments" : "Record Payment"}</span>
+                                {canViewPaid || disabledViewPaid ? null : (
+                                  <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>
+                                    add
+                                  </span>
+                                )}
                               </button>
                             </td>
                           );
+                        }
                         case "Paid Date":
                           return (
                             <td key={title} className={`${singleLineDateCellClass} ${actionBodyCellBg}`}>
