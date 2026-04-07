@@ -106,7 +106,17 @@ function dateSortValue(s: string): number | null {
   if (!t || t === "-" || t === "—") return null;
   const parsed = Date.parse(t);
   if (!Number.isNaN(parsed)) return parsed;
-  // Display format from formatDate() — Date.parse is not reliable for this across engines.
+  const slash = /^(\d{1,2})\/([A-Za-z]{3})\/(\d{4})$/.exec(t);
+  if (slash) {
+    const day = Number.parseInt(slash[1], 10);
+    const year = Number.parseInt(slash[3], 10);
+    const monKey = slash[2].slice(0, 3).toLowerCase();
+    const month = SHORT_MONTH_TO_INDEX[monKey];
+    if (Number.isFinite(day) && Number.isFinite(year) && month !== undefined) {
+      const utc = Date.UTC(year, month, day);
+      return Number.isNaN(utc) ? null : utc;
+    }
+  }
   const m = /^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/.exec(t);
   if (m) {
     const day = Number.parseInt(m[1], 10);
@@ -185,9 +195,9 @@ const DEMO_ROWS: PaymentRequestRow[] = [
     id: "1",
     contactTitle: "Young Bros Transport",
     contactCaption: "Corporate stationery and printer supplies",
-    invoiceDate: "03 Mar 2026",
+    invoiceDate: "03/Mar/2026",
     status: "Draft",
-    submittedDate: "01 Mar 2026",
+    submittedDate: "01/Mar/2026",
     unpaidAmount: "HK$ 1,500.00",
     invoiceTotal: "1,000.00",
     payment: "",
@@ -200,9 +210,9 @@ const DEMO_ROWS: PaymentRequestRow[] = [
     id: "2",
     contactTitle: "Chun Fat Seafood",
     contactCaption: "Monthly supplier invoice",
-    invoiceDate: "28 Feb 2026",
+    invoiceDate: "28/Feb/2026",
     status: "Payment Requested",
-    submittedDate: "27 Feb 2026",
+    submittedDate: "27/Feb/2026",
     unpaidAmount: "HK$ 2,400.00",
     invoiceTotal: "2,000.00",
     payment: "",
@@ -215,24 +225,24 @@ const DEMO_ROWS: PaymentRequestRow[] = [
     id: "3",
     contactTitle: "Harbour Logistics Ltd",
     contactCaption: "Freight forwarding — Q1",
-    invoiceDate: "15 Mar 2026",
+    invoiceDate: "15/Mar/2026",
     status: "Paid",
-    submittedDate: "14 Mar 2026",
+    submittedDate: "14/Mar/2026",
     unpaidAmount: "HK$ 0.00",
     invoiceTotal: "890.00",
     payment: "",
-    paidDate: "16 Mar 2026",
+    paidDate: "16/Mar/2026",
     bankslip: "",
     bankslipFileCount: 1,
     bankSlipDetails: {
       createdBy: "John Doe",
-      createdAt: "14 Mar 2026 10:22 HKT",
+      createdAt: "14/Mar/2026 10:22 HKT",
       toName: "Harbour Logistics Ltd",
       toAccount: "147-622484-838",
       amount: "HK$ 0.00",
       fromName: "BUSINESS INTEGRATED SAVINGS - HKD SAVINGS",
       fromAccount: "040-286XXX-838",
-      when: "15 Mar 2026",
+      when: "15/Mar/2026",
       files: [{ id: "h1", name: "Harbour_Logistics_receipt.pdf" }],
     },
     currencyCode: "HKD",
@@ -242,41 +252,41 @@ const DEMO_ROWS: PaymentRequestRow[] = [
     id: "4",
     contactTitle: "Metro Office Supplies",
     contactCaption: "Stationery — returned to sender",
-    invoiceDate: "10 Mar 2026",
+    invoiceDate: "10/Mar/2026",
     status: "Returned",
-    submittedDate: "08 Mar 2026",
+    submittedDate: "08/Mar/2026",
     unpaidAmount: "HK$ 320.00",
     invoiceTotal: "320.00",
     payment: "",
-    paidDate: "11 Mar 2026",
+    paidDate: "11/Mar/2026",
     bankslip: "",
     bankslipFileCount: 2,
     bankSlipDetails: {
       createdBy: "John Doe",
-      createdAt: "03 Mar 2026 13:36 HKT",
+      createdAt: "03/Mar/2026 13:36 HKT",
       toName: "OL*VE AN* V*NE LTD",
       toAccount: "147-622484-838",
       amount: "HK$ 1,500.00",
       fromName: "BUSINESS INTEGRATED SAVINGS - HKD SAVINGS",
       fromAccount: "040-286XXX-838",
-      when: "03 Mar 2026",
+      when: "03/Mar/2026",
       files: [
         {
           id: "m1",
           name: "01 Nov 2025_ChunFatSeafood_240 1.pdf",
           details: {
-            createdAt: "03 Mar 2026 13:36 HKT",
+            createdAt: "03/Mar/2026 13:36 HKT",
             amount: "HK$ 1,500.00",
-            when: "03 Mar 2026",
+            when: "03/Mar/2026",
           },
         },
         {
           id: "m2",
           name: "Metro_Office_slip_2.pdf",
           details: {
-            createdAt: "10 Mar 2026 09:15 HKT",
+            createdAt: "10/Mar/2026 09:15 HKT",
             amount: "HK$ 320.00",
-            when: "10 Mar 2026",
+            when: "10/Mar/2026",
             toName: "Metro Office Supplies",
           },
         },
@@ -289,9 +299,9 @@ const DEMO_ROWS: PaymentRequestRow[] = [
     id: "5",
     contactTitle: "Pacific Utilities Co.",
     contactCaption: "Duplicate billing — voided",
-    invoiceDate: "02 Mar 2026",
+    invoiceDate: "02/Mar/2026",
     status: "Voided",
-    submittedDate: "01 Mar 2026",
+    submittedDate: "01/Mar/2026",
     unpaidAmount: "",
     invoiceTotal: "",
     payment: "",

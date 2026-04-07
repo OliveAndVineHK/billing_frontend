@@ -25,7 +25,7 @@ import {
   BILL_CURRENCY_SELECT_OPTIONS,
   modalCurrencyToIsoCode,
 } from "@/lib/billFormSelectOptions";
-import { openDatePicker } from "@/lib/openDatePicker";
+import { DateTextField } from "@/components/DateTextField";
 
 export type PaymentRequestModalProps = {
   open: boolean;
@@ -101,6 +101,14 @@ function validatePaymentRequestForm(values: {
   return e;
 }
 
+function todayLocalISODate() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function FieldLabel({
   htmlFor,
   children,
@@ -132,8 +140,6 @@ export function PaymentRequestModal({
   const titleId = useId();
   const previewSubtitleId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const invoiceDateRef = useRef<HTMLInputElement>(null);
-  const dueDateRef = useRef<HTMLInputElement>(null);
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedEntry[]>([]);
   const [previewFileId, setPreviewFileId] = useState<string | null>(null);
@@ -254,7 +260,7 @@ export function PaymentRequestModal({
     setContact("");
     setContactInput("");
     setAccountCode("");
-    setInvoiceDate("");
+    setInvoiceDate(todayLocalISODate());
     setDueDate("");
     setBillNo("");
     let cancelled = false;
@@ -712,37 +718,23 @@ export function PaymentRequestModal({
                 <FieldLabel htmlFor="pr-invoice-date" required>
                   Invoice Date
                 </FieldLabel>
-                <div className="relative">
-                  <input
-                    ref={invoiceDateRef}
-                    id="pr-invoice-date"
-                    type="date"
-                    value={invoiceDate ?? ""}
-                    onChange={(e) => {
-                      setInvoiceDate(e.target.value);
-                      clearFieldError("invoiceDate");
-                    }}
-                    onClick={(e) => openDatePicker(e.currentTarget)}
-                    aria-invalid={!!fieldErrors.invoiceDate}
-                    className={
-                      "pr-date-input relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
-                      (invoiceDate ? "text-black " : "text-transparent ") +
-                      (fieldErrors.invoiceDate
-                        ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
-                        : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
-                    }
-                  />
-                  {!invoiceDate ? (
-                    <span className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45" aria-hidden>
-                      mm/dd/yyyy
-                    </span>
-                  ) : null}
-                  <button type="button" onClick={() => openDatePicker(invoiceDateRef.current)} className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for invoice date">
-                    <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                      calendar_clock
-                    </span>
-                  </button>
-                </div>
+                <DateTextField
+                  id="pr-invoice-date"
+                  value={invoiceDate ?? ""}
+                  onChange={(iso) => {
+                    setInvoiceDate(iso);
+                    clearFieldError("invoiceDate");
+                  }}
+                  invalid={!!fieldErrors.invoiceDate}
+                  calendarAriaLabel="Open calendar for invoice date"
+                  textInputClassName={
+                    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-primary/45 focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
+                    (fieldErrors.invoiceDate
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
+                      : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
+                  }
+                  calendarButtonClassName="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                />
                 {fieldErrors.invoiceDate ? (
                   <p className="mt-1 text-xs text-red-600" role="alert">
                     {fieldErrors.invoiceDate}
@@ -753,40 +745,23 @@ export function PaymentRequestModal({
                 <FieldLabel htmlFor="pr-due-date" required>
                   Due Date
                 </FieldLabel>
-                <div className="relative">
-                  <input
-                    ref={dueDateRef}
-                    id="pr-due-date"
-                    type="date"
-                    value={dueDate ?? ""}
-                    onChange={(e) => {
-                      setDueDate(e.target.value);
-                      clearFieldError("dueDate");
-                    }}
-                    onClick={(e) => openDatePicker(e.currentTarget)}
-                    aria-invalid={!!fieldErrors.dueDate}
-                    className={
-                      "pr-date-input relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
-                      (dueDate ? "text-black " : "text-transparent ") +
-                      (fieldErrors.dueDate
-                        ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
-                        : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
-                    }
-                  />
-                  {!dueDate ? (
-                    <span
-                      className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45"
-                      aria-hidden
-                    >
-                      mm/dd/yyyy
-                    </span>
-                  ) : null}
-                  <button type="button" onClick={() => openDatePicker(dueDateRef.current)} className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for due date">
-                    <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                      calendar_clock
-                    </span>
-                  </button>
-                </div>
+                <DateTextField
+                  id="pr-due-date"
+                  value={dueDate ?? ""}
+                  onChange={(iso) => {
+                    setDueDate(iso);
+                    clearFieldError("dueDate");
+                  }}
+                  invalid={!!fieldErrors.dueDate}
+                  calendarAriaLabel="Open calendar for due date"
+                  textInputClassName={
+                    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-primary/45 focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
+                    (fieldErrors.dueDate
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
+                      : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
+                  }
+                  calendarButtonClassName="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                />
                 {fieldErrors.dueDate ? (
                   <p className="mt-1 text-xs text-red-600" role="alert">
                     {fieldErrors.dueDate}

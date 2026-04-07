@@ -5,6 +5,7 @@ import {
 } from "./api";
 import { currencyLabelForCode } from "./currencyDisplay";
 import type { BankSlipDetails, BankSlipFileEntry } from "@/components/payment-request/BankSlipDetailsModal";
+import { formatIsoDateAsDdMmmYyyy } from "./dateDisplayFormat";
 
 function formatApiDateTime(iso: string): string {
   try {
@@ -25,17 +26,16 @@ function formatApiDateTime(iso: string): string {
 
 function formatBillDate(dateStr: string): string {
   if (!dateStr) return "";
-  try {
-    const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return dateStr;
+  const head = dateStr.trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(head)) {
+    return formatIsoDateAsDdMmmYyyy(head) || dateStr;
   }
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return formatIsoDateAsDdMmmYyyy(`${y}-${m}-${day}`) || dateStr;
 }
 
 function formatPaymentDisplayAmount(currencyCode: string | undefined, amount: string): string {

@@ -2,9 +2,9 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { DateTextField } from "@/components/DateTextField";
 import { PaymentRequestModal } from "@/components/PaymentRequestModal";
 import { ThemedSelect } from "@/components/ThemedSelect";
-import { openDatePicker } from "@/lib/openDatePicker";
 import { useUserRole } from "@/lib/useUserRole";
 
 const FILTER_DATE_TYPE_OPTIONS = [
@@ -18,8 +18,10 @@ const fieldLabelClass = "mb-1.5 block text-[11px] font-semibold tracking-wide te
 const textInputClass =
   "box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm";
 
-const dateInputClass =
-  "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
+const filterDateTextClass =
+  "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
+const filterDateCalendarBtnClass =
+  "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
 
 export const PAYMENT_REQUEST_STATUS_FILTERS = ["All", "Draft", "Payment Requested", "Returned", "Paid", "Partially paid", "Voided"] as const;
 export type PaymentRequestStatusFilter = (typeof PAYMENT_REQUEST_STATUS_FILTERS)[number];
@@ -99,8 +101,6 @@ export function PaymentRequestToolbar({
   const bulkButtonRef = useRef<HTMLButtonElement | null>(null);
   const statusWrapRef = useRef<HTMLDivElement | null>(null);
   const statusButtonRef = useRef<HTMLButtonElement | null>(null);
-  const startDateRef = useRef<HTMLInputElement>(null);
-  const endDateRef = useRef<HTMLInputElement>(null);
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
   const [dateType, setDateType] = useState("");
@@ -363,21 +363,27 @@ export function PaymentRequestToolbar({
                         <label htmlFor={`${filterFieldIds}-start-date`} className={fieldLabelClass}>
                           Start Date
                         </label>
-                        <div className="relative">
-                          <input ref={startDateRef} id={`${filterFieldIds}-start-date`} type="date" value={startDate ?? ""} onChange={(e) => setStartDate(e.target.value)} onClick={(e) => openDatePicker(e.currentTarget)} className={`${dateInputClass} relative z-[1] ${startDate ? "text-black " : "text-transparent "}`} />
-                          {!startDate ? <span className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45" aria-hidden>mm/dd/yyyy</span> : null}
-                          <button type="button" onClick={() => openDatePicker(startDateRef.current)} className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for start date"><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>calendar_clock</span></button>
-                        </div>
+                        <DateTextField
+                          id={`${filterFieldIds}-start-date`}
+                          value={startDate ?? ""}
+                          onChange={setStartDate}
+                          calendarAriaLabel="Open calendar for start date"
+                          textInputClassName={filterDateTextClass}
+                          calendarButtonClassName={filterDateCalendarBtnClass}
+                        />
                       </div>
                       <div>
                         <label htmlFor={`${filterFieldIds}-end-date`} className={fieldLabelClass}>
                           End Date
                         </label>
-                        <div className="relative">
-                          <input ref={endDateRef} id={`${filterFieldIds}-end-date`} type="date" value={endDate ?? ""} onChange={(e) => setEndDate(e.target.value)} onClick={(e) => openDatePicker(e.currentTarget)} className={`${dateInputClass} relative z-[1] ${endDate ? "text-black " : "text-transparent "}`} />
-                          {!endDate ? <span className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45" aria-hidden>mm/dd/yyyy</span> : null}
-                          <button type="button" onClick={() => openDatePicker(endDateRef.current)} className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for end date"><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>calendar_clock</span></button>
-                        </div>
+                        <DateTextField
+                          id={`${filterFieldIds}-end-date`}
+                          value={endDate ?? ""}
+                          onChange={setEndDate}
+                          calendarAriaLabel="Open calendar for end date"
+                          textInputClassName={filterDateTextClass}
+                          calendarButtonClassName={filterDateCalendarBtnClass}
+                        />
                       </div>
                     </div>
                   </div>
