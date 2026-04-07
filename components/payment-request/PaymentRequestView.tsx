@@ -228,6 +228,11 @@ export function PaymentRequestView() {
         bulkSelectedCount={selectedBillIds.length}
         onBulkDeleteSelected={openBulkDeleteModal}
         onBulkPublishSelected={runBulkPublishSelected}
+        appliedMinAmount={minAmount}
+        appliedMaxAmount={maxAmount}
+        appliedDateType={dateType}
+        appliedStartDate={startDate}
+        appliedEndDate={endDate}
         onApplyFilters={(f) => {
           setMinAmount(f.minAmount ?? "");
           setMaxAmount(f.maxAmount ?? "");

@@ -10,9 +10,9 @@ import { useUserRole } from "@/lib/useUserRole";
 
 const COLUMN_TITLES = [
   "Contact / Description",
-  "Invoice Date",
-  "Status",
   "Submitted Date",
+  "Status",
+  "Invoice Date",
   "Unpaid Amount",
   "Payment",
   "Paid Date",
@@ -383,10 +383,51 @@ type ColumnSelectorKey = "contact" | "submittedDate" | "invoiceDate" | "status" 
 const COLUMN_SELECTOR_ITEMS: Array<{ key: ColumnSelectorKey; label: string }> = [
   { key: "contact", label: "Contact / Description" },
   { key: "submittedDate", label: "Submitted Date" },
-  { key: "invoiceDate", label: "Invoice Date" },
   { key: "status", label: "Status" },
+  { key: "invoiceDate", label: "Invoice Date" },
   { key: "unpaidAmount", label: "Unpaid Amount" },
 ];
+
+/** Fixed column order (reordering UI removed). */
+const DEFAULT_COLUMN_ORDER: ColumnSelectorKey[] = COLUMN_SELECTOR_ITEMS.map((item) => item.key);
+
+const DEFAULT_COLUMN_VISIBILITY: Record<ColumnSelectorKey, boolean> = {
+  contact: true,
+  submittedDate: true,
+  invoiceDate: true,
+  status: true,
+  unpaidAmount: true,
+};
+
+const COLUMN_VISIBILITY_STORAGE_KEY = "payment-request-table-column-visibility";
+
+function loadStoredColumnVisibility(): Record<ColumnSelectorKey, boolean> {
+  const base = { ...DEFAULT_COLUMN_VISIBILITY };
+  if (typeof window === "undefined") return base;
+  try {
+    const raw = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
+    if (!raw) return base;
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed == null || typeof parsed !== "object") return base;
+    const o = parsed as Record<string, unknown>;
+    for (const key of Object.keys(base) as ColumnSelectorKey[]) {
+      const v = o[key];
+      if (typeof v === "boolean") base[key] = v;
+    }
+    return base;
+  } catch {
+    return base;
+  }
+}
+
+function persistColumnVisibility(next: Record<ColumnSelectorKey, boolean>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 
 const TITLE_SELECTOR_KEY: Partial<Record<PaymentRequestColumnTitle, ColumnSelectorKey>> = {
   "Contact / Description": "contact",
@@ -451,17 +492,9 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   const [rowDeletePending, setRowDeletePending] = useState(false);
   const [columnsMenu, setColumnsMenu] = useState<ColumnsMenuState | null>(null);
   const [sort, setSort] = useState<{ key: SortKey | null; dir: "asc" | "desc" }>({ key: "status", dir: "asc" });
-  const [columnVisibility, setColumnVisibility] = useState<Record<ColumnSelectorKey, boolean>>({
-    contact: true,
-    submittedDate: true,
-    invoiceDate: true,
-    status: true,
-    unpaidAmount: true,
-  });
-  const [columnOrder, setColumnOrder] = useState<ColumnSelectorKey[]>(() => COLUMN_SELECTOR_ITEMS.map((item) => item.key));
-  const [draggingColumnKey, setDraggingColumnKey] = useState<ColumnSelectorKey | null>(null);
+  const [columnVisibility, setColumnVisibility] = useState<Record<ColumnSelectorKey, boolean>>(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
+  const [columnVisibilityDraft, setColumnVisibilityDraft] = useState<Record<ColumnSelectorKey, boolean>>(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
-  /** Bill id for the open bank slip details modal — stable when transitioning to Upload modal. */
   const bankSlipDetailsBillIdRef = useRef<string | null>(null);
 
   const rowIdSet = useMemo(() => new Set(rows.map((r) => r.id)), [rows]);
@@ -474,6 +507,10 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   useEffect(() => {
     onSelectionChange?.([...selectedIds]);
   }, [selectedIds, onSelectionChange]);
+
+  useEffect(() => {
+    setColumnVisibility(loadStoredColumnVisibility());
+  }, []);
 
   useEffect(() => {
     setSelectedIds((prev) => {
@@ -512,10 +549,9 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
     selectableVisibleRows.some((r) => selectedIds.has(r.id)) && !allSelected;
   const visibleSelectorCount = COLUMN_SELECTOR_ITEMS.reduce((n, item) => n + (columnVisibility[item.key] ? 1 : 0), 0);
   const tableColCount = 1 + visibleSelectorCount + 2 + 2;
-  const orderedTableTitles = useMemo(() => [...columnOrder.map((key) => SELECTOR_TITLE[key]), ...NON_SELECTOR_TITLES], [columnOrder]);
-  const orderedSelectorItems = useMemo(
-    () => columnOrder.map((key) => COLUMN_SELECTOR_ITEMS.find((item) => item.key === key)).filter((item): item is { key: ColumnSelectorKey; label: string } => item != null),
-    [columnOrder],
+  const orderedTableTitles = useMemo(
+    () => [...DEFAULT_COLUMN_ORDER.map((key) => SELECTOR_TITLE[key]), ...NON_SELECTOR_TITLES],
+    [],
   );
 
   const bankSlipDetailsSourceRow = useMemo(() => {
@@ -639,18 +675,15 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
     setColumnsMenu((open) => (open ? null : { top, left }));
   };
 
-  const moveColumnOrder = (source: ColumnSelectorKey, target: ColumnSelectorKey) => {
-    if (source === target) return;
-    setColumnOrder((prev) => {
-      const from = prev.indexOf(source);
-      const to = prev.indexOf(target);
-      if (from < 0 || to < 0) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return next;
-    });
-  };
+  const prevColumnsMenuRef = useRef<ColumnsMenuState | null>(null);
+  useEffect(() => {
+    const wasOpen = prevColumnsMenuRef.current != null;
+    const isOpen = columnsMenu != null;
+    if (isOpen && !wasOpen) {
+      setColumnVisibilityDraft({ ...columnVisibility });
+    }
+    prevColumnsMenuRef.current = columnsMenu;
+  }, [columnsMenu, columnVisibility]);
 
   useEffect(() => {
     if (!columnsMenu) return;
@@ -1067,21 +1100,47 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
             <div data-columns-menu-panel role="dialog" aria-label="Columns selector" className="fixed z-[400] w-[min(18rem,calc(100vw-1rem))] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg" style={{ top: columnsMenu.top, left: columnsMenu.left }}>
               <div className="border-b border-gray-200 px-3 py-2">
                 <h3 className="text-sm font-semibold text-primary">Columns</h3>
-                <p className="mt-1 text-xs leading-snug text-primary/65">Select columns to show in the column or drag to reorder.</p>
+                <p className="mt-1 text-xs leading-snug text-primary/65">Select columns to show in the table.</p>
               </div>
               <ul className="max-h-[min(22rem,55dvh)] overflow-y-auto overscroll-contain py-1">
-                {orderedSelectorItems.map((item) => (
+                {COLUMN_SELECTOR_ITEMS.map((item) => (
                   <li key={item.key}>
-                    <label className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-gray-100" draggable onDragStart={() => setDraggingColumnKey(item.key)} onDragOver={(e) => e.preventDefault()} onDrop={() => { if (!draggingColumnKey) return; moveColumnOrder(draggingColumnKey, item.key); setDraggingColumnKey(null); }} onDragEnd={() => setDraggingColumnKey(null)}>
-                      <span className="material-symbols-outlined shrink-0 text-[20px] leading-none text-primary/55" aria-hidden>drag_indicator</span>
+                    <label className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-gray-100">
                       <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                      <input type="checkbox" className={HEADER_CHECKBOX_CLASS} checked={columnVisibility[item.key]} onChange={() => setColumnVisibility((prev) => ({ ...prev, [item.key]: !prev[item.key] }))} aria-label={`Toggle ${item.label} column`} suppressHydrationWarning />
+                      <input
+                        type="checkbox"
+                        className={HEADER_CHECKBOX_CLASS}
+                        checked={columnVisibilityDraft[item.key]}
+                        onChange={() =>
+                          setColumnVisibilityDraft((prev) => ({ ...prev, [item.key]: !prev[item.key] }))
+                        }
+                        aria-label={`Toggle ${item.label} column`}
+                        suppressHydrationWarning
+                      />
                     </label>
                   </li>
                 ))}
               </ul>
-              <div className="border-t border-gray-200 px-3 py-2 text-right">
-                <button type="button" className="inline-flex h-9 items-center rounded-lg bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary" onClick={() => setColumnsMenu(null)}>Save Changes</button>
+              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-3 py-2">
+                <button
+                  type="button"
+                  className="inline-flex h-9 min-h-[44px] items-center rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-9"
+                  onClick={() => setColumnVisibilityDraft({ ...DEFAULT_COLUMN_VISIBILITY })}
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex h-9 min-h-[44px] items-center rounded-lg bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-9"
+                  onClick={() => {
+                    const next = { ...columnVisibilityDraft };
+                    setColumnVisibility(next);
+                    persistColumnVisibility(next);
+                    setColumnsMenu(null);
+                  }}
+                >
+                  Save Changes
+                </button>
               </div>
             </div>,
             document.body,
