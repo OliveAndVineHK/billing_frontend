@@ -206,9 +206,7 @@ export function PaymentRequestDetailedInfo({
   const accountOptions = mergeSelectOption(accountOptionsProp ?? [], accountCode);
   const currencyOptions = currencyOptionsForEditing(currencyCode);
   const currencyModalValue = isoCodeToModalCurrency(currencyCode);
-  const currencyDisplayLabel =
-    currencyOptions.find((o) => o.value === currencyModalValue)?.label ??
-    currencyLabelForCode(currencyCode);
+  const currencyDisplayLabel = currencyLabelForCode(currencyCode);
 
   return (
     <section className={`rounded-xl border border-gray-200/90 bg-white p-4 sm:p-5 md:p-6 ${className}`}>

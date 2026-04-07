@@ -7,6 +7,7 @@ import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsMod
 import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
 import { UploadBankslipModal } from "./UploadBankslipModal";
 import { useUserRole } from "@/lib/useUserRole";
+import { currencyLabelForCode } from "@/lib/currencyDisplay";
 
 const COLUMN_TITLES = [
   "Contact / Description",
@@ -773,7 +774,9 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             <p className={"text-base font-semibold tabular-nums " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</p>
                           ) : null}
                           {row.invoiceTotal ? (
-                            <p className="text-[11px] tabular-nums text-primary/55">(Inv total HK$ {row.invoiceTotal})</p>
+                            <p className="text-[11px] tabular-nums text-primary/55">
+                              (Inv total {currencyLabelForCode(row.currencyCode ?? "HKD")} {row.invoiceTotal})
+                            </p>
                           ) : null}
                         </div>
                       ) : null}
@@ -954,7 +957,11 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                               {row.unpaidAmount || row.invoiceTotal ? (
                                 <div className="flex min-w-0 flex-col gap-0.5">
                                   {row.unpaidAmount ? <span className={"whitespace-nowrap text-sm font-semibold sm:text-base " + unpaidAmountTextClass(row.status)}>{row.unpaidAmount}</span> : null}
-                                  {row.invoiceTotal ? <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">(Inv total HK$ {row.invoiceTotal})</span> : null}
+                                  {row.invoiceTotal ? (
+                                    <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">
+                                      (Inv total {currencyLabelForCode(row.currencyCode ?? "HKD")} {row.invoiceTotal})
+                                    </span>
+                                  ) : null}
                                 </div>
                               ) : null}
                             </td>

@@ -8,6 +8,7 @@ import { BulkDeleteConfirmModal } from "./BulkDeleteConfirmModal";
 import { RecordPaymentModal } from "./RecordPaymentModal";
 import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
 import { deleteBill, fetchBills, publishBill, type BillListItem } from "@/lib/api";
+import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { fetchBillBankSlipEnrichment } from "@/lib/bankSlipEnrichment";
 import { useUserRole } from "@/lib/useUserRole";
 
@@ -37,7 +38,8 @@ function formatAmount(value: string | number): string {
 
 function mapBillToRow(bill: BillListItem): PaymentRequestRow {
   const status = billStatusToDisplayLabel(bill.status);
-  const symbol = bill.currency_code || "HK$";
+  const iso = (bill.currency_code && bill.currency_code.trim()) || "HKD";
+  const symbol = currencyLabelForCode(iso);
   const statusNorm = (bill.status ?? "").trim().toLowerCase().replace(/-/g, "_");
   const xeroActive =
     (bill.published ?? "").trim() === "published" ||
@@ -48,7 +50,7 @@ function mapBillToRow(bill: BillListItem): PaymentRequestRow {
     id: bill.id,
     contactTitle: bill.contact || "—",
     contactCaption: bill.description,
-    currencyCode: (bill.currency_code && bill.currency_code.trim()) || "HKD",
+    currencyCode: iso,
     invoiceDate: bill.invoice_date ? formatDate(bill.invoice_date) : "",
     status,
     submittedDate: formatDate(bill.created_at),
@@ -301,10 +303,10 @@ export function PaymentRequestView() {
             ? parseFloat(rawBills.find((b) => b.id === recordPaymentBillId)?.amount ?? "0")
             : 0
         }
-        currencyLabel={
+        currencyCode={
           recordPaymentBillId
-            ? rawBills.find((b) => b.id === recordPaymentBillId)?.currency_code || "HK$"
-            : "HK$"
+            ? rawBills.find((b) => b.id === recordPaymentBillId)?.currency_code?.trim() || "HKD"
+            : "HKD"
         }
         onPaymentSaved={loadBills}
       />
