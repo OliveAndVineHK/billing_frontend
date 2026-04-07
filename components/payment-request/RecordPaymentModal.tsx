@@ -1,7 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import {
   fetchPayments,
@@ -13,7 +13,7 @@ import {
   type PaymentItem,
 } from "@/lib/api";
 import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
-import { openDatePicker } from "@/lib/openDatePicker";
+import { DateTextField } from "@/components/DateTextField";
 import { useUserRole } from "@/lib/useUserRole";
 import { PaymentDeleteConfirmModal } from "./PaymentDeleteConfirmModal";
 import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsModal";
@@ -83,7 +83,6 @@ export function RecordPaymentModal({
   const titleId = useId();
   const dateFieldId = useId();
   const amountFieldId = useId();
-  const dateRef = useRef<HTMLInputElement>(null);
 
   const [payMode, setPayMode] = useState<PayMode>("partial");
   const [payments, setPayments] = useState<PaymentItem[]>([]);
@@ -274,10 +273,10 @@ export function RecordPaymentModal({
 
   if (!open) return null;
 
-  const dateInputClass =
-    "pr-date-input box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
-  const calendarBtnClass =
-    "absolute right-0 top-0 flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
+  const paymentDateTextClass =
+    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
+  const paymentDateCalendarBtnClass =
+    "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
 
   return (
     <>
@@ -393,9 +392,17 @@ export function RecordPaymentModal({
 
           <div className={`mt-5 grid grid-cols-1 gap-3 sm:gap-3 ${payMode === "partial" ? "sm:grid-cols-2" : ""}`}>
             <div className="relative w-full min-w-0">
-              <label htmlFor={dateFieldId} className="sr-only">Payment date</label>
-              <input ref={dateRef} id={dateFieldId} type="date" value={draftDate ?? ""} onChange={(e) => setDraftDate(e.target.value)} onClick={(e) => openDatePicker(e.currentTarget)} className={dateInputClass} />
-              <button type="button" onClick={() => openDatePicker(dateRef.current)} className={calendarBtnClass} aria-label="Open calendar for payment date"><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>calendar_clock</span></button>
+              <label htmlFor={dateFieldId} className="sr-only">
+                Payment date
+              </label>
+              <DateTextField
+                id={dateFieldId}
+                value={draftDate ?? ""}
+                onChange={setDraftDate}
+                calendarAriaLabel="Open calendar for payment date"
+                textInputClassName={paymentDateTextClass}
+                calendarButtonClassName={paymentDateCalendarBtnClass}
+              />
             </div>
             {payMode === "partial" ? (
               <div className="min-w-0">

@@ -1,10 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useId, useRef } from "react";
+import { useId } from "react";
 import { BillContactPicker } from "@/components/BillContactPicker";
+import { DateTextField } from "@/components/DateTextField";
 import { ThemedSelect } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import { formatIsoDateAsDdMmmYyyy } from "@/lib/dateDisplayFormat";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import {
   currencyOptionsForEditing,
@@ -13,7 +15,6 @@ import {
   modalCurrencyToIsoCode,
 } from "@/lib/billFormSelectOptions";
 import type { EntityBillContact } from "@/lib/api";
-import { openDatePicker } from "@/lib/openDatePicker";
 
 /** Bill / request fields shown in the “Detailed Information” card. */
 export type PaymentRequestDetailedInfoData = {
@@ -97,9 +98,8 @@ function FieldLabel({
 
 function formatLongDate(iso: string): string {
   if (!iso) return "—";
-  const d = new Date(`${iso}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const formatted = formatIsoDateAsDdMmmYyyy(iso);
+  return formatted || iso;
 }
 
 /** Read-only text row: same outer box as modal `<input>`. */
@@ -189,8 +189,6 @@ export function PaymentRequestDetailedInfo({
   const patch = onPatchChange ?? (() => {});
 
   const uid = useId();
-  const invoiceDateRef = useRef<HTMLInputElement>(null);
-  const dueDateRef = useRef<HTMLInputElement>(null);
 
   const idBillNo = `detail-bill-no-${uid}`;
   const idAmount = `detail-amount-${uid}`;
@@ -202,6 +200,11 @@ export function PaymentRequestDetailedInfo({
   const idDueDate = `detail-due-date-${uid}`;
   const idBillNoError = `detail-bill-no-err-${uid}`;
   const idAccountError = `detail-account-err-${uid}`;
+
+  const dateTextInputClass =
+    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
+  const dateCalendarBtnClass =
+    "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11 disabled:cursor-not-allowed disabled:opacity-50";
 
   const accountOptions = mergeSelectOption(accountOptionsProp ?? [], accountCode);
   const currencyOptions = currencyOptionsForEditing(currencyCode);
@@ -280,27 +283,15 @@ export function PaymentRequestDetailedInfo({
               Invoice Date<span className="text-red-500"> *</span>
             </FieldLabel>
             {isEditing ? (
-              <div className="relative">
-                <input
-                  ref={invoiceDateRef}
-                  id={idInvoiceDate}
-                  type="date"
-                  value={invoiceDate ?? ""}
-                  onChange={(e) => patch({ invoiceDate: e.target.value })}
-                  onClick={(e) => openDatePicker(e.currentTarget)}
-                  className={
-                    "pr-date-input relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm " +
-                    (invoiceDate ? "text-black " : "text-transparent ")
-                  }
-                  disabled={disabled}
-                />
-                {!invoiceDate ? (
-                  <span className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45" aria-hidden>
-                    mm/dd/yyyy
-                  </span>
-                ) : null}
-                <button type="button" onClick={() => openDatePicker(invoiceDateRef.current)} className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for invoice date" disabled={disabled}><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>calendar_clock</span></button>
-              </div>
+              <DateTextField
+                id={idInvoiceDate}
+                value={invoiceDate ?? ""}
+                onChange={(iso) => patch({ invoiceDate: iso })}
+                disabled={disabled}
+                calendarAriaLabel="Open calendar for invoice date"
+                textInputClassName={dateTextInputClass}
+                calendarButtonClassName={dateCalendarBtnClass}
+              />
             ) : (
               <ReadOnlyDateRow display={formatLongDate(invoiceDate)} />
             )}
@@ -310,27 +301,15 @@ export function PaymentRequestDetailedInfo({
               Due Date<span className="text-red-500"> *</span>
             </FieldLabel>
             {isEditing ? (
-              <div className="relative">
-                <input
-                  ref={dueDateRef}
-                  id={idDueDate}
-                  type="date"
-                  value={dueDate ?? ""}
-                  onChange={(e) => patch({ dueDate: e.target.value })}
-                  onClick={(e) => openDatePicker(e.currentTarget)}
-                  className={
-                    "pr-date-input relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm " +
-                    (dueDate ? "text-black " : "text-transparent ")
-                  }
-                  disabled={disabled}
-                />
-                {!dueDate ? (
-                  <span className="pointer-events-none absolute left-3 top-1/2 z-[2] -translate-y-1/2 text-sm text-primary/45" aria-hidden>
-                    mm/dd/yyyy
-                  </span>
-                ) : null}
-                <button type="button" onClick={() => openDatePicker(dueDateRef.current)} className="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11" aria-label="Open calendar for due date" disabled={disabled}><span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>calendar_clock</span></button>
-              </div>
+              <DateTextField
+                id={idDueDate}
+                value={dueDate ?? ""}
+                onChange={(iso) => patch({ dueDate: iso })}
+                disabled={disabled}
+                calendarAriaLabel="Open calendar for due date"
+                textInputClassName={dateTextInputClass}
+                calendarButtonClassName={dateCalendarBtnClass}
+              />
             ) : (
               <ReadOnlyDateRow display={formatLongDate(dueDate)} />
             )}
