@@ -25,9 +25,9 @@ export type RecordPaymentModalProps = {
   onClose: () => void;
   billId: string;
   invoiceAmount?: number;
-  /** ISO 4217 code (e.g. HKD, USD); display uses HK$/US$ via currencyLabelForCode. */
   currencyCode?: string;
   onPaymentSaved?: () => void;
+  readOnly?: boolean;
 };
 
 type PayMode = "full" | "partial";
@@ -80,6 +80,7 @@ export function RecordPaymentModal({
   invoiceAmount = 0,
   currencyCode = "HKD",
   onPaymentSaved,
+  readOnly = false,
 }: RecordPaymentModalProps) {
   const iso = (currencyCode || "HKD").trim() || "HKD";
   const currencyLabel = currencyLabelForCode(iso);
@@ -291,7 +292,9 @@ export function RecordPaymentModal({
         <div className="shrink-0">
           <div className="px-4 pt-4 sm:px-6 sm:pt-6">
             <div className="flex items-start justify-between gap-3">
-              <h2 id={titleId} className="text-sm font-semibold uppercase tracking-[0.12em] text-secondary sm:text-base">Payment history</h2>
+              <h2 id={titleId} className="text-sm font-semibold uppercase tracking-[0.12em] text-secondary sm:text-base">
+                {readOnly ? "View payments" : "Payment history"}
+              </h2>
               <button type="button" onClick={onClose} className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary" aria-label="Close">
                 <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>close</span>
               </button>
@@ -327,12 +330,14 @@ export function RecordPaymentModal({
             </button>
           </div>
 
-          <div className="mt-5 flex gap-2">
-            <button type="button" onClick={() => { setFormError(null); setPayMode("full"); }} className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "full" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Full Pay</button>
-            <button type="button" onClick={() => { setFormError(null); setPayMode("partial"); setDraftAmount(""); }} className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "partial" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Partial Pay</button>
-          </div>
+          {!readOnly ? (
+            <div className="mt-5 flex gap-2">
+              <button type="button" onClick={() => { setFormError(null); setPayMode("full"); }} className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "full" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Full Pay</button>
+              <button type="button" onClick={() => { setFormError(null); setPayMode("partial"); setDraftAmount(""); }} className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "partial" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Partial Pay</button>
+            </div>
+          ) : null}
 
-          <div className="relative my-6 flex items-center gap-3">
+          <div className={`relative flex items-center gap-3 ${readOnly ? "mt-2" : "my-6"}`}>
             <div className="h-px flex-1 bg-gray-200" aria-hidden />
             <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-primary/50">Less : payments</span>
             <div className="h-px flex-1 bg-gray-200" aria-hidden />
@@ -369,74 +374,82 @@ export function RecordPaymentModal({
                       )}
                     </div>
                     <span className="shrink-0 text-sm font-bold text-primary tabular-nums">({formatMoney(amt, currencyLabel)})</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!canDeletePayments) return;
-                        setPaymentPendingDelete(p);
-                      }}
-                      disabled={!canDeletePayments || deletingId === p.id}
-                      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${canDeletePayments ? "cursor-pointer text-rose-500 hover:bg-rose-100 hover:text-rose-600" : "cursor-not-allowed text-gray-400"}`}
-                      aria-label={
-                        canDeletePayments
-                          ? "Remove this payment"
-                          : "You do not have permission to delete payments."
-                      }
-                      title={!canDeletePayments ? "You do not have permission to delete payments." : undefined}
-                    >
-                      <span className="material-symbols-outlined text-[22px]">
-                        {deletingId === p.id ? "progress_activity" : "delete"}
-                      </span>
-                    </button>
+                    {!readOnly ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!canDeletePayments) return;
+                          setPaymentPendingDelete(p);
+                        }}
+                        disabled={!canDeletePayments || deletingId === p.id}
+                        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${canDeletePayments ? "cursor-pointer text-rose-500 hover:bg-rose-100 hover:text-rose-600" : "cursor-not-allowed text-gray-400"}`}
+                        aria-label={
+                          canDeletePayments
+                            ? "Remove this payment"
+                            : "You do not have permission to delete payments."
+                        }
+                        title={!canDeletePayments ? "You do not have permission to delete payments." : undefined}
+                      >
+                        <span className="material-symbols-outlined text-[22px]">
+                          {deletingId === p.id ? "progress_activity" : "delete"}
+                        </span>
+                      </button>
+                    ) : null}
                   </li>
                 );
               })}
             </ul>
           )}
 
-          <div className={`mt-5 grid grid-cols-1 gap-3 sm:gap-3 ${payMode === "partial" ? "sm:grid-cols-2" : ""}`}>
-            <div className="relative w-full min-w-0">
-              <label htmlFor={dateFieldId} className="sr-only">
-                Payment date
-              </label>
-              <DateTextField
-                id={dateFieldId}
-                value={draftDate ?? ""}
-                onChange={setDraftDate}
-                calendarAriaLabel="Open calendar for payment date"
-                textInputClassName={paymentDateTextClass}
-                calendarButtonClassName={paymentDateCalendarBtnClass}
-              />
-            </div>
-            {payMode === "partial" ? (
-              <div className="min-w-0">
-                <label htmlFor={amountFieldId} className="sr-only">Payment amount</label>
-                <input id={amountFieldId} type="text" inputMode="decimal" placeholder="0.0" value={draftAmount ?? ""} onChange={(e) => setDraftAmount(e.target.value)} className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm" />
+          {!readOnly ? (
+            <>
+              <div className={`mt-5 grid grid-cols-1 gap-3 sm:gap-3 ${payMode === "partial" ? "sm:grid-cols-2" : ""}`}>
+                <div className="relative w-full min-w-0">
+                  <label htmlFor={dateFieldId} className="sr-only">
+                    Payment date
+                  </label>
+                  <DateTextField
+                    id={dateFieldId}
+                    value={draftDate ?? ""}
+                    onChange={setDraftDate}
+                    calendarAriaLabel="Open calendar for payment date"
+                    textInputClassName={paymentDateTextClass}
+                    calendarButtonClassName={paymentDateCalendarBtnClass}
+                  />
+                </div>
+                {payMode === "partial" ? (
+                  <div className="min-w-0">
+                    <label htmlFor={amountFieldId} className="sr-only">Payment amount</label>
+                    <input id={amountFieldId} type="text" inputMode="decimal" placeholder="0.0" value={draftAmount ?? ""} onChange={(e) => setDraftAmount(e.target.value)} className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm" />
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
 
-          {formError ? <p className="mt-2 text-sm text-red-600" role="alert">{formError}</p> : null}
+              {formError ? <p className="mt-2 text-sm text-red-600" role="alert">{formError}</p> : null}
 
-          <div className="mt-4 flex justify-end">
-            <button type="button" onClick={handleAddPayment} disabled={remaining <= 0 || adding} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#00C896]/10 px-4 py-2.5 text-sm font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00C896] disabled:cursor-not-allowed disabled:opacity-50">
-              {adding ? "Adding…" : "Add Payment"}
-              <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>{adding ? "progress_activity" : "add"}</span>
-            </button>
-          </div>
+              <div className="mt-4 flex justify-end">
+                <button type="button" onClick={handleAddPayment} disabled={remaining <= 0 || adding} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#00C896]/10 px-4 py-2.5 text-sm font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00C896] disabled:cursor-not-allowed disabled:opacity-50">
+                  {adding ? "Adding…" : "Add Payment"}
+                  <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>{adding ? "progress_activity" : "add"}</span>
+                </button>
+              </div>
+            </>
+          ) : null}
         </div>
 
-        <div className="shrink-0 border-t border-gray-200 px-4 py-4 sm:px-6 sm:py-5">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col items-end gap-1">
-              <span className="text-sm font-medium text-primary">Amount to be Paid</span>
-              <span className="text-2xl font-bold text-secondary sm:text-3xl">{formatMoney(remaining, currencyLabel)}</span>
+        {!readOnly ? (
+          <div className="shrink-0 border-t border-gray-200 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-sm font-medium text-primary">Amount to be Paid</span>
+                <span className="text-2xl font-bold text-secondary sm:text-3xl">{formatMoney(remaining, currencyLabel)}</span>
+              </div>
+              <button type="button" onClick={handleSavePayment} disabled={saving} className="box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px]">
+                {saving ? "Saving…" : "Save payment"}
+              </button>
             </div>
-            <button type="button" onClick={handleSavePayment} disabled={saving} className="box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px]">
-              {saving ? "Saving…" : "Save payment"}
-            </button>
           </div>
-        </div>
+        ) : null}
       </div>
     </div>,
     document.body,
