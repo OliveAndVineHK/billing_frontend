@@ -14,7 +14,6 @@ export const BILL_CONTACT_SELECT_OPTIONS: ThemedSelectOption[] = [
 ];
 
 export const BILL_ACCOUNT_SELECT_OPTIONS: ThemedSelectOption[] = [
-  { value: "", label: "Select account code" },
   { value: "425 - Transport", label: "425 - Transport" },
   { value: "400 - General", label: "400 - General" },
 ];

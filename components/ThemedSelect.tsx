@@ -17,6 +17,7 @@ type ThemedSelectProps = {
   value: string;
   onChange: (value: string) => void;
   options: ThemedSelectOption[];
+  placeholder?: string;
   ariaLabel?: string;
   className?: string;
   triggerClassName?: string;
@@ -33,6 +34,7 @@ export function ThemedSelect({
   value,
   onChange,
   options,
+  placeholder,
   ariaLabel,
   className = "",
   triggerClassName = "",
@@ -91,8 +93,14 @@ export function ThemedSelect({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [isOpen]);
 
+  const menuOptions =
+    placeholder !== undefined ? options.filter((o) => o.value !== "") : options;
+  const placeholderShowing = placeholder !== undefined && selectedValue === "";
   const selected = options.find((o) => o.value === selectedValue);
-  const displayLabel = selected?.label ?? (options[0]?.label ?? "");
+  const displayLabel = placeholderShowing
+    ? placeholder
+    : selected?.label ?? (options[0]?.label ?? "");
+  const displayTextClass = placeholderShowing ? "text-primary/45" : "";
 
   const uniformBase =
     "box-border flex h-11 min-h-[44px] min-w-0 cursor-pointer items-center justify-between gap-2 rounded-lg border py-0 pl-3 pr-2 text-left text-base font-normal transition-colors focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm " +
@@ -121,7 +129,7 @@ export function ThemedSelect({
         width: Math.max(menuPos.width, 120),
       }}
     >
-      {options.map((opt) => {
+      {menuOptions.map((opt) => {
         const isSelected = selectedValue === opt.value;
         return (
           <li
@@ -159,13 +167,13 @@ export function ThemedSelect({
     <div className={`relative ${className}`}>
       {uniformFill ? (
         <button ref={triggerRef} type="button" id={id} aria-haspopup="listbox" aria-expanded={isOpen} aria-controls={isOpen ? listboxId : undefined} aria-label={ariaLabel} aria-invalid={error} disabled={disabled} onClick={() => !disabled && setIsOpen((o) => !o)} className={`${uniformBase} ${triggerClassName}`}>
-          <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
+          <span className={`min-w-0 flex-1 truncate ${displayTextClass}`}>{displayLabel}</span>
           {chevron}
         </button>
       ) : (
         <button ref={triggerRef} type="button" id={id} aria-haspopup="listbox" aria-expanded={isOpen} aria-controls={isOpen ? listboxId : undefined} aria-label={ariaLabel} aria-invalid={error} disabled={disabled} onClick={() => !disabled && setIsOpen((o) => !o)} className={`${splitBase} ${triggerClassName}`}>
           <span className="flex min-h-[44px] min-w-0 flex-1 items-center py-0 pl-3 pr-2 sm:min-h-11">
-            <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
+            <span className={`min-w-0 flex-1 truncate ${displayTextClass}`}>{displayLabel}</span>
           </span>
           <span className="flex w-11 min-w-[44px] shrink-0 items-center justify-center border-l border-[#EDEDED] bg-[#EDEDED] transition-colors hover:bg-[#E4E4E4] sm:min-h-11">
             {chevron}

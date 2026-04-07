@@ -12,7 +12,8 @@ const FILTER_DATE_TYPE_OPTIONS = [
   { value: "Submitted Date", label: "Submitted Date" },
 ] as const;
 
-const fieldLabelClass = "mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-primary sm:text-xs";
+/** Filter panel field labels — sentence case (not all-caps). */
+const fieldLabelClass = "mb-1.5 block text-[11px] font-semibold tracking-wide text-primary/55 sm:text-xs";
 
 const textInputClass =
   "box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm";
@@ -312,7 +313,7 @@ export function PaymentRequestToolbar({
                       </label>
                       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
                         <input id={`${filterFieldIds}-min-amount`} type="text" inputMode="decimal" value={minAmount ?? ""} onChange={(e) => setMinAmount(e.target.value)} placeholder="0.00" className={textInputClass} />
-                        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-primary sm:text-xs">To</span>
+                        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-primary/55 sm:text-xs">To</span>
                         <input id={`${filterFieldIds}-max-amount`} type="text" inputMode="decimal" value={maxAmount ?? ""} onChange={(e) => setMaxAmount(e.target.value)} placeholder="0.00" className={textInputClass} />
                       </div>
                     </div>
