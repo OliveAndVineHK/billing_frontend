@@ -283,13 +283,13 @@ export function RecordPaymentModal({
     <>
       {createPortal(
     <div className="fixed inset-0 z-[300] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6" role="presentation">
-      <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-black/35 backdrop-blur-[1px]" onClick={onClose} />
+      <button type="button" aria-label="Close dialog" className="absolute inset-0 cursor-pointer bg-black/35 backdrop-blur-[1px]" onClick={onClose} />
       <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full min-w-0 max-w-[480px] flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,880px)] sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="shrink-0">
           <div className="px-4 pt-4 sm:px-6 sm:pt-6">
             <div className="flex items-start justify-between gap-3">
               <h2 id={titleId} className="text-sm font-semibold uppercase tracking-[0.12em] text-secondary sm:text-base">Payment history</h2>
-              <button type="button" onClick={onClose} className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary" aria-label="Close">
+              <button type="button" onClick={onClose} className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary" aria-label="Close">
                 <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>close</span>
               </button>
             </div>
@@ -306,7 +306,7 @@ export function RecordPaymentModal({
             <button
               type="button"
               onClick={() => setBankSlipPreviewOpen(true)}
-              className="relative -mr-1 -mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+              className="relative -mr-1 -mt-0.5 box-border flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-primary/25 text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
               aria-label={
                 bankSlipFileCount > 0
                   ? `View payment attachments, ${bankSlipFileCount} file${bankSlipFileCount === 1 ? "" : "s"}`
@@ -325,8 +325,8 @@ export function RecordPaymentModal({
           </div>
 
           <div className="mt-5 flex gap-2">
-            <button type="button" onClick={() => { setFormError(null); setPayMode("full"); }} className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "full" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Full Pay</button>
-            <button type="button" onClick={() => { setFormError(null); setPayMode("partial"); setDraftAmount(""); }} className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "partial" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Partial Pay</button>
+            <button type="button" onClick={() => { setFormError(null); setPayMode("full"); }} className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "full" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Full Pay</button>
+            <button type="button" onClick={() => { setFormError(null); setPayMode("partial"); setDraftAmount(""); }} className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "partial" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Partial Pay</button>
           </div>
 
           <div className="relative my-6 flex items-center gap-3">
@@ -373,7 +373,7 @@ export function RecordPaymentModal({
                         setPaymentPendingDelete(p);
                       }}
                       disabled={!canDeletePayments || deletingId === p.id}
-                      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors disabled:opacity-50 ${canDeletePayments ? "text-rose-500 hover:bg-rose-100 hover:text-rose-600" : "cursor-not-allowed text-gray-400"}`}
+                      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${canDeletePayments ? "cursor-pointer text-rose-500 hover:bg-rose-100 hover:text-rose-600" : "cursor-not-allowed text-gray-400"}`}
                       aria-label={
                         canDeletePayments
                           ? "Remove this payment"
@@ -421,7 +421,7 @@ export function RecordPaymentModal({
               <span className="text-sm font-medium text-primary">Amount to be Paid</span>
               <span className="text-2xl font-bold text-secondary sm:text-3xl">{formatMoney(remaining, currencyLabel)}</span>
             </div>
-            <button type="button" onClick={handleSavePayment} disabled={saving} className="box-border h-12 min-h-[48px] w-full rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px]">
+            <button type="button" onClick={handleSavePayment} disabled={saving} className="box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px]">
               {saving ? "Saving…" : "Save payment"}
             </button>
           </div>
