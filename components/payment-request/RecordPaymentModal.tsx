@@ -18,13 +18,15 @@ import { useUserRole } from "@/lib/useUserRole";
 import { PaymentDeleteConfirmModal } from "./PaymentDeleteConfirmModal";
 import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsModal";
 import { buildBankSlipDetailsFromPaymentList } from "@/lib/bankSlipEnrichment";
+import { currencyLabelForCode } from "@/lib/currencyDisplay";
 
 export type RecordPaymentModalProps = {
   open: boolean;
   onClose: () => void;
   billId: string;
   invoiceAmount?: number;
-  currencyLabel?: string;
+  /** ISO 4217 code (e.g. HKD, USD); display uses HK$/US$ via currencyLabelForCode. */
+  currencyCode?: string;
   onPaymentSaved?: () => void;
 };
 
@@ -76,9 +78,11 @@ export function RecordPaymentModal({
   onClose,
   billId,
   invoiceAmount = 0,
-  currencyLabel = "HK$",
+  currencyCode = "HKD",
   onPaymentSaved,
 }: RecordPaymentModalProps) {
+  const iso = (currencyCode || "HKD").trim() || "HKD";
+  const currencyLabel = currencyLabelForCode(iso);
   const { isElevated: canDeletePayments } = useUserRole();
   const titleId = useId();
   const dateFieldId = useId();
@@ -210,7 +214,7 @@ export function RecordPaymentModal({
       await createPayment(billId, {
         payment_date: draftDate,
         amount,
-        currency_code: currencyLabel,
+        currency_code: iso,
         payment_status: "completed",
       });
       await loadPayments();

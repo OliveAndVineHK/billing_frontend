@@ -1,10 +1,11 @@
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
+import { currencyLabelForCode } from "@/lib/currencyDisplay";
 
 /** Currency values as shown in the create-bill modal select (left gray cell). */
 export const BILL_CURRENCY_SELECT_OPTIONS: ThemedSelectOption[] = [
   { value: "HK$", label: "HK$" },
-  { value: "USD", label: "USD" },
-  { value: "CNY", label: "CNY" },
+  { value: "USD", label: "US$" },
+  { value: "CNY", label: "CN¥" },
 ];
 
 export const BILL_CONTACT_SELECT_OPTIONS: ThemedSelectOption[] = [
@@ -36,7 +37,7 @@ export function currencyOptionsForEditing(isoCode: string): ThemedSelectOption[]
   const current = isoCodeToModalCurrency(isoCode);
   const inList = BILL_CURRENCY_SELECT_OPTIONS.some((o) => o.value === current);
   if (inList) return BILL_CURRENCY_SELECT_OPTIONS;
-  return [...BILL_CURRENCY_SELECT_OPTIONS, { value: current, label: current }];
+  return [...BILL_CURRENCY_SELECT_OPTIONS, { value: current, label: currencyLabelForCode(isoCode) }];
 }
 
 /** If the current value is not in the static list, prepend it so the select can show it. */

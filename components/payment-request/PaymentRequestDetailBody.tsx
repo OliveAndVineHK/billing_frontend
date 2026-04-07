@@ -772,7 +772,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         onClose={() => setRecordPaymentOpen(false)}
         billId={requestId}
         invoiceAmount={invoiceTotalMajor}
-        currencyLabel={currencyLabel}
+        currencyCode={formData?.currencyCode ?? "HKD"}
         onPaymentSaved={async () => {
           await loadPayments();
           await reloadBill();

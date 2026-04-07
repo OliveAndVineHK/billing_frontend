@@ -3,6 +3,7 @@ import {
   listPaymentAttachments,
   type PaymentItem,
 } from "./api";
+import { currencyLabelForCode } from "./currencyDisplay";
 import type { BankSlipDetails, BankSlipFileEntry } from "@/components/payment-request/BankSlipDetailsModal";
 
 function formatApiDateTime(iso: string): string {
@@ -38,7 +39,8 @@ function formatBillDate(dateStr: string): string {
 }
 
 function formatPaymentDisplayAmount(currencyCode: string | undefined, amount: string): string {
-  const symbol = currencyCode === "HKD" ? "HK$" : currencyCode?.trim() || "";
+  const iso = currencyCode?.trim();
+  const symbol = iso ? currencyLabelForCode(iso) : "";
   const n = parseFloat(amount);
   const formatted = Number.isFinite(n)
     ? n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })

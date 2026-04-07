@@ -2,10 +2,10 @@
 export function currencyLabelForCode(code: string): string {
   const m: Record<string, string> = {
     HKD: "HK$",
-    USD: "$",
+    USD: "US$",
     EUR: "€",
     GBP: "£",
-    CNY: "¥",
+    CNY: "CN¥",
   };
   return m[code.toUpperCase()] ?? code;
 }
