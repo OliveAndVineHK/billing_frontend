@@ -113,7 +113,7 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-primary sm:text-xs"
+      className="mb-1.5 block text-[11px] font-semibold tracking-wide text-primary/55 sm:text-xs"
     >
       {children}
       {required ? <span className="text-red-500"> *</span> : null}
@@ -155,9 +155,7 @@ export function PaymentRequestModal({
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
   const [draftSubmitting, setDraftSubmitting] = useState(false);
 
-  const [accountOptions, setAccountOptions] = useState<ThemedSelectOption[]>([
-    { value: "", label: "Select account code" },
-  ]);
+  const [accountOptions, setAccountOptions] = useState<ThemedSelectOption[]>([]);
 
   const [contactsList, setContactsList] = useState<EntityBillContact[]>([]);
   const [contactsMap, setContactsMap] = useState<Map<string, EntityBillContact>>(new Map());
@@ -169,15 +167,12 @@ export function PaymentRequestModal({
     fetchEntityBillAccounts({ billDropdown: true })
       .then((accounts) => {
         if (cancelled) return;
-        const opts: ThemedSelectOption[] = [
-          { value: "", label: "Select account code" },
-          ...accounts
-            .filter((a) => a.is_active)
-            .map((a) => ({
-              value: `${a.account_code} - ${a.account_name}`,
-              label: `${a.account_code} - ${a.account_name}`,
-            })),
-        ];
+        const opts: ThemedSelectOption[] = accounts
+          .filter((a) => a.is_active)
+          .map((a) => ({
+            value: `${a.account_code} - ${a.account_name}`,
+            label: `${a.account_code} - ${a.account_name}`,
+          }));
         setAccountOptions(opts);
         const defaultAcct = accounts.find((a) => a.is_default && a.is_active);
         if (defaultAcct) {
@@ -518,7 +513,7 @@ export function PaymentRequestModal({
           </div>
 
           <div className="mb-2 mt-5 flex items-baseline justify-between gap-3">
-            <p className="min-w-0 text-[11px] font-semibold uppercase tracking-wide text-primary/80">
+            <p className="min-w-0 text-[11px] font-semibold tracking-wide text-primary/80">
               Uploaded files ({uploadedFiles.length})
             </p>
             {uploadedFiles.length > 0 ? (
@@ -648,13 +643,13 @@ export function PaymentRequestModal({
             </div>
 
             <div>
-              <FieldLabel htmlFor="pr-description">Description (Optional)</FieldLabel>
+              <FieldLabel htmlFor="pr-description">Description</FieldLabel>
               <input
                 id="pr-description"
                 type="text"
                 value={description ?? ""}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="e.g. Office supplies"
+                placeholder="Description (Optional)"
                 className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
               />
             </div>
@@ -695,6 +690,7 @@ export function PaymentRequestModal({
                   clearFieldError("accountCode");
                 }}
                 options={accountOptions}
+                placeholder="Select an account code"
                 error={!!fieldErrors.accountCode}
               />
               {fieldErrors.accountCode ? (
@@ -853,7 +849,7 @@ function PaymentRequestInlinePreview({
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-black sm:text-base">{file.name}</p>
-          <p id={previewSubtitleId} className="mt-1 text-[11px] font-medium uppercase tracking-wide text-primary/55 sm:text-xs">
+          <p id={previewSubtitleId} className="mt-1 text-[11px] font-medium tracking-wide text-primary/55 sm:text-xs">
             Document preview<span className="text-primary/35"> • </span>
             {formatFileSize(file.size)}
           </p>

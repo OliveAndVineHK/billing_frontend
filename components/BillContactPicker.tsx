@@ -206,7 +206,7 @@ export function BillContactPicker({
           aria-autocomplete="list"
           disabled={disabled || creating}
           value={contactName}
-          placeholder="Type or select a contact"
+          placeholder="Select a contact"
           onChange={(e) => {
             onChange({ xero_contact_id: "", contact: e.target.value });
             setCreateError(null);

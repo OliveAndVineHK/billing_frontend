@@ -75,9 +75,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [auditRefresh, setAuditRefresh] = useState(0);
   const bumpAudit = useCallback(() => setAuditRefresh((n) => n + 1), []);
 
-  const [accountOptions, setAccountOptions] = useState<ThemedSelectOption[]>([
-    { value: "", label: "Select account code" },
-  ]);
+  const [accountOptions, setAccountOptions] = useState<ThemedSelectOption[]>([]);
   const [entityBillContacts, setEntityBillContacts] = useState<EntityBillContact[]>([]);
 
   const applyEntityBillContacts = useCallback((contacts: EntityBillContact[]) => {
@@ -109,15 +107,14 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     fetchEntityBillAccounts({ billDropdown: true })
       .then((accounts) => {
         if (cancelled) return;
-        setAccountOptions([
-          { value: "", label: "Select account code" },
-          ...accounts
+        setAccountOptions(
+          accounts
             .filter((a) => a.is_active)
             .map((a) => ({
               value: `${a.account_code} - ${a.account_name}`,
               label: `${a.account_code} - ${a.account_name}`,
             })),
-        ]);
+        );
       })
       .catch(() => {});
     fetchEntityBillContacts()
