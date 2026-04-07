@@ -42,7 +42,14 @@ type PaymentRequestToolbarProps = {
   bulkSelectedCount?: number;
   onBulkDeleteSelected?: () => void;
   onBulkPublishSelected?: () => void;
+  /** Persists advanced filters to the list (only when the user clicks Save changes). */
   onApplyFilters?: (filters: AdvancedFilters) => void;
+  /** Advanced filters currently applied to the list — used to fill the panel when it opens. */
+  appliedMinAmount?: string;
+  appliedMaxAmount?: string;
+  appliedDateType?: string;
+  appliedStartDate?: string;
+  appliedEndDate?: string;
   /** True when the current selection contains at least one Paid bill. */
   selectionContainsPaid?: boolean;
   /** Whether the current user may void Paid/Authorised bills (elevated roles only). */
@@ -67,6 +74,11 @@ export function PaymentRequestToolbar({
   onBulkDeleteSelected,
   onBulkPublishSelected,
   onApplyFilters,
+  appliedMinAmount = "",
+  appliedMaxAmount = "",
+  appliedDateType = "",
+  appliedStartDate = "",
+  appliedEndDate = "",
   selectionContainsPaid = false,
   canVoidPaid = false,
   canPublish = false,
@@ -94,6 +106,16 @@ export function PaymentRequestToolbar({
   const [dateType, setDateType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  /** When the filter panel opens, show the last saved filters (discard any unsaved draft from a previous close). */
+  useEffect(() => {
+    if (!filterOpen) return;
+    setMinAmount(appliedMinAmount ?? "");
+    setMaxAmount(appliedMaxAmount ?? "");
+    setDateType(appliedDateType ?? "");
+    setStartDate(appliedStartDate ?? "");
+    setEndDate(appliedEndDate ?? "");
+  }, [filterOpen, appliedMinAmount, appliedMaxAmount, appliedDateType, appliedStartDate, appliedEndDate]);
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -211,13 +233,19 @@ export function PaymentRequestToolbar({
     });
   };
 
-  const onResetFilters = () => {
+  /** Clears fields in the panel only; list does not update until Save changes. */
+  const onResetFilterDraft = () => {
     setMinAmount("");
     setMaxAmount("");
     setDateType("");
     setStartDate("");
     setEndDate("");
-    onApplyFilters?.({ minAmount: "", maxAmount: "", dateType: "", startDate: "", endDate: "" });
+  };
+
+  const onSaveFilterChanges = () => {
+    onApplyFilters?.({ minAmount, maxAmount, dateType, startDate, endDate });
+    setFilterOpen(false);
+    setFilterMenu(null);
   };
 
   const toggleFilterMenu = (trigger: HTMLButtonElement) => {
@@ -303,7 +331,7 @@ export function PaymentRequestToolbar({
               <div data-filter-menu-panel role="dialog" aria-label="Filters" className="fixed z-[400] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg" style={{ top: filterMenu.top, left: filterMenu.left, width: filterMenu.width }}>
                 <div className="border-b border-gray-200 px-3 py-2">
                   <h3 className="text-sm font-semibold text-primary">Filters</h3>
-                  <p className="mt-1 text-xs leading-snug text-primary/65">Set amount and date criteria, then apply to narrow the list.</p>
+                  <p className="mt-1 text-xs leading-snug text-primary/65">Adjust criteria, then save changes to update the list. Closing without saving keeps the current filters.</p>
                 </div>
                 <div className="px-3 py-4 sm:px-4">
                   <div className="flex flex-col gap-5">
@@ -356,8 +384,8 @@ export function PaymentRequestToolbar({
                 </div>
                 <div className="border-t border-gray-200 px-3 py-2 sm:px-4">
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                    <button type="button" onClick={onResetFilters} className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px]">Reset</button>
-                    <button type="button" onClick={() => { onApplyFilters?.({ minAmount, maxAmount, dateType, startDate, endDate }); setFilterOpen(false); setFilterMenu(null); }} className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px]">Apply Filter</button>
+                    <button type="button" onClick={onResetFilterDraft} className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px]">Reset</button>
+                    <button type="button" onClick={onSaveFilterChanges} className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px]">Save changes</button>
                   </div>
                 </div>
               </div>,
