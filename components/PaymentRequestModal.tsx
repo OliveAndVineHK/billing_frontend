@@ -608,6 +608,30 @@ export function PaymentRequestModal({
             </div>
 
             <div>
+              <FieldLabel htmlFor="pr-contact" required>
+                Contact
+              </FieldLabel>
+              <BillContactPicker
+                id="pr-contact"
+                contacts={contactsList}
+                xeroContactId={contact}
+                contactName={contactInput}
+                onChange={({ xero_contact_id, contact: nm }) => {
+                  setContact(xero_contact_id);
+                  setContactInput(nm);
+                  clearFieldError("contact");
+                }}
+                refetchContacts={refetchEntityBillContacts}
+                error={!!fieldErrors.contact}
+              />
+              {fieldErrors.contact ? (
+                <p className="mt-1 text-xs text-red-600" role="alert">
+                  {fieldErrors.contact}
+                </p>
+              ) : null}
+            </div>
+
+            <div>
               <FieldLabel htmlFor="pr-amount" required>
                 Amount
               </FieldLabel>
@@ -659,30 +683,6 @@ export function PaymentRequestModal({
                 placeholder="Description (Optional)"
                 className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
               />
-            </div>
-
-            <div>
-              <FieldLabel htmlFor="pr-contact" required>
-                Contact
-              </FieldLabel>
-              <BillContactPicker
-                id="pr-contact"
-                contacts={contactsList}
-                xeroContactId={contact}
-                contactName={contactInput}
-                onChange={({ xero_contact_id, contact: nm }) => {
-                  setContact(xero_contact_id);
-                  setContactInput(nm);
-                  clearFieldError("contact");
-                }}
-                refetchContacts={refetchEntityBillContacts}
-                error={!!fieldErrors.contact}
-              />
-              {fieldErrors.contact ? (
-                <p className="mt-1 text-xs text-red-600" role="alert">
-                  {fieldErrors.contact}
-                </p>
-              ) : null}
             </div>
 
             <div>
