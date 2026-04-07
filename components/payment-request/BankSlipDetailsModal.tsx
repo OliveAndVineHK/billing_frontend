@@ -1,7 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { ApiError, deletePaymentAttachment, fetchPaymentAttachmentPreview } from "@/lib/api";
 import { formatFileSize } from "@/lib/fileAttachmentPreview";
@@ -13,11 +13,9 @@ export type BankSlipFileFetchSource = {
   billId: string;
   paymentId: string;
   attachmentId: string;
-  /** Nested `attachment.id` from API — used as fallback download path when `/file` on link id 404s. */
   fileAttachmentId?: string;
 };
 
-/** Per-file overrides (optional; kept for API compatibility — not shown in the simplified view). */
 export type BankSlipFileDetailsOverride = Partial<{
   createdBy: string;
   createdAt: string;
@@ -371,14 +369,37 @@ export function BankSlipDetailsModal({
   const [pendingDeleteFileId, setPendingDeleteFileId] = useState<string | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const detailsFileIdsSigRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!open) return;
-    setFiles(details.files.map((f) => ({ ...f })));
-    setSelectedFileId(details.files[0]?.id ?? null);
+    if (!open) {
+      detailsFileIdsSigRef.current = null;
+      return;
+    }
+    const nextFiles = details.files.map((f) => ({ ...f }));
+    const nextSig = nextFiles.map((f) => f.id).join("\0");
+    const prevSig = detailsFileIdsSigRef.current;
+    detailsFileIdsSigRef.current = nextSig;
+
+    setFiles(nextFiles);
     setPendingDeleteFileId(null);
     setDeleteError(null);
     setDeletePending(false);
+
+    const prevIds = prevSig?.split("\0").filter(Boolean) ?? [];
+    const nextIds = nextFiles.map((f) => f.id);
+
+    if (prevSig == null) {
+      setSelectedFileId(nextFiles[0]?.id ?? null);
+    } else if (nextIds.length > prevIds.length) {
+      const appended = nextIds.slice(prevIds.length);
+      setSelectedFileId(appended.length ? appended[appended.length - 1]! : nextIds[nextIds.length - 1]!);
+    } else {
+      setSelectedFileId((sel) => {
+        if (sel != null && nextFiles.some((f) => f.id === sel)) return sel;
+        return nextFiles[0]?.id ?? null;
+      });
+    }
   }, [open, details]);
 
   useEffect(() => {

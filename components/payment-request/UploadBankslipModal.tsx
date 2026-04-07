@@ -116,6 +116,7 @@ export function UploadBankslipModal({
       file,
     }));
     setUploadedFiles((prev) => [...prev, ...added]);
+    setPreviewFileId(added[added.length - 1]?.id ?? null);
     setUploadError(null);
     e.target.value = "";
   };

@@ -85,6 +85,7 @@ export function UploadInvoiceAttachmentModal({ open, onClose, onUpload }: Upload
       file,
     }));
     setUploadedFiles((prev) => [...prev, ...added]);
+    setPreviewFileId(added[added.length - 1]?.id ?? null);
     setUploadError(null);
     e.target.value = "";
   };
