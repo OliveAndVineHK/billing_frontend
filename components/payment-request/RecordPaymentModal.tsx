@@ -25,10 +25,10 @@ export type RecordPaymentModalProps = {
   open: boolean;
   onClose: () => void;
   billId: string;
-  /** Bill API status (e.g. `draft`). Used to allow save without bank slips only for drafts. */
   billStatus?: string | null;
   invoiceAmount?: number;
   currencyCode?: string;
+  contactTitle?: string;
   onPaymentSaved?: () => void;
   readOnly?: boolean;
 };
@@ -95,6 +95,7 @@ export function RecordPaymentModal({
   billStatus,
   invoiceAmount = 0,
   currencyCode = "HKD",
+  contactTitle,
   onPaymentSaved,
   readOnly = false,
 }: RecordPaymentModalProps) {
@@ -118,6 +119,17 @@ export function RecordPaymentModal({
   const [bankSlipPreviewOpen, setBankSlipPreviewOpen] = useState(false);
   const [bankSlipFileCount, setBankSlipFileCount] = useState(0);
   const [bankSlipDetails, setBankSlipDetails] = useState<BankSlipDetails>(EMPTY_BANK_SLIP_DETAILS);
+
+  const bankSlipRowForEnrichment = useMemo(
+    () => ({ ...MIN_BANK_SLIP_ROW, contactTitle: (contactTitle ?? "").trim() }),
+    [contactTitle],
+  );
+
+  const bankSlipDetailsForModal = useMemo((): BankSlipDetails => {
+    const hint = (contactTitle ?? "").trim();
+    if (!hint || bankSlipDetails.toName.trim()) return bankSlipDetails;
+    return { ...bankSlipDetails, toName: hint };
+  }, [bankSlipDetails, contactTitle]);
 
   const paymentsForBill = useMemo(
     () => payments.filter((p) => p.bill_id === billId),
@@ -160,7 +172,7 @@ export function RecordPaymentModal({
       const data = await fetchPayments(billId);
       setPayments(data.payments);
       try {
-        const built = await buildBankSlipDetailsFromPaymentList(billId, data.payments, MIN_BANK_SLIP_ROW);
+        const built = await buildBankSlipDetailsFromPaymentList(billId, data.payments, bankSlipRowForEnrichment);
         setBankSlipFileCount(built.count);
         setBankSlipDetails(built.bankSlipDetails ?? EMPTY_BANK_SLIP_DETAILS);
       } catch {
@@ -176,7 +188,7 @@ export function RecordPaymentModal({
     } finally {
       setLoadingPayments(false);
     }
-  }, [billId, syncSubmittedIfNoPaymentsLeft, onPaymentSaved]);
+  }, [billId, bankSlipRowForEnrichment, syncSubmittedIfNoPaymentsLeft, onPaymentSaved]);
 
   useEffect(() => {
     if (open && billId) {
@@ -498,8 +510,13 @@ export function RecordPaymentModal({
       <BankSlipDetailsModal
         open={bankSlipPreviewOpen}
         onClose={() => setBankSlipPreviewOpen(false)}
-        details={bankSlipDetails}
+        details={bankSlipDetailsForModal}
         allowRemoveFiles={false}
+        inlineUploadBillContext={readOnly ? undefined : { billId, currencyCode: iso }}
+        onInlineUploadSuccess={async () => {
+          await loadPayments();
+          onPaymentSaved?.();
+        }}
       />
       <PaymentDeleteConfirmModal
         open={paymentPendingDelete != null}

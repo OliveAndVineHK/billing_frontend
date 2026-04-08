@@ -1,11 +1,20 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import type { ChangeEvent } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
-import { ApiError, deletePaymentAttachment, fetchPaymentAttachmentPreview } from "@/lib/api";
+import {
+  ApiError,
+  createPayment,
+  deletePayment,
+  deletePaymentAttachment,
+  fetchPaymentAttachmentPreview,
+  updatePayment,
+  uploadPaymentAttachment,
+} from "@/lib/api";
 import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
-import { formatFileSize } from "@/lib/fileAttachmentPreview";
+import { formatFileSize, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
 import { AttachmentDeleteConfirmModal } from "./AttachmentDeleteConfirmModal";
 
 export type BankSlipFileRef = { id: string; name: string };
@@ -52,7 +61,8 @@ export type BankSlipDetailsModalProps = {
   open: boolean;
   onClose: () => void;
   details: BankSlipDetails;
-  onUpload?: () => void;
+  inlineUploadBillContext?: { billId: string; currencyCode?: string };
+  onInlineUploadSuccess?: () => void;
   onRemoveFile?: (fileId: string) => void;
   allowRemoveFiles?: boolean;
   onBankSlipFileDeleted?: () => void;
@@ -66,12 +76,13 @@ const shellClass =
 
 const focusRing = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary";
 
-/** Same classes as `UploadBankslipModal` footer (Cancel / primary). */
 const bankSlipModalFooterCancelClass =
-  "box-border h-12 min-h-[48px] w-full rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px] sm:w-auto sm:px-4";
+  "box-border h-12 min-h-[48px] w-full rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:min-h-[44px] sm:w-auto sm:px-4";
 
 const bankSlipModalFooterPrimaryClass =
-  "box-border h-12 min-h-[48px] w-full rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px] sm:w-auto";
+  "box-border h-12 min-h-[48px] w-full rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px] sm:w-auto";
+
+type StagedBankSlipEntry = { id: string; file: File };
 
 function fileIconForName(filename: string): { icon: string; iconClass: string } {
   const ext = filename.trim().split(".").pop()?.toLowerCase() ?? "";
@@ -343,11 +354,59 @@ function ViewBankSlipInlinePreview({
   );
 }
 
+function StagedBankSlipInlinePreview({
+  file,
+  objectUrl,
+  previewSubtitleId,
+}: {
+  file: File;
+  objectUrl: string;
+  previewSubtitleId: string;
+}) {
+  const { icon, iconClass } = fileIconForName(file.name);
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex gap-3 pb-2">
+        <span
+          className={`material-symbols-outlined mt-0.5 shrink-0 text-[28px] leading-none sm:text-[32px] ${iconClass}`}
+          aria-hidden
+        >
+          {icon}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-black sm:text-base">{file.name}</p>
+          <p id={previewSubtitleId} className="mt-1 text-[11px] font-medium tracking-wide text-primary/55 sm:text-xs">
+            Document preview<span className="text-primary/35"> • </span>
+            {formatFileSize(file.size)}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 min-h-[min(50dvh,320px)] overflow-auto rounded-lg bg-black/5 p-2 sm:min-h-[240px] sm:p-3">
+        {isImageFile(file) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={objectUrl}
+            alt={`Preview: ${file.name}`}
+            className="mx-auto max-h-[min(55dvh,480px)] w-auto max-w-full object-contain"
+          />
+        ) : null}
+        {isPdfFile(file) && !isImageFile(file) ? (
+          <PdfJsCanvasPreview src={objectUrl} title={file.name} className="w-full" maxPageWidthCssPx={560} />
+        ) : null}
+        {!isImageFile(file) && !isPdfFile(file) ? (
+          <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function BankSlipDetailsModal({
   open,
   onClose,
   details,
-  onUpload,
+  inlineUploadBillContext,
+  onInlineUploadSuccess,
   onRemoveFile,
   allowRemoveFiles = true,
   onBankSlipFileDeleted,
@@ -357,10 +416,30 @@ export function BankSlipDetailsModal({
   const previewSubtitleId = useId();
   const [files, setFiles] = useState<BankSlipFileEntry[]>(() => details.files);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(() => details.files[0]?.id ?? null);
+  const [selectedStagedId, setSelectedStagedId] = useState<string | null>(null);
+  const [stagedUploads, setStagedUploads] = useState<StagedBankSlipEntry[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [pendingDeleteFileId, setPendingDeleteFileId] = useState<string | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const detailsFileIdsSigRef = useRef<string | null>(null);
+
+  const inlineBillId = inlineUploadBillContext?.billId;
+  const inlineCurrency = (inlineUploadBillContext?.currencyCode ?? "HKD").trim() || "HKD";
+
+  const stagedPreviewFile = selectedStagedId ? stagedUploads.find((x) => x.id === selectedStagedId)?.file ?? null : null;
+  const [stagedObjectUrl, setStagedObjectUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!stagedPreviewFile) {
+      setStagedObjectUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(stagedPreviewFile);
+    setStagedObjectUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [stagedPreviewFile]);
 
   useEffect(() => {
     if (!open) {
@@ -394,6 +473,21 @@ export function BankSlipDetailsModal({
   }, [open, details]);
 
   useEffect(() => {
+    if (!open) {
+      setStagedUploads([]);
+      setSelectedStagedId(null);
+      setUploadError(null);
+      setUploading(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (selectedStagedId && !stagedUploads.some((x) => x.id === selectedStagedId)) {
+      setSelectedStagedId(null);
+    }
+  }, [stagedUploads, selectedStagedId]);
+
+  useEffect(() => {
     setSelectedFileId((sel) => {
       if (files.length === 0) return null;
       if (sel != null && files.some((f) => f.id === sel)) return sel;
@@ -418,6 +512,64 @@ export function BankSlipDetailsModal({
   const removeLocal = (fileId: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== fileId));
     onRemoveFile?.(fileId);
+  };
+
+  const handleStagedFilesSelected = (e: ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files;
+    if (!list?.length) return;
+    const added: StagedBankSlipEntry[] = Array.from(list).map((file) => ({
+      id:
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
+      file,
+    }));
+    setStagedUploads((prev) => [...prev, ...added]);
+    setSelectedStagedId(added[added.length - 1]?.id ?? null);
+    setSelectedFileId(null);
+    setUploadError(null);
+    e.target.value = "";
+  };
+
+  const removeStaged = (entryId: string) => {
+    setStagedUploads((prev) => prev.filter((x) => x.id !== entryId));
+    if (selectedStagedId === entryId) setSelectedStagedId(null);
+  };
+
+  const handleCommitInlineUpload = async () => {
+    if (!inlineBillId || stagedUploads.length === 0) {
+      setUploadError("Select at least one bank slip file.");
+      return;
+    }
+    setUploadError(null);
+    if (uploading) return;
+    setUploading(true);
+    let createdPaymentId: string | null = null;
+    try {
+      const payment = await createPayment(inlineBillId, {
+        currency_code: inlineCurrency,
+        payment_status: "pending",
+      });
+      createdPaymentId = payment.id;
+      for (const { file } of stagedUploads) {
+        await uploadPaymentAttachment(inlineBillId, payment.id, file, "bank_slip");
+      }
+      await updatePayment(inlineBillId, payment.id, { payment_status: "completed" });
+      setStagedUploads([]);
+      setSelectedStagedId(null);
+      onInlineUploadSuccess?.();
+    } catch (e) {
+      if (createdPaymentId) {
+        try {
+          await deletePayment(inlineBillId, createdPaymentId);
+        } catch {
+          /* best-effort rollback */
+        }
+      }
+      setUploadError(e instanceof ApiError ? e.message : "Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const pendingDeleteFile = pendingDeleteFileId ? files.find((f) => f.id === pendingDeleteFileId) : undefined;
@@ -446,6 +598,10 @@ export function BankSlipDetailsModal({
 
   const selectedEntry = files.find((f) => f.id === selectedFileId);
   const showRemoveOnRows = allowRemoveFiles;
+  const showInlineUpload = inlineBillId != null;
+  const previewingStaged = Boolean(selectedStagedId && stagedPreviewFile && stagedObjectUrl);
+  const totalListedFiles = files.length + stagedUploads.length;
+  const billTitle = details.toName.trim();
 
   if (!open) return null;
 
@@ -456,17 +612,24 @@ export function BankSlipDetailsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        aria-describedby={details.toName.trim() ? descriptionId : undefined}
+        aria-describedby={
+          [
+            billTitle ? descriptionId : null,
+            previewingStaged || selectedEntry ? previewSubtitleId : null,
+          ]
+            .filter(Boolean)
+            .join(" ") || undefined
+        }
         className={shellClass}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-4 pb-3 pt-4 sm:gap-4 sm:px-6 sm:pb-4 sm:pt-6">
           <div className="min-w-0 pr-2">
             <h2 id={titleId} className="text-lg font-bold leading-snug text-black sm:text-xl md:text-2xl">
-              Bank Slip
+              {showInlineUpload ? "Upload Bank Slip" : "Bank Slip"}
             </h2>
-            {details.toName.trim() ? (
-              <p id={descriptionId} className="mt-1 text-sm text-primary/70">
+            {billTitle ? (
+              <p id={descriptionId} className="mt-1 break-words text-sm text-primary/70">
                 {details.toName}
               </p>
             ) : null}
@@ -484,6 +647,11 @@ export function BankSlipDetailsModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
+          {uploadError ? (
+            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800" role="alert">
+              {uploadError}
+            </div>
+          ) : null}
           {deleteError ? (
             <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800" role="alert">
               {deleteError}
@@ -491,18 +659,45 @@ export function BankSlipDetailsModal({
           ) : null}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
             <div className="min-w-0">
-              <div className="mb-2 flex items-baseline justify-between gap-3">
+              {showInlineUpload ? (
+                <div className="relative mb-3">
+                  <input
+                    type="file"
+                    className="absolute inset-0 z-20 h-full min-h-[156px] w-full cursor-pointer opacity-0 sm:min-h-[176px]"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                    onChange={handleStagedFilesSelected}
+                    disabled={uploading}
+                    aria-label="Choose bank slip files to upload"
+                  />
+                  <div className="pointer-events-none">
+                    <div className="flex min-h-[156px] flex-col items-center justify-center gap-3 overflow-visible rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 py-5 sm:min-h-[176px] sm:gap-4 sm:py-6">
+                      <span
+                        className="material-symbols-outlined inline-block origin-center text-[48px] leading-none text-primary/45 [font-variation-settings:'FILL'_0,'wght'_400,'GRAD'_0,'opsz'_48] scale-[1.78] sm:text-[48px] sm:scale-[2.02]"
+                        aria-hidden
+                      >
+                        cloud_upload
+                      </span>
+                      <div className="flex flex-col items-center">
+                        <p className="px-2 text-center text-[14px] font-medium leading-tight text-black">Click to upload or drag and drop</p>
+                        <p className="mt-1 px-2 text-center text-[12px] leading-tight text-primary/55">PDF, JPEG, PNG (Max 5MB)</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              <div className={`mb-2 flex items-baseline justify-between gap-3 ${showInlineUpload ? "mt-5" : ""}`}>
                 <p className="min-w-0 text-[11px] font-semibold uppercase tracking-wide text-primary/80">
-                  Files ({files.length})
+                  Uploaded files ({totalListedFiles})
                 </p>
-                {files.length > 0 ? (
-                  <span className="shrink-0 text-[10px] font-medium text-primary/55 sm:text-[11px]">Click to preview</span>
+                {totalListedFiles > 0 ? (
+                  <span className="shrink-0 text-[10px] font-medium text-primary/55 sm:text-[11px]">Click the file to preview</span>
                 ) : null}
               </div>
               <ul className="flex flex-col gap-2">
                 {files.map((f) => {
                   const { icon, iconClass } = fileIconForName(f.name);
-                  const selected = f.id === selectedFileId;
+                  const selected = f.id === selectedFileId && selectedStagedId == null;
                   return (
                     <li
                       key={f.id}
@@ -513,7 +708,10 @@ export function BankSlipDetailsModal({
                     >
                       <button
                         type="button"
-                        onClick={() => setSelectedFileId(f.id)}
+                        onClick={() => {
+                          setSelectedFileId(f.id);
+                          setSelectedStagedId(null);
+                        }}
                         className="flex min-w-0 flex-1 cursor-pointer items-center justify-start gap-2 rounded-md text-left"
                         aria-pressed={selected}
                         aria-label={`Preview ${f.name}`}
@@ -546,11 +744,65 @@ export function BankSlipDetailsModal({
                     </li>
                   );
                 })}
+                {stagedUploads.map(({ id, file }) => {
+                  const { icon, iconClass } = fileIconForName(file.name);
+                  const selected = selectedStagedId === id;
+                  return (
+                    <li
+                      key={`staged-${id}`}
+                      className={
+                        "relative flex items-center justify-start rounded-lg border bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3 " +
+                        (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-gray-200")
+                      }
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedStagedId(id);
+                          setSelectedFileId(null);
+                        }}
+                        className="flex min-w-0 flex-1 cursor-pointer items-center justify-start gap-2 rounded-md text-left"
+                        aria-pressed={selected}
+                        aria-label={`Preview ${file.name}`}
+                      >
+                        <span
+                          className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`}
+                          aria-hidden
+                        >
+                          {icon}
+                        </span>
+                        <span className="min-w-0 break-words text-left text-sm leading-snug text-black sm:flex-1 sm:truncate sm:leading-normal">
+                          {file.name}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeStaged(id)}
+                        className="absolute right-2 top-1/2 flex h-8 w-8 shrink-0 -translate-y-1/2 items-center justify-center rounded-md text-primary/60 transition-colors hover:bg-gray-100 hover:text-primary sm:static sm:translate-y-0"
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+                          close
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
 
             <div className="min-w-0">
-              {selectedEntry ? (
+              {previewingStaged && stagedPreviewFile && stagedObjectUrl ? (
+                <StagedBankSlipInlinePreview
+                  file={stagedPreviewFile}
+                  objectUrl={stagedObjectUrl}
+                  previewSubtitleId={previewSubtitleId}
+                />
+              ) : selectedStagedId && stagedPreviewFile && !stagedObjectUrl ? (
+                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
+                  Loading preview…
+                </div>
+              ) : selectedEntry ? (
                 <ViewBankSlipInlinePreview
                   fileName={selectedEntry.name}
                   previewUrl={selectedEntry.previewUrl}
@@ -558,13 +810,15 @@ export function BankSlipDetailsModal({
                   previewSubtitleId={previewSubtitleId}
                   fileSizeBytes={selectedEntry.fileSizeBytes}
                 />
-              ) : files.length === 0 ? (
+              ) : files.length === 0 && !showInlineUpload ? (
                 <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
                   No bank slip files uploaded for these payments yet.
                 </div>
               ) : (
                 <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
-                  Select a file to preview
+                  {showInlineUpload && files.length === 0 && stagedUploads.length === 0
+                    ? "No uploaded files"
+                    : "Select a file to preview"}
                 </div>
               )}
             </div>
@@ -572,20 +826,17 @@ export function BankSlipDetailsModal({
         </div>
 
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 px-4 py-3 sm:flex-row sm:justify-end sm:gap-3 sm:px-6 sm:py-4">
-          <button type="button" onClick={onClose} className={bankSlipModalFooterCancelClass}>
+          <button type="button" onClick={onClose} disabled={uploading} className={bankSlipModalFooterCancelClass}>
             Cancel
           </button>
-          {onUpload ? (
+          {showInlineUpload ? (
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onUpload();
-              }}
+              onClick={() => void handleCommitInlineUpload()}
+              disabled={uploading || stagedUploads.length === 0}
               className={bankSlipModalFooterPrimaryClass}
             >
-              New Bank Slip
+              {uploading ? "Uploading…" : "Upload"}
             </button>
           ) : null}
         </div>
