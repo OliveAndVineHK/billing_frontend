@@ -302,6 +302,11 @@ export function PaymentRequestView() {
         billStatus={
           recordPaymentTarget ? rawBills.find((b) => b.id === recordPaymentTarget.billId)?.status : undefined
         }
+        contactTitle={
+          recordPaymentTarget
+            ? rawBills.find((b) => b.id === recordPaymentTarget.billId)?.contact?.trim() ?? ""
+            : ""
+        }
         readOnly={recordPaymentTarget?.readOnly ?? false}
         invoiceAmount={
           recordPaymentTarget

@@ -5,7 +5,6 @@ import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useMemo
 import type { PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsModal";
 import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
-import { UploadBankslipModal } from "./UploadBankslipModal";
 import { useUserRole } from "@/lib/useUserRole";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 
@@ -381,7 +380,7 @@ type PaymentRequestTableProps = {
 
 export type PaymentRequestTableHandle = {
   clearSelection: () => void;
-  /** Opens the Upload bank slip modal for the given bill (same as the row Upload control). */
+  /** Opens the bank slip attachments modal for the given bill (same as row Upload / attachment count). */
   openBankSlipUpload: (billId: string) => void;
 };
 
@@ -497,7 +496,6 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   const sortDescriptionIdPrefix = useId();
   const { isElevated } = useUserRole();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bankslipModalRowId, setBankslipModalRowId] = useState<string | null>(null);
   const [bankSlipDetailsRowId, setBankSlipDetailsRowId] = useState<string | null>(null);
   const [rowMenu, setRowMenu] = useState<RowMenuState | null>(null);
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<string | null>(null);
@@ -507,13 +505,11 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnSelectorKey, boolean>>(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
   const [columnVisibilityDraft, setColumnVisibilityDraft] = useState<Record<ColumnSelectorKey, boolean>>(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
-  const bankSlipDetailsBillIdRef = useRef<string | null>(null);
-
   const rowIdSet = useMemo(() => new Set(rows.map((r) => r.id)), [rows]);
 
   useImperativeHandle(ref, () => ({
     clearSelection: () => setSelectedIds(new Set()),
-    openBankSlipUpload: (billId: string) => setBankslipModalRowId(billId),
+    openBankSlipUpload: (billId: string) => setBankSlipDetailsRowId(billId),
   }));
 
   useEffect(() => {
@@ -586,7 +582,6 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
     setRowMenu(null);
     setRowDeleteConfirmId(null);
     setColumnsMenu(null);
-    setBankslipModalRowId(null);
     setBankSlipDetailsRowId(null);
   }, [statusFilter]);
 
@@ -615,7 +610,6 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
     });
   };
 
-  const bankslipModalRow = bankslipModalRowId ? rows.find((r) => r.id === bankslipModalRowId) : undefined;
   const rowMenuRow = rowMenu ? rows.find((r) => r.id === rowMenu.rowId) : undefined;
   const isRowMenuDeleteDisabled =
     rowMenuRow?.status === "Voided" ||
@@ -822,7 +816,6 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             className={`inline-flex h-10 min-h-10 cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`}
                             onClick={(e) => {
                               e.stopPropagation();
-                              bankSlipDetailsBillIdRef.current = row.id;
                               setBankSlipDetailsRowId(row.id);
                             }}
                             aria-label={
@@ -842,7 +835,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>upload_file</span>
                           </div>
                         ) : (
-                          <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}>
+                          <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankSlipDetailsRowId(row.id); }}>
                             <span className="whitespace-nowrap">Upload</span>
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>upload_file</span>
                           </button>
@@ -1048,7 +1041,6 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                                   className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:gap-2 ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    bankSlipDetailsBillIdRef.current = row.id;
                                     setBankSlipDetailsRowId(row.id);
                                   }}
                                   aria-label={
@@ -1075,7 +1067,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                                   <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span>
                                 </div>
                               ) : (
-                                <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankslipModalRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>
+                                <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankSlipDetailsRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>
                               )}
                             </td>
                           );
@@ -1098,14 +1090,6 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
           </table>
         </div>
       </div>
-      <UploadBankslipModal
-        open={bankslipModalRowId != null}
-        billId={bankslipModalRowId}
-        currencyCode={bankslipModalRow?.currencyCode ?? "HKD"}
-        contactTitle={bankslipModalRow?.contactTitle}
-        onClose={() => setBankslipModalRowId(null)}
-        onUploaded={onBankSlipUploaded}
-      />
       {bankSlipDetailsRowId != null && bankSlipDetailsPayload ? (
         <BankSlipDetailsModal
           open
@@ -1113,15 +1097,15 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
           details={bankSlipDetailsPayload}
           allowRemoveFiles={!bankSlipDetailsReadOnly}
           onBankSlipFileDeleted={onBankSlipUploaded}
-          onUpload={
-            bankSlipDetailsReadOnly
-              ? undefined
-              : () => {
-                  const id = bankSlipDetailsBillIdRef.current;
-                  setBankSlipDetailsRowId(null);
-                  if (id) setBankslipModalRowId(id);
+          inlineUploadBillContext={
+            !bankSlipDetailsReadOnly && bankSlipDetailsRowId
+              ? {
+                  billId: bankSlipDetailsRowId,
+                  currencyCode: bankSlipDetailsSourceRow?.currencyCode ?? "HKD",
                 }
+              : undefined
           }
+          onInlineUploadSuccess={onBankSlipUploaded}
         />
       ) : null}
       {rowMenu

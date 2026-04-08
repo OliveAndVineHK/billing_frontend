@@ -888,6 +888,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         }}
         billId={requestId}
         billStatus={bill?.status}
+        contactTitle={bill?.contact ?? ""}
         readOnly={recordPaymentReadOnly}
         invoiceAmount={invoiceTotalMajor}
         currencyCode={formData?.currencyCode ?? "HKD"}

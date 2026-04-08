@@ -31,5 +31,4 @@ export {
   type BankSlipFileEntry,
   type BankSlipFileRef,
 } from "./BankSlipDetailsModal";
-export { UploadBankslipModal, type UploadBankslipModalProps } from "./UploadBankslipModal";
 export { RecordPaymentModal, type RecordPaymentModalProps } from "./RecordPaymentModal";
