@@ -353,8 +353,8 @@ export function RecordPaymentModal({
               className="relative -mr-1 -mt-0.5 box-border flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-primary/25 text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
               aria-label={
                 bankSlipFileCount > 0
-                  ? `View payment attachments, ${bankSlipFileCount} file${bankSlipFileCount === 1 ? "" : "s"}`
-                  : "View payment attachments"
+                  ? `Payment attachments — ${bankSlipFileCount} file${bankSlipFileCount === 1 ? "" : "s"}; open to view or add bank slips`
+                  : "Payment attachments — open to view or add bank slips"
               }
             >
               <span className="material-symbols-outlined text-[24px] leading-none" aria-hidden>
@@ -512,7 +512,7 @@ export function RecordPaymentModal({
         onClose={() => setBankSlipPreviewOpen(false)}
         details={bankSlipDetailsForModal}
         allowRemoveFiles={false}
-        inlineUploadBillContext={readOnly ? undefined : { billId, currencyCode: iso }}
+        inlineUploadBillContext={{ billId, currencyCode: iso }}
         onInlineUploadSuccess={async () => {
           await loadPayments();
           onPaymentSaved?.();
