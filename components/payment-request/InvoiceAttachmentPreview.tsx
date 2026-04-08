@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
 
 const MIN_SCALE = 0.6;
 const MAX_SCALE = 3;
@@ -42,16 +43,12 @@ function PreviewBlock({ url, name, mime }: InvoiceAttachmentPreviewItem) {
   }
   if (mimeLower === "application/pdf") {
     return (
-      <div className="relative w-full overflow-hidden rounded bg-white">
-        {/* Full width of gray panel; height tracks page aspect (11/8.5) */}
-        <div className="relative w-full pb-[129.41%]">
-          <iframe
-            src={url}
-            title={name || "PDF preview"}
-            className="absolute inset-0 h-full w-full rounded border-0 bg-white"
-          />
-        </div>
-      </div>
+      <PdfJsCanvasPreview
+        src={url}
+        title={name || "PDF preview"}
+        className="w-full"
+        maxPageWidthCssPx={900}
+      />
     );
   }
   return (

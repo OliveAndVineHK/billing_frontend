@@ -53,7 +53,6 @@ export type PaymentRequestDetailedInfoProps = {
   editInCardHeader?: boolean;
 };
 
-/** Same as Add Payment Request modal field labels — sentence case, view + edit. */
 const fieldLabelClass =
   "mb-1.5 block text-[11px] font-semibold tracking-wide text-primary/55 sm:text-xs";
 

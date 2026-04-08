@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
+import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
 import { formatFileSize, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
@@ -843,7 +844,7 @@ function PaymentRequestInlinePreview({
           <img src={objectUrl} alt={`Preview: ${file.name}`} className="mx-auto max-h-[min(65dvh,620px)] w-auto max-w-full object-contain"/>
         ) : null}
         {isPdfFile(file) && !isImageFile(file) ? (
-          <iframe title={file.name} src={objectUrl} className="h-[min(65dvh,620px)] w-full rounded-lg border border-gray-200 bg-white" />
+          <PdfJsCanvasPreview src={objectUrl} title={file.name} className="w-full" maxPageWidthCssPx={640} />
         ) : null}
         {!isImageFile(file) && !isPdfFile(file) ? (
           <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>

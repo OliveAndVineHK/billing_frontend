@@ -3,6 +3,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
+import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
 import { formatFileSize, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
 
 export type UploadInvoiceAttachmentModalProps = {
@@ -232,7 +233,7 @@ export function UploadInvoiceAttachmentModal({ open, onClose, onUpload }: Upload
                       <img src={previewObjectUrl} alt={`Preview: ${previewFile.name}`} className="mx-auto max-h-[min(55dvh,480px)] w-auto max-w-full object-contain" />
                     ) : null}
                     {isPdfFile(previewFile) && !isImageFile(previewFile) ? (
-                      <iframe title={previewFile.name} src={previewObjectUrl} className="h-[min(55dvh,480px)] w-full rounded-lg border border-gray-200 bg-white" />
+                      <PdfJsCanvasPreview src={previewObjectUrl} title={previewFile.name} className="w-full" maxPageWidthCssPx={560} />
                     ) : null}
                     {!isImageFile(previewFile) && !isPdfFile(previewFile) ? (
                       <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>
