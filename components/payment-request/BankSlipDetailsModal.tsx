@@ -10,8 +10,10 @@ import {
   deletePayment,
   deletePaymentAttachment,
   fetchPaymentAttachmentPreview,
+  fetchPayments,
   updatePayment,
   uploadPaymentAttachment,
+  type PaymentItem,
 } from "@/lib/api";
 import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
 import { formatFileSize, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
@@ -83,6 +85,29 @@ const bankSlipModalFooterPrimaryClass =
   "box-border h-12 min-h-[48px] w-full rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px] sm:w-auto";
 
 type StagedBankSlipEntry = { id: string; file: File };
+
+function pickExistingPaymentIdForBankSlipUpload(payments: PaymentItem[], billId: string): string | null {
+  const forBill = payments.filter((p) => p.bill_id === billId);
+  if (forBill.length === 0) return null;
+
+  const byDateDesc = (a: PaymentItem, b: PaymentItem) => {
+    const da = (a.payment_date ?? "").trim();
+    const db = (b.payment_date ?? "").trim();
+    return db.localeCompare(da);
+  };
+
+  const pending = forBill.filter((p) => (p.payment_status ?? "").trim().toLowerCase() === "pending");
+  if (pending.length > 0) {
+    return [...pending].sort(byDateDesc)[0]!.id;
+  }
+
+  const settled = forBill.filter((p) => (p.payment_status ?? "").trim().toLowerCase() !== "pending");
+  if (settled.length > 0) {
+    return [...settled].sort(byDateDesc)[0]!.id;
+  }
+
+  return null;
+}
 
 function fileIconForName(filename: string): { icon: string; iconClass: string } {
   const ext = filename.trim().split(".").pop()?.toLowerCase() ?? "";
@@ -546,15 +571,29 @@ export function BankSlipDetailsModal({
     setUploading(true);
     let createdPaymentId: string | null = null;
     try {
-      const payment = await createPayment(inlineBillId, {
-        currency_code: inlineCurrency,
-        payment_status: "pending",
-      });
-      createdPaymentId = payment.id;
-      for (const { file } of stagedUploads) {
-        await uploadPaymentAttachment(inlineBillId, payment.id, file, "bank_slip");
+      const { payments } = await fetchPayments(inlineBillId);
+      const existingPaymentId = pickExistingPaymentIdForBankSlipUpload(payments, inlineBillId);
+
+      let paymentId: string;
+      if (existingPaymentId) {
+        paymentId = existingPaymentId;
+      } else {
+        const payment = await createPayment(inlineBillId, {
+          currency_code: inlineCurrency,
+          payment_status: "pending",
+        });
+        paymentId = payment.id;
+        createdPaymentId = payment.id;
       }
-      await updatePayment(inlineBillId, payment.id, { payment_status: "completed" });
+
+      for (const { file } of stagedUploads) {
+        await uploadPaymentAttachment(inlineBillId, paymentId, file, "bank_slip");
+      }
+
+      if (createdPaymentId) {
+        await updatePayment(inlineBillId, paymentId, { payment_status: "completed" });
+      }
+
       setStagedUploads([]);
       setSelectedStagedId(null);
       onInlineUploadSuccess?.();
