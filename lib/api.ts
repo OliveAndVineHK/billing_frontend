@@ -625,10 +625,12 @@ export function fetchAuditHistory(billId: string): Promise<AuditItem[]> {
 export function fetchEntityBillAccounts(options?: {
   forceChartSync?: boolean;
   billDropdown?: boolean;
+  includeInactive?: boolean;
 }): Promise<EntityBillAccount[]> {
   const params = new URLSearchParams();
   if (options?.forceChartSync) params.set("force_chart_sync", "true");
   if (options?.billDropdown) params.set("bill_dropdown", "true");
+  if (options?.includeInactive) params.set("include_inactive", "true");
   const q = params.toString();
   return apiFetch(`/entity-bill-accounts/${q ? `?${q}` : ""}`);
 }
