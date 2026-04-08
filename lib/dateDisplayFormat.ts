@@ -27,15 +27,6 @@ function tryIsoYmdToCalendarParts(iso: string): { y: number; m: number; d: numbe
   return { y, m, d };
 }
 
-/** Date text fields only: `dd/Mmm/yyyy` with slashes (matches placeholder). */
-export function formatIsoDateAsDdMmmYyyy(iso: string): string {
-  const p = tryIsoYmdToCalendarParts(iso);
-  if (!p) return "";
-  const mon = MONTHS_SHORT[p.m - 1];
-  return `${String(p.d).padStart(2, "0")}/${mon}/${p.y}`;
-}
-
-/** Read-only labels, tables, cards: `03 Apr 2026` (no slashes). */
 export function formatIsoDateForDisplay(iso: string): string {
   const p = tryIsoYmdToCalendarParts(iso);
   if (!p) return "";
@@ -43,7 +34,10 @@ export function formatIsoDateForDisplay(iso: string): string {
   return `${String(p.d).padStart(2, "0")} ${mon} ${p.y}`;
 }
 
-/** Local calendar date from a `Date` as `03 Apr 2026` (no slashes). */
+export function formatIsoDateAsDdMmmYyyy(iso: string): string {
+  return formatIsoDateForDisplay(iso);
+}
+
 export function formatLocalDateForDisplay(d: Date): string {
   if (Number.isNaN(d.getTime())) return "";
   const y = d.getFullYear();
@@ -52,7 +46,6 @@ export function formatLocalDateForDisplay(d: Date): string {
   return formatIsoDateForDisplay(`${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
 }
 
-/** Calendar date in a specific IANA zone, e.g. HK, as `03 Apr 2026` (no slashes). */
 export function formatDateInTimeZoneForDisplay(d: Date, timeZone: string): string {
   if (Number.isNaN(d.getTime())) return "";
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -76,13 +69,24 @@ export function parseDdMmmYyyyToIso(raw: string): string | null {
   if (!t) return "";
   const maybeIso = t.slice(0, 10);
   if (/^\d{4}-\d{2}-\d{2}$/.test(maybeIso)) {
-    return formatIsoDateAsDdMmmYyyy(maybeIso) ? maybeIso : null;
+    return formatIsoDateForDisplay(maybeIso) ? maybeIso : null;
   }
-  const m = /^(\d{1,2})\/([A-Za-z]{3})\/(\d{4})$/.exec(t);
-  if (!m) return null;
-  const d = Number.parseInt(m[1], 10);
-  const monToken = m[2];
-  const y = Number.parseInt(m[3], 10);
+  const space = /^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/.exec(t);
+  if (space) {
+    const d = Number.parseInt(space[1], 10);
+    const monToken = space[2];
+    const y = Number.parseInt(space[3], 10);
+    const monthIdx = MONTHS_SHORT.findIndex((mo) => mo.toLowerCase() === monToken.toLowerCase());
+    if (monthIdx < 0 || !Number.isFinite(d) || !Number.isFinite(y)) return null;
+    const dt = new Date(y, monthIdx, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== monthIdx || dt.getDate() !== d) return null;
+    return `${y}-${String(monthIdx + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  }
+  const slash = /^(\d{1,2})\/([A-Za-z]{3})\/(\d{4})$/.exec(t);
+  if (!slash) return null;
+  const d = Number.parseInt(slash[1], 10);
+  const monToken = slash[2];
+  const y = Number.parseInt(slash[3], 10);
   const monthIdx = MONTHS_SHORT.findIndex((mo) => mo.toLowerCase() === monToken.toLowerCase());
   if (monthIdx < 0 || !Number.isFinite(d) || !Number.isFinite(y)) return null;
   const dt = new Date(y, monthIdx, d);
