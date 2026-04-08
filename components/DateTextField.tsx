@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { formatIsoDateAsDdMmmYyyy, parseDdMmmYyyyToIso } from "@/lib/dateDisplayFormat";
+import { formatIsoDateForDisplay, parseDdMmmYyyyToIso } from "@/lib/dateDisplayFormat";
 import { openDatePicker } from "@/lib/openDatePicker";
 
-export const DATE_TEXT_PLACEHOLDER = "dd/mmm/yyyy";
+export const DATE_TEXT_PLACEHOLDER = "dd mmm yyyy";
 
 export type DateTextFieldProps = {
   id: string;
@@ -28,16 +28,16 @@ export function DateTextField({
   calendarButtonClassName,
 }: DateTextFieldProps) {
   const pickerRef = useRef<HTMLInputElement>(null);
-  const [text, setText] = useState(() => (value ? formatIsoDateAsDdMmmYyyy(value) : ""));
+  const [text, setText] = useState(() => (value ? formatIsoDateForDisplay(value) : ""));
 
   useEffect(() => {
-    setText(value ? formatIsoDateAsDdMmmYyyy(value) : "");
+    setText(value ? formatIsoDateForDisplay(value) : "");
   }, [value]);
 
   const handleBlur = () => {
     const parsed = parseDdMmmYyyyToIso(text);
     if (parsed === null) {
-      setText(value ? formatIsoDateAsDdMmmYyyy(value) : "");
+      setText(value ? formatIsoDateForDisplay(value) : "");
       return;
     }
     if (parsed !== value) onChange(parsed);

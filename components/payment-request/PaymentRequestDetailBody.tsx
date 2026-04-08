@@ -25,6 +25,7 @@ import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
 import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
 import { enrichAccountCodeWithOptions } from "@/lib/billFormSelectOptions";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
+import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
 import {
   loadAttachmentBlobs,
   replaceAttachmentBlobsFromPreviewItems,
@@ -769,10 +770,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             rows={payments.map((p): PaymentHistoryRow => {
               const amt = parseFloat(p.amount || "0");
               const shortDate = p.payment_date
-                ? new Date(p.payment_date + "T12:00:00").toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                  })
+                ? formatIsoDateForDisplay(p.payment_date.trim().slice(0, 10)) || "—"
                 : "—";
               const forThisBill = p.bill_id === requestId;
               let dateLabel: string;

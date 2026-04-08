@@ -10,14 +10,14 @@ import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
 import { deleteBill, fetchBills, publishBill, type BillListItem } from "@/lib/api";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { fetchBillBankSlipEnrichment } from "@/lib/bankSlipEnrichment";
-import { formatIsoDateAsDdMmmYyyy } from "@/lib/dateDisplayFormat";
+import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
 import { useUserRole } from "@/lib/useUserRole";
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return "";
   const head = dateStr.trim().slice(0, 10);
   if (/^\d{4}-\d{2}-\d{2}$/.test(head)) {
-    const f = formatIsoDateAsDdMmmYyyy(head);
+    const f = formatIsoDateForDisplay(head);
     if (f) return f;
   }
   const d = new Date(dateStr);
@@ -25,7 +25,7 @@ function formatDate(dateStr: string): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
-  return formatIsoDateAsDdMmmYyyy(`${y}-${m}-${day}`) || dateStr;
+  return formatIsoDateForDisplay(`${y}-${m}-${day}`) || dateStr;
 }
 
 function formatAmount(value: string | number): string {
