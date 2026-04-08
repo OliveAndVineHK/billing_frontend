@@ -7,6 +7,7 @@ import { pushAppScrollLock } from "@/lib/appScrollRoot";
 export type RowDeleteConfirmModalProps = {
   open: boolean;
   contactTitle: string;
+  isDraft?: boolean;
   pending?: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -27,6 +28,7 @@ const deleteClass = `box-border h-12 min-h-[48px] w-full cursor-pointer rounded-
 export function RowDeleteConfirmModal({
   open,
   contactTitle,
+  isDraft = false,
   pending = false,
   onClose,
   onConfirm,
@@ -51,6 +53,8 @@ export function RowDeleteConfirmModal({
   if (!open || typeof document === "undefined") return null;
 
   const trimmed = contactTitle.trim();
+  const title = isDraft ? "Delete this bill?" : "Void this bill?";
+  const confirmLabel = pending ? (isDraft ? "Deleting…" : "Voiding…") : isDraft ? "Delete Bill" : "Void Bill";
 
   return createPortal(
     <div className={overlayClass} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !pending) onClose(); }}>
@@ -63,10 +67,18 @@ export function RowDeleteConfirmModal({
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-lg font-semibold text-primary sm:text-xl">
-          Void this bill?
+          {title}
         </h2>
         <p id={descId} className="mt-3 text-sm leading-relaxed text-primary/80">
-          {trimmed ? (
+          {isDraft ? (
+            trimmed ? (
+              <>
+                Are you sure you want to delete <span className="font-semibold text-primary">&quot;{trimmed}&quot;</span>? This draft will be removed and cannot be recovered.
+              </>
+            ) : (
+              <>Are you sure you want to delete this draft? It will be removed and cannot be recovered.</>
+            )
+          ) : trimmed ? (
             <>
               Are you sure you want to void <span className="font-semibold text-primary">&quot;{trimmed}&quot;</span>? The bill will be marked as voided and can no longer be edited.
             </>
@@ -79,7 +91,7 @@ export function RowDeleteConfirmModal({
             Cancel
           </button>
           <button type="button" className={deleteClass} onClick={onConfirm} disabled={pending}>
-            {pending ? "Voiding…" : "Void Bill"}
+            {confirmLabel}
           </button>
         </div>
       </div>

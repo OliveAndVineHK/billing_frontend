@@ -692,6 +692,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             overflowShowRepublish={actionOverflowShowRepublish}
             overflowMenuTriggerDisabled={actionOverflowTriggerDisabled}
             overflowVoidDisabled={actionOverflowVoidDisabled}
+            isDraftBill={billIsDraft}
           />
         </div>
         <div className="flex h-full min-h-0 min-w-0 max-lg:order-3 flex-col lg:order-none lg:col-start-1 lg:row-start-2">
@@ -847,6 +848,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       <RowDeleteConfirmModal
         open={deleteBillConfirmOpen}
         contactTitle={bill?.contact ?? ""}
+        isDraft={billIsDraft}
         pending={isDeleting}
         onClose={() => {
           if (!isDeleting) setDeleteBillConfirmOpen(false);
