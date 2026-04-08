@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { ApiError, deletePaymentAttachment, fetchPaymentAttachmentPreview } from "@/lib/api";
+import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
 import { formatFileSize } from "@/lib/fileAttachmentPreview";
 import { AttachmentDeleteConfirmModal } from "./AttachmentDeleteConfirmModal";
 
@@ -128,13 +129,7 @@ function BlobOrUrlPreviewContent({ fileName, url }: { fileName: string; url: str
     );
   }
   if (isPdfName(fileName)) {
-    const frameClass =
-      "h-[min(55dvh,480px)] min-h-[200px] w-full rounded-lg border border-gray-200 bg-white";
-    return (
-      <object data={url} type="application/pdf" title={fileName} className={frameClass}>
-        <iframe title={fileName} src={url} className={frameClass} />
-      </object>
-    );
+    return <PdfJsCanvasPreview src={url} title={fileName} className="w-full" maxPageWidthCssPx={560} />;
   }
   return (
     <div className="py-8 text-center">
@@ -262,13 +257,7 @@ function FetchedPreviewContent({
     );
   }
   if (showPdf) {
-    const frameClass =
-      "h-[min(55dvh,480px)] min-h-[200px] w-full rounded-lg border border-gray-200 bg-white";
-    return (
-      <object data={url} type="application/pdf" title={fileName} className={frameClass}>
-        <iframe title={fileName} src={url} className={frameClass} />
-      </object>
-    );
+    return <PdfJsCanvasPreview src={url} title={fileName} className="w-full" maxPageWidthCssPx={560} />;
   }
   return (
     <div className="py-8 text-center">
@@ -289,7 +278,6 @@ function FetchedPreviewContent({
   );
 }
 
-/** Same layout as UploadBankslipModal’s inline preview: title row + document area. */
 function ViewBankSlipInlinePreview({
   fileName,
   previewUrl,

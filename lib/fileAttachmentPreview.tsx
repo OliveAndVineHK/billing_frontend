@@ -2,6 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { useId } from "react";
+import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
 
 export function formatFileSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return "—";
@@ -100,7 +101,7 @@ export function FileAttachmentPreviewLayer({
             />
           ) : null}
           {showPdf && !showImage ? (
-            <iframe title={file.name} src={objectUrl} className="h-[min(75dvh,640px)] w-full rounded-lg border border-gray-200 bg-white" />
+            <PdfJsCanvasPreview src={objectUrl} title={file.name} className="w-full" maxPageWidthCssPx={640} />
           ) : null}
           {!showImage && !showPdf ? (
             <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>

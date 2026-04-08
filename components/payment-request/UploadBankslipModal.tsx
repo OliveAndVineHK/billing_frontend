@@ -3,6 +3,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
+import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
 import { formatFileSize, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
 import {
   ApiError,
@@ -374,7 +375,7 @@ function BankSlipModalInlinePreview({
           />
         ) : null}
         {isPdfFile(file) && !isImageFile(file) ? (
-          <iframe title={file.name} src={objectUrl} className="h-[min(55dvh,480px)] w-full rounded-lg border border-gray-200 bg-white" />
+          <PdfJsCanvasPreview src={objectUrl} title={file.name} className="w-full" maxPageWidthCssPx={560} />
         ) : null}
         {!isImageFile(file) && !isPdfFile(file) ? (
           <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>
