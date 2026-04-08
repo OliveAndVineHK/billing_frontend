@@ -30,6 +30,7 @@ type BillActionBarProps = {
   overflowShowRepublish?: boolean;
   overflowMenuTriggerDisabled?: boolean;
   overflowVoidDisabled?: boolean;
+  isDraftBill?: boolean;
 };
 
 export function BillActionBar({
@@ -47,7 +48,10 @@ export function BillActionBar({
   overflowShowRepublish = false,
   overflowMenuTriggerDisabled = false,
   overflowVoidDisabled = false,
+  isDraftBill = false,
 }: BillActionBarProps) {
+  const removeMenuLabel = isDraftBill ? "Delete" : "Void";
+  const removePrimaryLabel = isDraftBill ? "Delete Bill" : "Void Bill";
   const isPublished = publishStatus === "published";
   const menuId = useId();
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -110,7 +114,7 @@ export function BillActionBar({
                 onDeleteBill?.();
               }}
             >
-              Void
+              {removeMenuLabel}
             </button>
             {overflowShowPublish ? (
               <button
@@ -158,7 +162,7 @@ export function BillActionBar({
           disabled={deleteDisabled}
           className="inline-flex h-10 min-h-[44px] w-auto shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md bg-rose-50 px-3 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
         >
-          Void Bill
+          {removePrimaryLabel}
           <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
             block
           </span>
