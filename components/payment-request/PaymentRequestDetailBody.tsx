@@ -43,6 +43,8 @@ import { AttachmentDeleteConfirmModal } from "./AttachmentDeleteConfirmModal";
 import { UploadInvoiceAttachmentModal } from "./UploadInvoiceAttachmentModal";
 import {
   PaymentRequestDetailedInfo,
+  paymentRequestDetailCancelButtonClass,
+  paymentRequestDetailSaveButtonClass,
   type PaymentRequestDetailedInfoData,
 } from "./PaymentRequestDetailedInfo";
 export type PaymentRequestDetailBodyProps = {
@@ -548,6 +550,15 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   );
   const actionOverflowTriggerDisabled = loadingBill || !bill || bill?.status === "voided";
 
+  const detailToolbarActionsDisabled = useMemo(
+    () =>
+      loadingBill ||
+      !bill ||
+      bill.status === "voided" ||
+      ((bill.status === "paid" || bill.status === "authorised") && !isElevated),
+    [loadingBill, bill, isElevated],
+  );
+
   const handleOpenUploadAttachment = useCallback(() => {
     setUploadAttachmentOpen(true);
   }, []);
@@ -660,17 +671,31 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
                 <button
                   type="button"
                   onClick={handleEdit}
-                  disabled={
-                    loadingBill ||
-                    !bill ||
-                    bill?.status === "voided" ||
-                    ((bill?.status === "paid" || bill?.status === "authorised") && !isElevated)
-                  }
+                  disabled={detailToolbarActionsDisabled}
                   className="inline-flex h-10 min-h-[44px] w-auto max-w-full shrink-0 cursor-pointer items-center justify-center rounded-full border border-primary/25 bg-white px-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
                 >
                   Edit
                 </button>
-              ) : null
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    disabled={detailToolbarActionsDisabled || isSaving}
+                    className={paymentRequestDetailCancelButtonClass}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleSave()}
+                    disabled={detailToolbarActionsDisabled || isSaving}
+                    className={paymentRequestDetailSaveButtonClass}
+                  >
+                    {isSaving ? "Saving…" : "Save Changes"}
+                  </button>
+                </>
+              )
             }
             draftSubmit={
               billIsDraft
