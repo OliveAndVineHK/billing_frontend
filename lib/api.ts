@@ -652,7 +652,7 @@ export type EntityBillContact = {
   category: string | null;
 };
 
-/** Collapse duplicate API rows that share the same Xero ContactID (trim, case-insensitive). */
+/** Collapse duplicate API rows that share the same Xero ContactID (trim, case-insensitive).   */
 export function dedupeEntityBillContactsByXeroId(
   contacts: EntityBillContact[],
 ): EntityBillContact[] {
