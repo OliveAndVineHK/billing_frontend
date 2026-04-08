@@ -299,6 +299,9 @@ export function PaymentRequestView() {
         open={recordPaymentTarget != null}
         onClose={() => setRecordPaymentTarget(null)}
         billId={recordPaymentTarget?.billId ?? ""}
+        billStatus={
+          recordPaymentTarget ? rawBills.find((b) => b.id === recordPaymentTarget.billId)?.status : undefined
+        }
         readOnly={recordPaymentTarget?.readOnly ?? false}
         invoiceAmount={
           recordPaymentTarget

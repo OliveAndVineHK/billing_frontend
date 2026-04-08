@@ -25,6 +25,8 @@ export type RecordPaymentModalProps = {
   open: boolean;
   onClose: () => void;
   billId: string;
+  /** Bill API status (e.g. `draft`). Used to allow save without bank slips only for drafts. */
+  billStatus?: string | null;
   invoiceAmount?: number;
   currencyCode?: string;
   onPaymentSaved?: () => void;
@@ -81,10 +83,16 @@ const MIN_BANK_SLIP_ROW = {
   unpaidAmount: "",
 };
 
+function isDraftBillStatus(status: string | null | undefined): boolean {
+  const n = (status ?? "").trim().toLowerCase().replace(/-/g, "_");
+  return n === "draft";
+}
+
 export function RecordPaymentModal({
   open,
   onClose,
   billId,
+  billStatus,
   invoiceAmount = 0,
   currencyCode = "HKD",
   onPaymentSaved,
@@ -126,6 +134,11 @@ export function RecordPaymentModal({
     () => paymentsForBill.filter((p) => p.payment_status === "pending"),
     [paymentsForBill],
   );
+
+  const draftBill = isDraftBillStatus(billStatus);
+  /** Non-draft bills need at least one bank slip file before pending payments can be saved (edit mode). */
+  const bankSlipRequiredToSave =
+    !readOnly && !draftBill && pendingPayments.length > 0 && bankSlipFileCount < 1;
 
   const syncSubmittedIfNoPaymentsLeft = useCallback(
     async (paymentsList: PaymentItem[]): Promise<boolean> => {
@@ -267,6 +280,11 @@ export function RecordPaymentModal({
   };
 
   const handleSavePayment = async () => {
+    setFormError(null);
+    if (bankSlipRequiredToSave) {
+      setFormError("Add at least one bank slip attachment before saving. Draft bills are exempt.");
+      return;
+    }
     setSaving(true);
     try {
       await Promise.all(
@@ -452,7 +470,22 @@ export function RecordPaymentModal({
                 <span className="text-sm font-medium text-primary">Amount to be Paid</span>
                 <span className="text-2xl font-bold text-secondary sm:text-3xl">{formatMoney(remaining, currencyLabel)}</span>
               </div>
-              <button type="button" onClick={handleSavePayment} disabled={saving} className="box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px]">
+              {bankSlipRequiredToSave ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+                  Add at least one bank slip attachment before saving. Draft bills do not require this.
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={handleSavePayment}
+                disabled={saving || bankSlipRequiredToSave}
+                title={
+                  bankSlipRequiredToSave
+                    ? "Upload at least one bank slip (Supporting documents) before saving."
+                    : undefined
+                }
+                className="box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px]"
+              >
                 {saving ? "Saving…" : "Save payment"}
               </button>
             </div>
