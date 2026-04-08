@@ -53,7 +53,6 @@ export type PaymentRequestDetailedInfoProps = {
   editInCardHeader?: boolean;
 };
 
-/** Same as Add Payment Request modal field labels — sentence case, view + edit. */
 const fieldLabelClass =
   "mb-1.5 block text-[11px] font-semibold tracking-wide text-primary/55 sm:text-xs";
 
@@ -69,6 +68,9 @@ const cancelButtonClass =
 
 const saveButtonClass =
   "box-border h-11 min-h-[44px] shrink-0 cursor-pointer rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[44px] sm:px-6";
+
+/** Matches card header actions; use in BillActionBar when `editInCardHeader` is false. */
+export { cancelButtonClass as paymentRequestDetailCancelButtonClass, saveButtonClass as paymentRequestDetailSaveButtonClass };
 
 /** Header actions row: same min-height in view (Edit) and edit (Cancel + Save) to avoid vertical jump. */
 const headerActionsClass =
@@ -214,12 +216,12 @@ export function PaymentRequestDetailedInfo({
   return (
     <section className={`rounded-xl border border-gray-200/90 bg-white p-4 sm:p-5 md:p-6 ${className}`}>
       <div
-        className={`mb-4 flex flex-col gap-3 sm:mb-5 ${isEditing || editInCardHeader ? "sm:flex-row sm:items-start sm:justify-between sm:gap-4" : ""}`}
+        className={`mb-4 flex flex-col gap-3 sm:mb-5 ${editInCardHeader ? "sm:flex-row sm:items-start sm:justify-between sm:gap-4" : ""}`}
       >
         <h2 className="min-w-0 text-base font-medium leading-snug text-primary sm:text-lg">
           Detailed Information
         </h2>
-        {(isEditing || editInCardHeader) && (
+        {editInCardHeader ? (
           <div className={headerActionsClass}>
             {isEditing ? (
               <>
@@ -239,7 +241,7 @@ export function PaymentRequestDetailedInfo({
               </button>
             )}
           </div>
-        )}
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-5">
