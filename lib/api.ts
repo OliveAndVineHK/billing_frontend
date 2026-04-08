@@ -616,7 +616,7 @@ export function fetchAuditHistory(billId: string): Promise<AuditItem[]> {
   return apiFetch(`/bills/${billId}/audit`);
 }
 
-// ── Config ───────────────────────────────────────────────────────────
+// ── Config  ───────────────────────────────────────────────────────────
 
 /**
  * Pass forceChartSync on Settings so Xero vs DB reconcile runs even if another list ran recently (bypasses server debounce).
