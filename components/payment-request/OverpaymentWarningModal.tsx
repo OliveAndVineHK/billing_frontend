@@ -2,17 +2,16 @@
 
 import { createPortal } from "react-dom";
 import { useEffect, useId } from "react";
+import { useRouter } from "next/navigation";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import type { PaymentItem } from "@/lib/api";
 
 export type OverpaymentWarningModalProps = {
   open: boolean;
+  billId: string;
   payments: PaymentItem[];
-  newAmount: number;
   totalPaid: number;
   currencyLabel: string;
-  pending?: boolean;
-  onProceed: () => void;
   onCancel: () => void;
 };
 
@@ -27,7 +26,7 @@ const focusRing =
 
 const cancelClass = `box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing} sm:h-11 sm:min-h-[44px] sm:w-auto`;
 
-const proceedClass = `box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity duration-200 ease-out hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:opacity-60 ${focusRing} sm:h-11 sm:min-h-[44px] sm:w-auto`;
+const primaryClass = `box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity duration-200 ease-out hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:opacity-60 ${focusRing} sm:h-11 sm:min-h-[44px] sm:w-auto`;
 
 function formatMoney(amount: number, currencyLabel: string): string {
   return `${currencyLabel} ${amount.toLocaleString("en-HK", {
@@ -65,14 +64,13 @@ function formatCreatedAt(isoStr: string | null | undefined): string {
 
 export function OverpaymentWarningModal({
   open,
+  billId,
   payments,
-  newAmount,
   totalPaid,
   currencyLabel,
-  pending = false,
-  onProceed,
   onCancel,
 }: OverpaymentWarningModalProps) {
+  const router = useRouter();
   const titleId = useId();
   const descId = useId();
 
@@ -84,22 +82,33 @@ export function OverpaymentWarningModal({
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !pending) onCancel();
+      if (e.key === "Escape") onCancel();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onCancel, pending]);
+  }, [open, onCancel]);
 
   if (!open || typeof document === "undefined") return null;
 
-  const overpaymentAmount = Math.round((totalPaid - newAmount) * 100) / 100;
+  const paymentHistoryHref = `/payment-request/${encodeURIComponent(billId)}#payment-history`;
+
+  const goToPaymentHistory = () => {
+    onCancel();
+    router.push(paymentHistoryHref);
+    window.requestAnimationFrame(() => {
+      document.getElementById("payment-history")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
 
   return createPortal(
     <div
       className={overlayClass}
       role="presentation"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !pending) onCancel();
+        if (e.target === e.currentTarget) onCancel();
       }}
     >
       <div
@@ -123,20 +132,12 @@ export function OverpaymentWarningModal({
         </div>
 
         <p id={descId} className="mt-3 text-sm leading-relaxed text-primary/80">
-          This bill already has{" "}
-          {payments.length === 1 ? "a payment" : `${payments.length} payments`} recorded totalling{" "}
+          The bill already has{" "}
+          {payments.length === 1 ? "a payment" : "payments"} recorded totalling{" "}
           <span className="font-semibold text-primary">
             {formatMoney(totalPaid, currencyLabel)}
           </span>
-          . Setting the bill amount to{" "}
-          <span className="font-semibold text-primary">
-            {formatMoney(newAmount, currencyLabel)}
-          </span>{" "}
-          would result in an overpayment of{" "}
-          <span className="font-semibold text-secondary">
-            {formatMoney(overpaymentAmount, currencyLabel)}
-          </span>
-          .
+          . Bill amount cannot be lower than recorded payments.
         </p>
 
         <ul className="mt-4 flex max-h-60 flex-col gap-2 overflow-y-auto">
@@ -176,26 +177,16 @@ export function OverpaymentWarningModal({
         </ul>
 
         <p className="mt-4 text-sm leading-relaxed text-primary/70">
-          The bill will be marked as <span className="font-semibold text-primary">paid</span> since
-          the existing payment already covers the new amount. Do you want to proceed?
+          If you wish to edit the bill, please go to delete the payment history first. If it is
+          overpayment, please contact the accountant.
         </p>
 
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-          <button
-            type="button"
-            className={cancelClass}
-            onClick={onCancel}
-            disabled={pending}
-          >
+          <button type="button" className={cancelClass} onClick={onCancel}>
             Cancel
           </button>
-          <button
-            type="button"
-            className={proceedClass}
-            onClick={onProceed}
-            disabled={pending}
-          >
-            {pending ? "Saving…" : "Proceed"}
+          <button type="button" className={primaryClass} onClick={goToPaymentHistory}>
+            Payment history
           </button>
         </div>
       </div>

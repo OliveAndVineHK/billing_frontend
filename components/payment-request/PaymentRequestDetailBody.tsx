@@ -208,6 +208,24 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   }, [requestId]);
 
   useEffect(() => {
+    if (typeof window === "undefined" || loadingBill || loadError) return;
+    const scrollToPaymentHistory = () => {
+      if (window.location.hash !== "#payment-history") return;
+      document.getElementById("payment-history")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    };
+    scrollToPaymentHistory();
+    const t = window.setTimeout(scrollToPaymentHistory, 200);
+    window.addEventListener("hashchange", scrollToPaymentHistory);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("hashchange", scrollToPaymentHistory);
+    };
+  }, [loadingBill, loadError, requestId]);
+
+  useEffect(() => {
     if (!isEditing) {
       setSelectedAttachmentIndices([]);
       setDeleteAttachmentConfirmOpen(false);
@@ -827,24 +845,15 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       />
       <OverpaymentWarningModal
         open={overpaymentWarningOpen}
+        billId={requestId}
         payments={payments.filter(
           (p) => p.bill_id === requestId && p.payment_status !== "pending",
         )}
-        newAmount={
-          draft ? Number.parseFloat(draft.amount.replace(/,/g, "")) || 0 : 0
-        }
         totalPaid={payments
           .filter((p) => p.bill_id === requestId && p.payment_status !== "pending")
           .reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0)}
         currencyLabel={currencyLabel}
-        pending={isSaving}
-        onCancel={() => {
-          if (!isSaving) setOverpaymentWarningOpen(false);
-        }}
-        onProceed={async () => {
-          setOverpaymentWarningOpen(false);
-          await executeSave("paid");
-        }}
+        onCancel={() => setOverpaymentWarningOpen(false)}
       />
     </>
   );
