@@ -5,20 +5,20 @@ import {
 } from "./api";
 import { currencyLabelForCode } from "./currencyDisplay";
 import type { BankSlipDetails, BankSlipFileEntry } from "@/components/payment-request/BankSlipDetailsModal";
-import { formatIsoDateAsDdMmmYyyy } from "./dateDisplayFormat";
+import { formatDateInTimeZoneForDisplay, formatIsoDateForDisplay } from "./dateDisplayFormat";
 
 function formatApiDateTime(iso: string): string {
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
+    const datePart = formatDateInTimeZoneForDisplay(d, "Asia/Hong_Kong");
+    const timePart = d.toLocaleTimeString("en-GB", {
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "Asia/Hong_Kong",
       timeZoneName: "short",
     });
+    return datePart ? `${datePart}, ${timePart}` : iso;
   } catch {
     return iso;
   }
@@ -28,14 +28,14 @@ function formatBillDate(dateStr: string): string {
   if (!dateStr) return "";
   const head = dateStr.trim().slice(0, 10);
   if (/^\d{4}-\d{2}-\d{2}$/.test(head)) {
-    return formatIsoDateAsDdMmmYyyy(head) || dateStr;
+    return formatIsoDateForDisplay(head) || dateStr;
   }
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return dateStr;
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
-  return formatIsoDateAsDdMmmYyyy(`${y}-${m}-${day}`) || dateStr;
+  return formatIsoDateForDisplay(`${y}-${m}-${day}`) || dateStr;
 }
 
 function formatPaymentDisplayAmount(currencyCode: string | undefined, amount: string): string {

@@ -6,7 +6,7 @@ import { BillContactPicker } from "@/components/BillContactPicker";
 import { DateTextField } from "@/components/DateTextField";
 import { ThemedSelect } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
-import { formatIsoDateAsDdMmmYyyy } from "@/lib/dateDisplayFormat";
+import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import {
   currencyOptionsForEditing,
@@ -98,7 +98,7 @@ function FieldLabel({
 
 function formatLongDate(iso: string): string {
   if (!iso) return "—";
-  const formatted = formatIsoDateAsDdMmmYyyy(iso);
+  const formatted = formatIsoDateForDisplay(iso);
   return formatted || iso;
 }
 

@@ -19,6 +19,7 @@ import { PaymentDeleteConfirmModal } from "./PaymentDeleteConfirmModal";
 import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsModal";
 import { buildBankSlipDetailsFromPaymentList } from "@/lib/bankSlipEnrichment";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
 
 export type RecordPaymentModalProps = {
   open: boolean;
@@ -37,11 +38,18 @@ function formatMoney(amount: number, currencyLabel: string) {
   return `${currencyLabel} ${n.toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function formatShortDayMonth(dateStr: string | null) {
+function formatPaymentDateLabel(dateStr: string | null) {
   if (!dateStr) return "—";
-  const d = new Date(dateStr + "T12:00:00");
+  const head = dateStr.trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(head)) {
+    return formatIsoDateForDisplay(head) || dateStr;
+  }
+  const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return formatIsoDateForDisplay(`${y}-${m}-${day}`) || dateStr;
 }
 
 function parseAmount(raw: string): number | null {
@@ -233,7 +241,7 @@ export function RecordPaymentModal({
     const amt = parseFloat(p.amount || "0");
     const isPending = p.payment_status === "pending";
     const isPartialPayment = amt > 0 && amt + 1e-9 < invoiceAmount;
-    const dateBit = formatShortDayMonth(p.payment_date);
+    const dateBit = formatPaymentDateLabel(p.payment_date);
     const kind = isPending
       ? `Pending on ${dateBit}`
       : isPartialPayment
@@ -364,10 +372,10 @@ export function RecordPaymentModal({
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-primary">
                         {isPending
-                          ? `Pending on ${formatShortDayMonth(p.payment_date)}`
+                          ? `Pending on ${formatPaymentDateLabel(p.payment_date)}`
                           : isPartialPayment
-                            ? `Partial Pay on ${formatShortDayMonth(p.payment_date)}`
-                            : `Paid on ${formatShortDayMonth(p.payment_date)}`}
+                            ? `Partial Pay on ${formatPaymentDateLabel(p.payment_date)}`
+                            : `Paid on ${formatPaymentDateLabel(p.payment_date)}`}
                       </p>
                       {isPending && (
                         <p className="text-[11px] text-amber-600">Pending</p>

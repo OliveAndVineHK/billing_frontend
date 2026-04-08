@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useId } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import type { PaymentItem } from "@/lib/api";
+import { formatDateInTimeZoneForDisplay, formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
 
 export type OverpaymentWarningModalProps = {
   open: boolean;
@@ -38,29 +39,26 @@ function formatMoney(amount: number, currencyLabel: string): string {
 
 function formatPaymentDateTime(dateStr: string | null): string {
   if (!dateStr) return "—";
-  // payment_date is a date-only string (YYYY-MM-DD); display it clearly
-  const d = new Date(dateStr + "T12:00:00");
+  const head = dateStr.trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(head)) {
+    return formatIsoDateForDisplay(head) || dateStr;
+  }
+  const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "Asia/Hong_Kong",
-  });
+  return formatDateInTimeZoneForDisplay(d, "Asia/Hong_Kong") || dateStr;
 }
 
 function formatCreatedAt(isoStr: string | null | undefined): string {
   if (!isoStr) return "";
   const d = new Date(isoStr);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
+  const datePart = formatDateInTimeZoneForDisplay(d, "Asia/Hong_Kong");
+  const timePart = d.toLocaleTimeString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: "Asia/Hong_Kong",
   });
+  return datePart ? `${datePart}, ${timePart}` : "";
 }
 
 export function OverpaymentWarningModal({

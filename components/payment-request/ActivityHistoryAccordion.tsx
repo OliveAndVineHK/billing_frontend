@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchAuditHistory, type AuditItem } from "@/lib/api";
+import { formatLocalDateForDisplay } from "@/lib/dateDisplayFormat";
 
 type ActivityHistoryItem = {
   id: string;
@@ -37,7 +38,7 @@ const ACTION_MAP: Record<string, { verb: string; subject: (detail: string, ref: 
 
 function formatTimeLabel(iso: string): string {
   const d = new Date(iso);
-  const day = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const day = formatLocalDateForDisplay(d) || d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
   const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
   return `${day} \u2022 ${time}`;
 }
