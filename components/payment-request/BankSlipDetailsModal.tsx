@@ -65,9 +65,12 @@ const shellClass =
 
 const focusRing = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary";
 
-const footerCloseClass = `box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 ${focusRing} sm:h-11 sm:min-h-[44px] sm:w-auto sm:px-4`;
+/** Same classes as `UploadBankslipModal` footer (Cancel / primary). */
+const bankSlipModalFooterCancelClass =
+  "box-border h-12 min-h-[48px] w-full rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px] sm:w-auto sm:px-4";
 
-const footerUploadClass = `box-border inline-flex h-12 min-h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 ${focusRing} sm:h-11 sm:min-h-[44px] sm:w-auto`;
+const bankSlipModalFooterPrimaryClass =
+  "box-border h-12 min-h-[48px] w-full rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px] sm:w-auto";
 
 function fileIconForName(filename: string): { icon: string; iconClass: string } {
   const ext = filename.trim().split(".").pop()?.toLowerCase() ?? "";
@@ -581,8 +584,8 @@ export function BankSlipDetailsModal({
         </div>
 
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 px-4 py-3 sm:flex-row sm:justify-end sm:gap-3 sm:px-6 sm:py-4">
-          <button type="button" onClick={onClose} className={footerCloseClass}>
-            Close
+          <button type="button" onClick={onClose} className={bankSlipModalFooterCancelClass}>
+            Cancel
           </button>
           {onUpload ? (
             <button
@@ -592,7 +595,7 @@ export function BankSlipDetailsModal({
                 e.stopPropagation();
                 onUpload();
               }}
-              className={footerUploadClass}
+              className={bankSlipModalFooterPrimaryClass}
             >
               New Bank Slip
             </button>
