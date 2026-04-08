@@ -49,6 +49,17 @@ export type PaymentRequestDetailBodyProps = {
   onBillUpdated?: () => void;
 };
 
+/** Selected indices cover every attachment — delete would leave none. */
+function selectionDeletesAllAttachments(selected: number[], total: number): boolean {
+  if (total === 0 || selected.length !== total) return false;
+  const set = new Set(selected);
+  if (set.size !== total) return false;
+  for (let i = 0; i < total; i++) {
+    if (!set.has(i)) return false;
+  }
+  return true;
+}
+
 export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetailBodyProps) {
   const params = useParams();
   const requestId = typeof params?.id === "string" ? params.id : "";
@@ -173,6 +184,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [selectedAttachmentIndices, setSelectedAttachmentIndices] = useState<number[]>([]);
   const [uploadAttachmentOpen, setUploadAttachmentOpen] = useState(false);
   const [deleteAttachmentConfirmOpen, setDeleteAttachmentConfirmOpen] = useState(false);
+  const [minimumAttachmentModalOpen, setMinimumAttachmentModalOpen] = useState(false);
   const [deleteAttachmentPending, setDeleteAttachmentPending] = useState(false);
 
   useEffect(() => {
@@ -490,7 +502,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
 
   const currencyLabel = formData ? currencyLabelForCode(formData.currencyCode) : "HK$";
 
-  const billIsDraft = (bill?.status ?? "").toLowerCase() === "draft";
+  const billIsDraft = useMemo(
+    () => (bill?.status ?? "").trim().toLowerCase().replace(/-/g, "_") === "draft",
+    [bill?.status],
+  );
 
   const billDisplayStatus = useMemo(() => (bill ? billStatusToDisplayLabel(bill.status) : ""), [bill]);
   const billStatusNormalized = useMemo(
@@ -538,8 +553,15 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
 
   const handleConfirmDeleteAttachments = useCallback(() => {
     if (selectedAttachmentIndices.length === 0) return;
+    if (
+      !billIsDraft &&
+      selectionDeletesAllAttachments(selectedAttachmentIndices, attachments.length)
+    ) {
+      setMinimumAttachmentModalOpen(true);
+      return;
+    }
     setDeleteAttachmentConfirmOpen(true);
-  }, [selectedAttachmentIndices.length]);
+  }, [selectedAttachmentIndices, attachments.length, billIsDraft]);
 
   const executeDeleteSelectedAttachments = useCallback(() => {
     if (selectedAttachmentIndices.length === 0) return;
@@ -574,7 +596,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             deleteReadOnly={selectedAttachmentIndices.length === 0 || deleteAttachmentPending}
             onUpload={isEditing ? handleOpenUploadAttachment : undefined}
             uploadReadOnly={false}
-            showUpload={attachmentsReady && attachments.length === 0}
+            showUpload={false}
             showAddMore={attachmentsReady && attachments.length > 0}
           />
           <AttachmentDeleteConfirmModal
@@ -594,6 +616,12 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
                 setDeleteAttachmentConfirmOpen(false);
               }
             }}
+          />
+          <AttachmentDeleteConfirmModal
+            variant="minimumAttachment"
+            open={minimumAttachmentModalOpen}
+            count={0}
+            onClose={() => setMinimumAttachmentModalOpen(false)}
           />
           <UploadInvoiceAttachmentModal
             open={uploadAttachmentOpen}
@@ -834,6 +862,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           setRecordPaymentReadOnly(false);
         }}
         billId={requestId}
+        billStatus={bill?.status}
         readOnly={recordPaymentReadOnly}
         invoiceAmount={invoiceTotalMajor}
         currencyCode={formData?.currencyCode ?? "HKD"}

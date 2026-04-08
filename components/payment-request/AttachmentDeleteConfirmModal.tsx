@@ -9,8 +9,9 @@ export type AttachmentDeleteConfirmModalProps = {
   count: number;
   pending?: boolean;
   onClose: () => void;
-  onConfirm: () => void;
-  variant?: "attachments" | "bankSlip";
+  /** Not used when `variant` is `minimumAttachment`. */
+  onConfirm?: () => void;
+  variant?: "attachments" | "bankSlip" | "minimumAttachment";
   fileName?: string;
 };
 
@@ -26,6 +27,8 @@ const focusRing =
 const cancelClass = `box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing} sm:h-11 sm:min-h-[44px] sm:w-auto`;
 
 const deleteClass = `box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border border-transparent bg-red-600 px-4 text-sm font-semibold text-white shadow-sm transition-opacity duration-200 ease-out hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:opacity-60 ${focusRing} sm:h-11 sm:min-h-[44px] sm:w-auto`;
+
+const okPrimaryClass = `box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 ${focusRing} sm:h-11 sm:min-h-[44px] sm:w-auto`;
 
 export function AttachmentDeleteConfirmModal({
   open,
@@ -54,6 +57,40 @@ export function AttachmentDeleteConfirmModal({
   }, [open, onClose, pending]);
 
   if (!open || typeof document === "undefined") return null;
+
+  if (variant === "minimumAttachment") {
+    return createPortal(
+      <div
+        className={overlayClass}
+        role="presentation"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          aria-describedby={descId}
+          className={shellClass}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <h2 id={titleId} className="text-lg font-semibold text-primary sm:text-xl">
+            At least one attachment required
+          </h2>
+          <p id={descId} className="mt-3 text-sm leading-relaxed text-primary/80">
+            This bill must keep at least one supporting document. Add another attachment before removing the last file.
+          </p>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button type="button" className={okPrimaryClass} onClick={onClose}>
+              OK
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
+  }
 
   const n = Math.max(0, Math.floor(count));
   const isBankSlip = variant === "bankSlip";
@@ -101,7 +138,12 @@ export function AttachmentDeleteConfirmModal({
           <button type="button" className={cancelClass} onClick={onClose} disabled={pending}>
             Cancel
           </button>
-          <button type="button" className={deleteClass} onClick={onConfirm} disabled={pending}>
+          <button
+            type="button"
+            className={deleteClass}
+            onClick={() => onConfirm?.()}
+            disabled={pending}
+          >
             {pending ? "Deleting…" : "Delete"}
           </button>
         </div>
