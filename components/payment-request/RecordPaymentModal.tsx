@@ -12,7 +12,7 @@ import {
   updateBill,
   type PaymentItem,
 } from "@/lib/api";
-import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
+import { billStatusShouldRollbackWhenNoPayments, normalizeBillStatusKey } from "@/lib/billStatusRollback";
 import { DateTextField } from "@/components/DateTextField";
 import { useUserRole } from "@/lib/useUserRole";
 import { PaymentDeleteConfirmModal } from "./PaymentDeleteConfirmModal";
@@ -89,6 +89,10 @@ function isDraftBillStatus(status: string | null | undefined): boolean {
   return n === "draft";
 }
 
+function isPartiallyPaidBillStatus(status: string | null | undefined): boolean {
+  return normalizeBillStatusKey(status ?? "") === "partially_paid";
+}
+
 export function RecordPaymentModal({
   open,
   onClose,
@@ -147,6 +151,12 @@ export function RecordPaymentModal({
     [paymentsForBill],
   );
   const remaining = Math.max(0, Math.round((invoiceAmount - totalPaid) * 100) / 100);
+
+  /** Full Pay is locked when the bill is in Partially paid status (API `partially_paid`). */
+  const billIsPartiallyPaid = useMemo(
+    () => isPartiallyPaidBillStatus(billStatus),
+    [billStatus],
+  );
 
   const pendingPayments = useMemo(
     () => paymentsForBill.filter((p) => p.payment_status === "pending"),
@@ -278,8 +288,18 @@ export function RecordPaymentModal({
     };
   }, [open, readOnly, billId, pendingIdsKey, bankSlipRequiredForPending, loadPayments, onPaymentSaved]);
 
+  useEffect(() => {
+    if (!open || !billIsPartiallyPaid || payMode !== "full") return;
+    setPayMode("partial");
+    setDraftAmount("");
+  }, [open, billIsPartiallyPaid, payMode]);
+
   const handleAddPayment = async () => {
     setFormError(null);
+    if (payMode === "full" && billIsPartiallyPaid) {
+      setFormError("This bill is partially paid. Use Partial Pay for additional amounts.");
+      return;
+    }
     const amount = payMode === "full" ? remaining : parseAmount(draftAmount);
     if (amount === null || amount <= 0) {
       setFormError("Enter a valid amount.");
@@ -399,7 +419,30 @@ export function RecordPaymentModal({
 
           {!readOnly ? (
             <div className="mt-5 flex gap-2">
-              <button type="button" onClick={() => { setFormError(null); setPayMode("full"); }} className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "full" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Full Pay</button>
+              <button
+                type="button"
+                disabled={billIsPartiallyPaid}
+                title={
+                  billIsPartiallyPaid
+                    ? "Full Pay is not available while the bill status is Partially paid. Use Partial Pay for the remaining balance."
+                    : undefined
+                }
+                onClick={() => {
+                  if (billIsPartiallyPaid) return;
+                  setFormError(null);
+                  setPayMode("full");
+                }}
+                className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${
+                  billIsPartiallyPaid
+                    ? "cursor-not-allowed border border-gray-200 bg-gray-100 text-primary/45"
+                    : payMode === "full"
+                      ? "cursor-pointer bg-secondary text-white shadow-sm"
+                      : "cursor-pointer border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"
+                }`}
+                aria-disabled={billIsPartiallyPaid}
+              >
+                Full Pay
+              </button>
               <button type="button" onClick={() => { setFormError(null); setPayMode("partial"); setDraftAmount(""); }} className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "partial" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Partial Pay</button>
             </div>
           ) : null}
