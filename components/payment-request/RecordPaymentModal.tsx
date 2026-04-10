@@ -412,7 +412,7 @@ export function RecordPaymentModal({
                       )}
                     </div>
                     <span className="shrink-0 text-sm font-bold text-primary tabular-nums">({formatMoney(amt, currencyLabel)})</span>
-                    {!readOnly ? (
+                    {!readOnly || canDeletePayments ? (
                       <button
                         type="button"
                         onClick={() => {
