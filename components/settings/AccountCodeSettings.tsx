@@ -118,7 +118,7 @@ export function AccountCodeSettings() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[40rem] px-4 pb-8 pt-2 sm:px-6 sm:pt-3">
+    <div className="w-full pb-8 pt-2 sm:pt-3">
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
         <button type="button" onClick={() => setExpanded((e) => !e)} className="flex w-full items-start justify-between gap-3 border-b border-gray-100 px-4 py-4 text-left transition-colors hover:bg-gray-50 sm:px-5" aria-expanded={expanded}>
           <div className="min-w-0 flex-1">

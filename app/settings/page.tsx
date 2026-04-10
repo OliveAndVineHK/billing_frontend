@@ -43,7 +43,7 @@ export default function SettingsPage() {
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
         <Suspense
           fallback={
-            <div className="mx-auto w-full max-w-[40rem] px-4 py-6 sm:px-6">
+            <div className="mx-auto w-full max-w-[1024px] px-4 py-6 sm:px-6">
               <div className="flex gap-2">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="h-9 w-24 shrink-0 animate-pulse rounded-full bg-gray-200" />

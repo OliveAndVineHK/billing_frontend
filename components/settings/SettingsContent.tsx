@@ -21,7 +21,7 @@ export function SettingsContent() {
   }, []);
 
   return (
-    <>
+    <div className="mx-auto w-full max-w-[1024px] px-4 sm:px-6">
       <div className="pt-3 sm:pt-4">
         <SettingsPills activeTab={tab} entityId={entityId} module1Url={MODULE1_URL} />
       </div>
@@ -30,6 +30,6 @@ export function SettingsContent() {
       ) : (
         <SettingsPlaceholder title={SETTINGS_TAB_LABELS[tab]} />
       )}
-    </>
+    </div>
   );
 }

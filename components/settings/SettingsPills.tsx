@@ -25,7 +25,7 @@ export function getSettingsTabFromSearchParams(tab: string | null): SettingsTabI
 }
 
 const pillClass = (isActive: boolean) =>
-  `shrink-0 rounded-full px-4 py-2 text-center text-sm font-medium transition-colors flex items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary ${
+  `cursor-pointer shrink-0 rounded-full px-4 py-2 text-center text-sm font-medium transition-colors flex items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary ${
     isActive ? "bg-secondary font-semibold text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
   }`;
 
@@ -52,8 +52,8 @@ type SettingsPillsProps = {
 
 export function SettingsPills({ activeTab, entityId, module1Url }: SettingsPillsProps) {
   return (
-    <div className="w-full px-4 sm:px-6">
-      <div className="-mx-4 flex flex-wrap gap-2 px-4 pb-1 sm:mx-0 sm:px-0">
+    <div className="w-full">
+      <div className="flex flex-wrap gap-2 pb-1">
         {TABS.map(({ id, label }) => {
           const isActive = activeTab === id;
           const flaskUrl = FLASK_REDIRECT_TABS[id];
