@@ -19,7 +19,7 @@ import {
   isDuplicateBillReferenceError,
   saveBillDraft,
   submitBill,
-  uploadBillAttachment,
+  uploadBillAttachments,
 } from "@/lib/api";
 import type { EntityBillContact } from "@/lib/api";
 import {
@@ -359,11 +359,11 @@ export function PaymentRequestModal({
           : undefined,
       });
 
-      for (const entry of uploadedFiles) {
+      if (uploadedFiles.length > 0) {
         try {
-          await uploadBillAttachment(bill.id, entry.file);
+          await uploadBillAttachments(bill.id, uploadedFiles.map((x) => x.file));
         } catch (e) {
-          console.error("Failed to upload attachment:", e);
+          console.error("Failed to upload attachments:", e);
         }
       }
 
@@ -443,11 +443,11 @@ export function PaymentRequestModal({
         ],
       });
 
-      for (const entry of uploadedFiles) {
+      if (uploadedFiles.length > 0) {
         try {
-          await uploadBillAttachment(bill.id, entry.file);
+          await uploadBillAttachments(bill.id, uploadedFiles.map((x) => x.file));
         } catch (e) {
-          console.error("Failed to upload attachment:", e);
+          console.error("Failed to upload attachments:", e);
         }
       }
 

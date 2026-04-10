@@ -6,6 +6,7 @@ import { useUserRole } from "@/lib/useUserRole";
 import {
   ApiError,
   deleteBill,
+  deleteBillAttachment,
   fetchBill,
   fetchEntityBillAccounts,
   dedupeEntityBillContactsForPicker,
@@ -15,6 +16,7 @@ import {
   isDuplicateBillReferenceError,
   publishBill,
   updateBill,
+  uploadBillAttachments,
   type BillDetail,
   type EntityBillContact,
   type PaymentItem,
@@ -587,7 +589,29 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       return next;
     });
     setSelectedAttachmentIndices([]);
-  }, [attachments, selectedAttachmentIndices]);
+
+    // Delete matching BillAttachment records from the API.
+    if (requestId && bill?.attachments) {
+      const namesToDelete = new Set(itemsToDelete.map((x) => x.name));
+      for (const ba of bill.attachments) {
+        if (namesToDelete.has(ba.attachment?.original_name ?? "")) {
+          void deleteBillAttachment(requestId, ba.id).catch((e) =>
+            console.error("Failed to delete attachment:", e),
+          );
+        }
+      }
+      setBill((prev) =>
+        prev
+          ? {
+              ...prev,
+              attachments: prev.attachments?.filter(
+                (ba) => !namesToDelete.has(ba.attachment?.original_name ?? ""),
+              ) ?? [],
+            }
+          : prev,
+      );
+    }
+  }, [attachments, selectedAttachmentIndices, requestId, bill]);
 
   return (
     <>
@@ -634,8 +658,16 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           <UploadInvoiceAttachmentModal
             open={uploadAttachmentOpen}
             onClose={() => setUploadAttachmentOpen(false)}
-            onUpload={(files) => {
+            onUpload={async (files) => {
               if (!requestId) return;
+              // Upload to S3 + create BillAttachment records via API.
+              const created = await uploadBillAttachments(requestId, files);
+              // Refresh bill so bill.attachments includes the new records.
+              setBill((prev) => prev
+                ? { ...prev, attachments: [...(prev.attachments ?? []), ...created] }
+                : prev
+              );
+              // Also update local preview state.
               setAttachments((prev) => {
                 const usedNames = new Set(prev.map((x) => x.name));
                 const added: InvoiceAttachmentPreviewItem[] = [];

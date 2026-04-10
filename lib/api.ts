@@ -483,12 +483,20 @@ export function publishBill(billId: string): Promise<BillDetail> {
 
 // ── Attachments ──────────────────────────────────────────────────────
 
-export function uploadBillAttachment(billId: string, file: File): Promise<BillAttachment> {
+export function uploadBillAttachments(billId: string, files: File[]): Promise<BillAttachment[]> {
   const form = new FormData();
-  form.append("file", file);
-  return apiFetch<BillAttachment>(`/bills/${billId}/attachments`, {
+  for (const file of files) {
+    form.append("files", file);
+  }
+  return apiFetch<BillAttachment[]>(`/bills/${billId}/attachments`, {
     method: "POST",
     body: form,
+  });
+}
+
+export function deleteBillAttachment(billId: string, attachmentId: string): Promise<void> {
+  return apiFetch<void>(`/bills/${billId}/attachments/${attachmentId}`, {
+    method: "DELETE",
   });
 }
 
