@@ -255,6 +255,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         if (abandoned?.()) return;
         attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
         attachmentUrlsRef.current = [];
+
+        // IndexedDB is a legacy local-blob cache. If blobs exist, use them
+        // (backward-compat). Afterwards a separate effect will replace them
+        // with S3 presigned URLs once the bill loads (see below).
         const next: InvoiceAttachmentPreviewItem[] = blobs.map((b) => {
           const url = URL.createObjectURL(b.blob);
           attachmentUrlsRef.current.push(url);
@@ -282,6 +286,28 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       attachmentUrlsRef.current = [];
     };
   }, [requestId, loadAttachmentsFromIndexedDb]);
+
+  // Once the bill loads (or refreshes), populate previews from S3 presigned URLs
+  // if no local-blob previews are already shown. This ensures existing attachments
+  // are always previewable without a secondary /download round-trip per file.
+  useEffect(() => {
+    if (!bill) return;
+    const serverAttachments = bill.attachments ?? [];
+    if (serverAttachments.length === 0) return;
+    setAttachments((prev) => {
+      // If we already have previews (uploaded during this session or from IndexedDB),
+      // don't replace them — the S3 URLs from the upload response are already set.
+      if (prev.length > 0) return prev;
+      return serverAttachments
+        .filter((ba) => ba.attachment?.download_url)
+        .map((ba) => ({
+          url: ba.attachment.download_url,
+          name: ba.attachment.original_name,
+          mime: ba.attachment.mime_type || "application/octet-stream",
+        }));
+    });
+    setAttachmentsReady(true);
+  }, [bill]);
 
   const viewData = useMemo(() => {
     if (!bill) return null;
@@ -344,13 +370,18 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         setBill(updated);
         onBillUpdated?.();
         await loadPayments();
-        try {
-          await replaceAttachmentBlobsFromPreviewItems(requestId, attachments);
-        } catch {
-          await loadAttachmentsFromIndexedDb();
-          setActionError(
-            "Saved bill details but could not update stored invoice attachments. Try editing attachments again.",
-          );
+        // Only write to IndexedDB if there are local blob URLs still in the preview
+        // list (legacy path). S3 presigned URLs do not need local caching.
+        const hasLocalBlobs = attachments.some((a) => a.url.startsWith("blob:"));
+        if (hasLocalBlobs) {
+          try {
+            await replaceAttachmentBlobsFromPreviewItems(requestId, attachments);
+          } catch {
+            await loadAttachmentsFromIndexedDb();
+            setActionError(
+              "Saved bill details but could not update stored invoice attachments. Try editing attachments again.",
+            );
+          }
         }
         setIsEditing(false);
         setDraft(null);
@@ -456,13 +487,18 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       const updated = await updateBill(requestId, { ...payload, status: "submitted" });
       setBill(updated);
       onBillUpdated?.();
-      try {
-        await replaceAttachmentBlobsFromPreviewItems(requestId, attachments);
-      } catch {
-        await loadAttachmentsFromIndexedDb();
-        setActionError(
-          "Bill was submitted but could not update stored invoice attachments. Try editing attachments again.",
-        );
+      // Only write to IndexedDB if there are local blob URLs still in the preview
+      // list (legacy path). S3 presigned URLs do not need local caching.
+      const hasLocalBlobs = attachments.some((a) => a.url.startsWith("blob:"));
+      if (hasLocalBlobs) {
+        try {
+          await replaceAttachmentBlobsFromPreviewItems(requestId, attachments);
+        } catch {
+          await loadAttachmentsFromIndexedDb();
+          setActionError(
+            "Bill was submitted but could not update stored invoice attachments. Try editing attachments again.",
+          );
+        }
       }
       setIsEditing(false);
       setDraft(null);
@@ -661,24 +697,27 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             onUpload={async (files) => {
               if (!requestId) return;
               // Upload to S3 + create BillAttachment records via API.
+              // The response includes a presigned download_url for each attachment.
               const created = await uploadBillAttachments(requestId, files);
               // Refresh bill so bill.attachments includes the new records.
               setBill((prev) => prev
                 ? { ...prev, attachments: [...(prev.attachments ?? []), ...created] }
                 : prev
               );
-              // Also update local preview state.
+              // Use the presigned S3 URL from the API response for preview —
+              // never use local blob URLs so preview is consistent across devices.
               setAttachments((prev) => {
                 const usedNames = new Set(prev.map((x) => x.name));
-                const added: InvoiceAttachmentPreviewItem[] = [];
-                for (const f of files) {
-                  const base = f.name.trim() || "attachment";
+                const added: InvoiceAttachmentPreviewItem[] = created.map((ba) => {
+                  const base = ba.attachment.original_name.trim() || "attachment";
                   const name = uniquifyFileName(base, usedNames);
                   usedNames.add(name);
-                  const url = URL.createObjectURL(f);
-                  attachmentUrlsRef.current.push(url);
-                  added.push({ url, name, mime: f.type || "application/octet-stream" });
-                }
+                  return {
+                    url: ba.attachment.download_url,
+                    name,
+                    mime: ba.attachment.mime_type || "application/octet-stream",
+                  };
+                });
                 return [...prev, ...added];
               });
               setAttachmentsReady(true);

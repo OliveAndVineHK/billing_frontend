@@ -342,6 +342,8 @@ export type Attachment = {
   file_extension: string;
   storage_provider: string;
   created_at: string;
+  /** Presigned S3 download URL (15-min TTL). Always use this for preview. */
+  download_url: string;
 };
 
 export type BillAttachment = {
