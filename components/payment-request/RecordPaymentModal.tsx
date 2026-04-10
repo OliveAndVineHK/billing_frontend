@@ -19,6 +19,7 @@ import { PaymentDeleteConfirmModal } from "./PaymentDeleteConfirmModal";
 import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsModal";
 import { buildBankSlipDetailsFromPaymentList } from "@/lib/bankSlipEnrichment";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import { shouldShowPaymentInHistory } from "@/lib/paymentHistoryDisplay";
 import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
 
 export type RecordPaymentModalProps = {
@@ -134,6 +135,11 @@ export function RecordPaymentModal({
   const paymentsForBill = useMemo(
     () => payments.filter((p) => p.bill_id === billId),
     [payments, billId],
+  );
+
+  const paymentsForHistoryList = useMemo(
+    () => paymentsForBill.filter(shouldShowPaymentInHistory),
+    [paymentsForBill],
   );
 
   const totalPaid = useMemo(
@@ -386,11 +392,11 @@ export function RecordPaymentModal({
               <span className="material-symbols-outlined animate-spin text-secondary text-[20px]">progress_activity</span>
               Loading payments…
             </div>
-          ) : paymentsForBill.length === 0 ? (
+          ) : paymentsForHistoryList.length === 0 ? (
             <p className="py-4 text-center text-sm text-primary/50">No payments recorded yet.</p>
           ) : (
             <ul className="flex flex-col gap-2.5">
-              {paymentsForBill.map((p) => {
+              {paymentsForHistoryList.map((p) => {
                 const amt = parseFloat(p.amount || "0");
                 const isPending = p.payment_status === "pending";
                 const isPartialPayment = amt > 0 && amt + 1e-9 < invoiceAmount;
