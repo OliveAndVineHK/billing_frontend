@@ -123,7 +123,7 @@ export function AccountCodeSettings() {
         <button type="button" onClick={() => setExpanded((e) => !e)} className="flex w-full items-start justify-between gap-3 border-b border-gray-100 px-4 py-4 text-left transition-colors hover:bg-gray-50 sm:px-5" aria-expanded={expanded}>
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-black sm:text-lg">Account Code</h2>
-            <p className="mt-1 text-sm text-primary/65">Only ticked codes will appear in the Account Code dropdown when adding a bill</p>
+            <p className="mt-1 text-sm text-primary/65">Only selected account code will appear when adding a bill in Bill.</p>
           </div>
           <span className="material-symbols-outlined shrink-0 text-[24px] leading-none text-primary" aria-hidden>
             {expanded ? "expand_less" : "expand_more"}

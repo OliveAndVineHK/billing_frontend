@@ -7,14 +7,14 @@ export type SettingsTabId = (typeof SETTINGS_TAB_IDS)[number];
 
 const TABS: { id: SettingsTabId; label: string }[] = [
   { id: "users", label: "Users" },
-  { id: "xero", label: "Xero Integration" },
+  { id: "xero", label: "Entity & Integration" },
   { id: "entity", label: "Entity Settings" },
   { id: "bill", label: "Bill Settings" },
 ];
 
 export const SETTINGS_TAB_LABELS: Record<SettingsTabId, string> = {
   users: "Users",
-  xero: "Xero Integration",
+  xero: "Entity & Integration",
   entity: "Entity Settings",
   bill: "Bill Settings",
 };
