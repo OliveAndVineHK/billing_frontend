@@ -590,9 +590,7 @@ export function BankSlipDetailsModal({
         await uploadPaymentAttachment(inlineBillId, paymentId, file, "bank_slip");
       }
 
-      if (createdPaymentId) {
-        await updatePayment(inlineBillId, paymentId, { payment_status: "completed" });
-      }
+      await updatePayment(inlineBillId, paymentId, { payment_status: "completed" });
 
       setStagedUploads([]);
       setSelectedStagedId(null);
