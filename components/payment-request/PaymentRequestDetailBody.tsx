@@ -52,17 +52,6 @@ export type PaymentRequestDetailBodyProps = {
   onBillUpdated?: () => void;
 };
 
-/** Selected indices cover every attachment — delete would leave none. */
-function selectionDeletesAllAttachments(selected: number[], total: number): boolean {
-  if (total === 0 || selected.length !== total) return false;
-  const set = new Set(selected);
-  if (set.size !== total) return false;
-  for (let i = 0; i < total; i++) {
-    if (!set.has(i)) return false;
-  }
-  return true;
-}
-
 export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetailBodyProps) {
   const params = useParams();
   const requestId = typeof params?.id === "string" ? params.id : "";
@@ -388,6 +377,11 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       return;
     }
 
+    if (attachmentsReady && attachments.length === 0) {
+      setMinimumAttachmentModalOpen(true);
+      return;
+    }
+
     // Overpayment check: warn if new amount is less than what has already been paid.
     const completedPayments = payments.filter(
       (p) => p.bill_id === requestId && p.payment_status !== "pending",
@@ -405,7 +399,15 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     }
 
     await executeSave();
-  }, [requestId, bill, draft, payments, executeSave]);
+  }, [
+    requestId,
+    bill,
+    draft,
+    payments,
+    attachmentsReady,
+    attachments.length,
+    executeSave,
+  ]);
 
   const handleRequestDeleteBill = useCallback(() => {
     setDeleteBillConfirmOpen(true);
@@ -565,15 +567,8 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
 
   const handleConfirmDeleteAttachments = useCallback(() => {
     if (selectedAttachmentIndices.length === 0) return;
-    if (
-      !billIsDraft &&
-      selectionDeletesAllAttachments(selectedAttachmentIndices, attachments.length)
-    ) {
-      setMinimumAttachmentModalOpen(true);
-      return;
-    }
     setDeleteAttachmentConfirmOpen(true);
-  }, [selectedAttachmentIndices, attachments.length, billIsDraft]);
+  }, [selectedAttachmentIndices]);
 
   const executeDeleteSelectedAttachments = useCallback(() => {
     if (selectedAttachmentIndices.length === 0) return;
