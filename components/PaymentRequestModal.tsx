@@ -44,7 +44,7 @@ function getUploadedFileIconInfo(filename: string): { icon: string; iconClass: s
   if (ext === "pdf") {
     return { icon: "picture_as_pdf", iconClass: "text-red-600" };
   }
-  if (ext === "jpg" || ext === "jpeg" || ext === "png") {
+  if (ext === "jpg" || ext === "jpeg" || ext === "png" || ext === "heic" || ext === "heif" || ext === "webp" || ext === "gif") {
     return { icon: "image", iconClass: "text-sky-600" };
   }
   if (ext === "xls" || ext === "xlsx" || ext === "xlsm") {
@@ -533,7 +533,7 @@ export function PaymentRequestModal({
           </ul>
 
           <div className="relative">
-            <input ref={fileInputRef} type="file" className="absolute inset-0 z-20 h-full min-h-[156px] w-full cursor-pointer opacity-0 sm:min-h-[176px]" multiple accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.xlsm,application/pdf,image/jpeg,image/png,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleFilesSelected} aria-label="Choose files to upload" />
+            <input ref={fileInputRef} type="file" className="absolute inset-0 z-20 h-full min-h-[156px] w-full cursor-pointer opacity-0 sm:min-h-[176px]" multiple accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.gif,.xls,.xlsx,.xlsm,application/pdf,image/*,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleFilesSelected} aria-label="Choose files to upload" />
             <div className="pointer-events-none">
               <div className="flex min-h-[156px] flex-col items-center justify-center gap-3 overflow-visible rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 py-5 sm:min-h-[176px] sm:gap-4 sm:py-6">
                 <span className="material-symbols-outlined inline-block origin-center text-[48px] leading-none text-primary/45 [font-variation-settings:'FILL'_0,'wght'_400,'GRAD'_0,'opsz'_48] scale-[1.78] sm:text-[48px] sm:scale-[2.02]" aria-hidden>cloud_upload</span>

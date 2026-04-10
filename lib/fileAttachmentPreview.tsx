@@ -18,7 +18,7 @@ export function formatFileSize(bytes: number): string {
 export function isImageFile(file: File): boolean {
   if (file.type.startsWith("image/")) return true;
   const ext = file.name.trim().split(".").pop()?.toLowerCase() ?? "";
-  return ext === "jpg" || ext === "jpeg" || ext === "png";
+  return ext === "jpg" || ext === "jpeg" || ext === "png" || ext === "heic" || ext === "heif" || ext === "webp" || ext === "gif";
 }
 
 export function isPdfFile(file: File): boolean {
