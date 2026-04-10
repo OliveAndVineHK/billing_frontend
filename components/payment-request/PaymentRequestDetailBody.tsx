@@ -26,6 +26,7 @@ import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback
 import { enrichAccountCodeWithOptions } from "@/lib/billFormSelectOptions";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
 import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
+import { shouldShowPaymentInHistory } from "@/lib/paymentHistoryDisplay";
 import {
   loadAttachmentBlobs,
   replaceAttachmentBlobsFromPreviewItems,
@@ -821,7 +822,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           )}
           <PaymentHistoryCard
             canDeletePayments={isElevated}
-            rows={payments.map((p): PaymentHistoryRow => {
+            rows={payments.filter(shouldShowPaymentInHistory).map((p): PaymentHistoryRow => {
               const amt = parseFloat(p.amount || "0");
               const shortDate = p.payment_date
                 ? formatIsoDateForDisplay(p.payment_date.trim().slice(0, 10)) || "—"
@@ -902,10 +903,18 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         open={overpaymentWarningOpen}
         billId={requestId}
         payments={payments.filter(
-          (p) => p.bill_id === requestId && p.payment_status !== "pending",
+          (p) =>
+            p.bill_id === requestId &&
+            p.payment_status !== "pending" &&
+            shouldShowPaymentInHistory(p),
         )}
         totalPaid={payments
-          .filter((p) => p.bill_id === requestId && p.payment_status !== "pending")
+          .filter(
+            (p) =>
+              p.bill_id === requestId &&
+              p.payment_status !== "pending" &&
+              shouldShowPaymentInHistory(p),
+          )
           .reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0)}
         currencyLabel={currencyLabel}
         onCancel={() => setOverpaymentWarningOpen(false)}
