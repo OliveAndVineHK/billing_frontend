@@ -79,7 +79,7 @@ export function AttachmentDeleteConfirmModal({
             At least one attachment required
           </h2>
           <p id={descId} className="mt-3 text-sm leading-relaxed text-primary/80">
-            This bill must keep at least one supporting document. Add another attachment before removing the last file.
+            This bill must keep at least one supporting document.
           </p>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button type="button" className={okPrimaryClass} onClick={onClose}>
@@ -126,12 +126,12 @@ export function AttachmentDeleteConfirmModal({
                   <span className="font-medium break-all">“{fileName.trim()}”</span>
                 </>
               ) : null}
-              ? This cannot be undone.
+              ?
             </>
           ) : n > 1 ? (
-            <>Are you sure you want to delete these {n} attachments? This cannot be undone.</>
+            <>Are you sure you want to delete these {n} attachments?</>
           ) : (
-            <>Are you sure you want to delete this attachment? This cannot be undone.</>
+            <>Are you sure you want to delete this attachment?</>
           )}
         </p>
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
