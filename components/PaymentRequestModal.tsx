@@ -484,49 +484,29 @@ export function PaymentRequestModal({
   return createPortal(
     <div className="fixed inset-0 z-[300] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6" role="presentation">
       <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-black/35 backdrop-blur-[1px]" onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={previewFile ? previewSubtitleId : undefined} className="relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full min-w-0 max-w-[1080px] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,880px)] sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={previewFile ? previewSubtitleId : undefined} className="relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full min-w-0 max-w-[520px] flex-col rounded-xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,880px)] sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-4 pb-3 pt-4 sm:gap-4 sm:px-6 sm:pb-4 sm:pt-6">
           <h2 id={titleId} className="min-w-0 pr-2 text-lg font-bold leading-snug text-black sm:text-xl md:text-2xl">
             Add Payment Request
           </h2>
-          <button type="button" onClick={onClose} className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary" aria-label="Close">
-            <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
-              close
-            </span>
+          <button type="button" onClick={onClose} className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary" aria-label="Close">
+            <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>close</span>
           </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
+          <div className="flex flex-col gap-6">
             <div className="min-w-0">
-          {/* Full-area file input overlay: avoids sr-only / display:none issues with native pickers on some browsers */}
-          <div className="relative mb-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="absolute inset-0 z-20 h-full min-h-[156px] w-full cursor-pointer opacity-0 sm:min-h-[176px]"
-              multiple
-              accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.xlsm,application/pdf,image/jpeg,image/png,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              onChange={handleFilesSelected}
-              aria-label="Choose files to upload"
-            />
-            <div className="pointer-events-none">
-              <div className="flex min-h-[156px] flex-col items-center justify-center gap-3 overflow-visible rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 py-5 sm:min-h-[176px] sm:gap-4 sm:py-6">
-                <span
-                  className="material-symbols-outlined inline-block origin-center text-[48px] leading-none text-primary/45 [font-variation-settings:'FILL'_0,'wght'_400,'GRAD'_0,'opsz'_48] scale-[1.78] sm:text-[48px] sm:scale-[2.02]"
-                  aria-hidden
-                >
-                  cloud_upload
-                </span>
-                <div className="flex flex-col items-center">
-                  <p className="px-2 text-center text-[14px] font-medium leading-tight text-black">Click to upload or drag and drop</p>
-                  <p className="mt-1 px-2 text-center text-[12px] leading-tight text-primary/55">PDF, JPEG, PNG, XLS, XLSX (Max 5MB)</p>
-                </div>
-              </div>
+              {previewFile && previewObjectUrl ? (
+                <PaymentRequestInlinePreview file={previewFile} objectUrl={previewObjectUrl} previewSubtitleId={previewSubtitleId} getUploadedFileIconInfo={getUploadedFileIconInfo} />
+              ) : previewFile && !previewObjectUrl ? (
+                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">Loading preview…</div>
+              ) : (
+                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">Select a file to preview</div>
+              )}
             </div>
-          </div>
 
-          <div className="mb-2 mt-5 flex items-baseline justify-between gap-3">
+          <div className="mb-2 flex items-baseline justify-between gap-3">
             <p className="min-w-0 text-[11px] font-semibold uppercase tracking-wide text-primary/80">
               Uploaded files ({uploadedFiles.length})
             </p>
@@ -539,30 +519,32 @@ export function PaymentRequestModal({
               const { icon, iconClass } = getUploadedFileIconInfo(file.name);
               const selected = previewFileId === id;
               return (
-              <li
-                key={id}
-                className={
-                  "relative flex items-center justify-start rounded-lg border bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3 " +
-                  (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-[#EDEDED]")
-                }
-              >
+              <li key={id} className={"relative flex items-center justify-start rounded-lg border bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3 " + (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-[#EDEDED]")}>
                 <button type="button" onClick={() => setPreviewFileId(id)} className="flex min-w-0 flex-1 cursor-pointer items-center justify-start gap-2 rounded-md text-left" aria-pressed={selected} aria-label={`Preview ${file.name}`}>
-                  <span className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`} aria-hidden>
-                    {icon}
-                  </span>
-                  <span className="min-w-0 break-words text-left text-sm leading-snug text-black sm:flex-1 sm:truncate sm:leading-normal">
-                    {file.name}
-                  </span>
+                  <span className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`} aria-hidden>{icon}</span>
+                  <span className="min-w-0 break-words text-left text-sm leading-snug text-black sm:flex-1 sm:truncate sm:leading-normal">{file.name}</span>
                 </button>
                 <button type="button" onClick={() => removeFile(id)} className="absolute right-2 top-1/2 flex h-8 w-8 shrink-0 -translate-y-1/2 items-center justify-center rounded-md text-primary/60 transition-colors hover:bg-gray-100 hover:text-primary sm:static sm:translate-y-0" aria-label={`Remove ${file.name}`}>
-                  <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-                    close
-                  </span>
+                  <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>close</span>
                 </button>
               </li>
             );
             })}
           </ul>
+
+          <div className="relative">
+            <input ref={fileInputRef} type="file" className="absolute inset-0 z-20 h-full min-h-[156px] w-full cursor-pointer opacity-0 sm:min-h-[176px]" multiple accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.xlsm,application/pdf,image/jpeg,image/png,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleFilesSelected} aria-label="Choose files to upload" />
+            <div className="pointer-events-none">
+              <div className="flex min-h-[156px] flex-col items-center justify-center gap-3 overflow-visible rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 py-5 sm:min-h-[176px] sm:gap-4 sm:py-6">
+                <span className="material-symbols-outlined inline-block origin-center text-[48px] leading-none text-primary/45 [font-variation-settings:'FILL'_0,'wght'_400,'GRAD'_0,'opsz'_48] scale-[1.78] sm:text-[48px] sm:scale-[2.02]" aria-hidden>cloud_upload</span>
+                <div className="flex flex-col items-center">
+                  <p className="px-2 text-center text-[14px] font-medium leading-tight text-black">Click to upload or drag and drop</p>
+                  <p className="mt-1 px-2 text-center text-[12px] leading-tight text-primary/55">PDF, JPEG, PNG, XLS, XLSX (Max 5MB)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {fieldErrors.attachments ? (
             <p className="mt-2 text-xs text-red-600" role="alert">
               {fieldErrors.attachments}
@@ -570,15 +552,10 @@ export function PaymentRequestModal({
           ) : null}
 
           {formError ? (
-            <div
-              className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
-              role="alert"
-            >
-              {formError}
-            </div>
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950" role="alert">{formError}</div>
           ) : null}
 
-          <div className="mt-6 flex flex-col gap-5">
+          <div className="flex flex-col gap-5">
             <div>
               <FieldLabel htmlFor="pr-bill-no">Bill No.</FieldLabel>
               <input
@@ -611,106 +588,6 @@ export function PaymentRequestModal({
               {fieldErrors.billNo ? (
                 <p id="pr-bill-no-error" className="mt-1 text-xs text-red-600" role="alert">
                   {fieldErrors.billNo}
-                </p>
-              ) : null}
-            </div>
-
-            <div>
-              <FieldLabel htmlFor="pr-contact" required>
-                Contact
-              </FieldLabel>
-              <BillContactPicker
-                id="pr-contact"
-                contacts={contactsList}
-                xeroContactId={contact}
-                contactName={contactInput}
-                onChange={({ xero_contact_id, contact: nm }) => {
-                  setContact(xero_contact_id);
-                  setContactInput(nm);
-                  clearFieldError("contact");
-                }}
-                refetchContacts={refetchEntityBillContacts}
-                error={!!fieldErrors.contact}
-              />
-              {fieldErrors.contact ? (
-                <p className="mt-1 text-xs text-red-600" role="alert">
-                  {fieldErrors.contact}
-                </p>
-              ) : null}
-            </div>
-
-            <div>
-              <FieldLabel htmlFor="pr-amount" required>
-                Amount
-              </FieldLabel>
-              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-0">
-                <ThemedSelect
-                  id="pr-currency"
-                  ariaLabel="Currency"
-                  value={currency ?? ""}
-                  onChange={setCurrency}
-                  options={BILL_CURRENCY_SELECT_OPTIONS}
-                  className="w-full shrink-0 sm:w-24"
-                  fullWidth
-                  uniformFill
-                  triggerClassName="w-full px-2 sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3"
-                />
-                <input
-                  id="pr-amount"
-                  type="text"
-                  inputMode="decimal"
-                  value={amount ?? ""}
-                  onChange={(e) => {
-                    setAmount(e.target.value);
-                    clearFieldError("amount");
-                  }}
-                  placeholder="0.00"
-                  aria-invalid={!!fieldErrors.amount}
-                  className={
-                    "box-border h-11 min-h-[44px] min-w-0 w-full rounded-lg border bg-white px-3 text-base text-black placeholder:text-primary/45 focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:border-l-0 sm:text-sm " +
-                    (fieldErrors.amount
-                      ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
-                      : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
-                  }
-                />
-              </div>
-              {fieldErrors.amount ? (
-                <p className="mt-1 text-xs text-red-600" role="alert">
-                  {fieldErrors.amount}
-                </p>
-              ) : null}
-            </div>
-
-            <div>
-              <FieldLabel htmlFor="pr-description">Description</FieldLabel>
-              <input
-                id="pr-description"
-                type="text"
-                value={description ?? ""}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Description (Optional)"
-                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
-              />
-            </div>
-
-            <div>
-              <FieldLabel htmlFor="pr-account" required>
-                Account Code
-              </FieldLabel>
-              <ThemedSelect
-                id="pr-account"
-                value={accountCode ?? ""}
-                onChange={(v) => {
-                  setAccountCode(v);
-                  clearFieldError("accountCode");
-                }}
-                options={accountOptions}
-                placeholder="Select an account code"
-                error={!!fieldErrors.accountCode}
-              />
-              {fieldErrors.accountCode ? (
-                <p className="mt-1 text-xs text-red-600" role="alert">
-                  {fieldErrors.accountCode}
                 </p>
               ) : null}
             </div>
@@ -771,32 +648,113 @@ export function PaymentRequestModal({
                 ) : null}
               </div>
             </div>
-          </div>
-            </div>
-            <div className="min-w-0">
-              {previewFile && previewObjectUrl ? (
-                <PaymentRequestInlinePreview
-                  file={previewFile}
-                  objectUrl={previewObjectUrl}
-                  previewSubtitleId={previewSubtitleId}
-                  getUploadedFileIconInfo={getUploadedFileIconInfo}
+
+            <div>
+              <FieldLabel htmlFor="pr-amount" required>
+                Amount
+              </FieldLabel>
+              <div className="flex min-w-0 flex-row gap-0">
+                <ThemedSelect
+                  id="pr-currency"
+                  ariaLabel="Currency"
+                  value={currency ?? ""}
+                  onChange={setCurrency}
+                  options={BILL_CURRENCY_SELECT_OPTIONS}
+                  className="w-24 shrink-0"
+                  fullWidth
+                  uniformFill
+                  triggerClassName="w-full px-2 sm:px-3 rounded-l-lg rounded-r-none border-r-0"
                 />
-              ) : previewFile && !previewObjectUrl ? (
-                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
-                  Loading preview…
-                </div>
-              ) : (
-                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
-                  Select a file to preview
-                </div>
-              )}
+                <input
+                  id="pr-amount"
+                  type="text"
+                  inputMode="decimal"
+                  value={amount ?? ""}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    clearFieldError("amount");
+                  }}
+                  placeholder="0.00"
+                  aria-invalid={!!fieldErrors.amount}
+                  className={
+                    "box-border h-11 min-h-[44px] min-w-0 flex-1 rounded-l-none rounded-r-lg border border-l-0 bg-white px-3 text-base text-black placeholder:text-primary/45 focus:outline-none focus:ring-2 sm:min-h-11 sm:text-sm " +
+                    (fieldErrors.amount
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
+                      : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
+                  }
+                />
+              </div>
+              {fieldErrors.amount ? (
+                <p className="mt-1 text-xs text-red-600" role="alert">
+                  {fieldErrors.amount}
+                </p>
+              ) : null}
             </div>
+
+            <div>
+              <FieldLabel htmlFor="pr-description">Description</FieldLabel>
+              <input
+                id="pr-description"
+                type="text"
+                value={description ?? ""}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Description (Optional)"
+                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
+              />
+            </div>
+
+            <div>
+              <FieldLabel htmlFor="pr-contact" required>
+                Contact
+              </FieldLabel>
+              <BillContactPicker
+                id="pr-contact"
+                contacts={contactsList}
+                xeroContactId={contact}
+                contactName={contactInput}
+                onChange={({ xero_contact_id, contact: nm }) => {
+                  setContact(xero_contact_id);
+                  setContactInput(nm);
+                  clearFieldError("contact");
+                }}
+                refetchContacts={refetchEntityBillContacts}
+                error={!!fieldErrors.contact}
+              />
+              {fieldErrors.contact ? (
+                <p className="mt-1 text-xs text-red-600" role="alert">
+                  {fieldErrors.contact}
+                </p>
+              ) : null}
+            </div>
+
+            <div>
+              <FieldLabel htmlFor="pr-account" required>
+                Account Code
+              </FieldLabel>
+              <ThemedSelect
+                id="pr-account"
+                value={accountCode ?? ""}
+                onChange={(v) => {
+                  setAccountCode(v);
+                  clearFieldError("accountCode");
+                }}
+                options={accountOptions}
+                placeholder="Select an account code"
+                error={!!fieldErrors.accountCode}
+              />
+              {fieldErrors.accountCode ? (
+                <p className="mt-1 text-xs text-red-600" role="alert">
+                  {fieldErrors.accountCode}
+                </p>
+              ) : null}
+            </div>
+          </div>
           </div>
         </div>
 
         <div className="flex shrink-0 flex-col gap-2 border-t border-gray-100 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-5 sm:pb-5">
           <div className="order-1 flex w-full min-w-0 gap-2 sm:order-2 sm:ml-auto sm:w-auto">
-            <button type="button" onClick={handleCancel} className="box-border h-12 min-h-[48px] min-w-0 flex-1 rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px] sm:flex-none sm:px-4">
+            <button type="button" onClick={handleCancel} className="box-border h-12 min-h-[48px] min-w-0 flex-1 cursor-pointer rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px] sm:flex-none sm:px-4">
               Cancel
             </button>
             <button type="button" onClick={() => void handleConfirm()} disabled={confirmSubmitting} className="box-border h-12 min-h-[48px] min-w-0 flex-1 rounded-lg border border-transparent bg-secondary px-4 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px] sm:flex-none sm:px-5">
@@ -828,9 +786,7 @@ function PaymentRequestInlinePreview({
   return (
     <div className="flex h-full flex-col">
       <div className="flex gap-3 pb-2">
-        <span className={`material-symbols-outlined mt-0.5 shrink-0 text-[28px] leading-none sm:text-[32px] ${iconClass}`} aria-hidden>
-          {icon}
-        </span>
+        <span className={`material-symbols-outlined mt-0.5 shrink-0 text-[28px] leading-none sm:text-[32px] ${iconClass}`} aria-hidden>{icon}</span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-black sm:text-base">{file.name}</p>
           <p id={previewSubtitleId} className="mt-1 text-[11px] font-medium tracking-wide text-primary/55 sm:text-xs">
