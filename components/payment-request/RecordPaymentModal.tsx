@@ -148,6 +148,12 @@ export function RecordPaymentModal({
   );
   const remaining = Math.max(0, Math.round((invoiceAmount - totalPaid) * 100) / 100);
 
+  /** Additional payments after an installment must use Partial Pay (Full Pay only when nothing paid yet or bill fully open). */
+  const hasPartialPaymentTowardsInvoice = useMemo(
+    () => totalPaid > 1e-9 && remaining > 1e-9,
+    [totalPaid, remaining],
+  );
+
   const pendingPayments = useMemo(
     () => paymentsForBill.filter((p) => p.payment_status === "pending"),
     [paymentsForBill],
@@ -232,8 +238,18 @@ export function RecordPaymentModal({
     setDraftAmount(remaining > 0 ? remaining.toFixed(2) : "");
   }, [open, payMode, remaining]);
 
+  useEffect(() => {
+    if (!open || !hasPartialPaymentTowardsInvoice || payMode !== "full") return;
+    setPayMode("partial");
+    setDraftAmount("");
+  }, [open, hasPartialPaymentTowardsInvoice, payMode]);
+
   const handleAddPayment = async () => {
     setFormError(null);
+    if (payMode === "full" && hasPartialPaymentTowardsInvoice) {
+      setFormError("Use Partial Pay when a payment is already recorded against this invoice.");
+      return;
+    }
     const amount = payMode === "full" ? remaining : parseAmount(draftAmount);
     if (amount === null || amount <= 0) {
       setFormError("Enter a valid amount.");
@@ -376,7 +392,30 @@ export function RecordPaymentModal({
 
           {!readOnly ? (
             <div className="mt-5 flex gap-2">
-              <button type="button" onClick={() => { setFormError(null); setPayMode("full"); }} className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "full" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Full Pay</button>
+              <button
+                type="button"
+                disabled={hasPartialPaymentTowardsInvoice}
+                title={
+                  hasPartialPaymentTowardsInvoice
+                    ? "Full Pay is only available before any partial payment is recorded. Use Partial Pay for the remaining balance."
+                    : undefined
+                }
+                onClick={() => {
+                  if (hasPartialPaymentTowardsInvoice) return;
+                  setFormError(null);
+                  setPayMode("full");
+                }}
+                className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${
+                  hasPartialPaymentTowardsInvoice
+                    ? "cursor-not-allowed border border-gray-200 bg-gray-100 text-primary/45"
+                    : payMode === "full"
+                      ? "cursor-pointer bg-secondary text-white shadow-sm"
+                      : "cursor-pointer border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"
+                }`}
+                aria-disabled={hasPartialPaymentTowardsInvoice}
+              >
+                Full Pay
+              </button>
               <button type="button" onClick={() => { setFormError(null); setPayMode("partial"); setDraftAmount(""); }} className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "partial" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Partial Pay</button>
             </div>
           ) : null}
