@@ -67,7 +67,7 @@ export function PaymentDeleteConfirmModal({
               (<span className="font-semibold text-primary">{trimmed}</span>)
             </>
           ) : null}
-          ? This cannot be undone.
+          ?
         </p>
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
           <button type="button" className={cancelClass} onClick={onClose} disabled={pending}>

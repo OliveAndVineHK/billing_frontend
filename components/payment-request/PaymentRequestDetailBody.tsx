@@ -26,6 +26,7 @@ import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback
 import { enrichAccountCodeWithOptions } from "@/lib/billFormSelectOptions";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
 import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
+import { shouldShowPaymentInHistory } from "@/lib/paymentHistoryDisplay";
 import {
   loadAttachmentBlobs,
   replaceAttachmentBlobsFromPreviewItems,
@@ -51,17 +52,6 @@ export type PaymentRequestDetailBodyProps = {
   /** Called after the bill is refreshed from the server so the header status badge can update. */
   onBillUpdated?: () => void;
 };
-
-/** Selected indices cover every attachment — delete would leave none. */
-function selectionDeletesAllAttachments(selected: number[], total: number): boolean {
-  if (total === 0 || selected.length !== total) return false;
-  const set = new Set(selected);
-  if (set.size !== total) return false;
-  for (let i = 0; i < total; i++) {
-    if (!set.has(i)) return false;
-  }
-  return true;
-}
 
 export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetailBodyProps) {
   const params = useParams();
@@ -388,6 +378,11 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       return;
     }
 
+    if (attachmentsReady && attachments.length === 0) {
+      setMinimumAttachmentModalOpen(true);
+      return;
+    }
+
     // Overpayment check: warn if new amount is less than what has already been paid.
     const completedPayments = payments.filter(
       (p) => p.bill_id === requestId && p.payment_status !== "pending",
@@ -405,7 +400,15 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     }
 
     await executeSave();
-  }, [requestId, bill, draft, payments, executeSave]);
+  }, [
+    requestId,
+    bill,
+    draft,
+    payments,
+    attachmentsReady,
+    attachments.length,
+    executeSave,
+  ]);
 
   const handleRequestDeleteBill = useCallback(() => {
     setDeleteBillConfirmOpen(true);
@@ -565,15 +568,8 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
 
   const handleConfirmDeleteAttachments = useCallback(() => {
     if (selectedAttachmentIndices.length === 0) return;
-    if (
-      !billIsDraft &&
-      selectionDeletesAllAttachments(selectedAttachmentIndices, attachments.length)
-    ) {
-      setMinimumAttachmentModalOpen(true);
-      return;
-    }
     setDeleteAttachmentConfirmOpen(true);
-  }, [selectedAttachmentIndices, attachments.length, billIsDraft]);
+  }, [selectedAttachmentIndices]);
 
   const executeDeleteSelectedAttachments = useCallback(() => {
     if (selectedAttachmentIndices.length === 0) return;
@@ -821,7 +817,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           )}
           <PaymentHistoryCard
             canDeletePayments={isElevated}
-            rows={payments.map((p): PaymentHistoryRow => {
+            rows={payments.filter(shouldShowPaymentInHistory).map((p): PaymentHistoryRow => {
               const amt = parseFloat(p.amount || "0");
               const shortDate = p.payment_date
                 ? formatIsoDateForDisplay(p.payment_date.trim().slice(0, 10)) || "—"
@@ -902,10 +898,18 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         open={overpaymentWarningOpen}
         billId={requestId}
         payments={payments.filter(
-          (p) => p.bill_id === requestId && p.payment_status !== "pending",
+          (p) =>
+            p.bill_id === requestId &&
+            p.payment_status !== "pending" &&
+            shouldShowPaymentInHistory(p),
         )}
         totalPaid={payments
-          .filter((p) => p.bill_id === requestId && p.payment_status !== "pending")
+          .filter(
+            (p) =>
+              p.bill_id === requestId &&
+              p.payment_status !== "pending" &&
+              shouldShowPaymentInHistory(p),
+          )
           .reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0)}
         currencyLabel={currencyLabel}
         onCancel={() => setOverpaymentWarningOpen(false)}
