@@ -1,4 +1,4 @@
-import { getAuth, isTokenExpiringSoon, redirectToLogin } from "./auth";
+import { getAuth, isTokenExpiringSoon, redirectToLogin, refreshToken } from "./auth";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://localhost:8000";
@@ -38,9 +38,12 @@ function normalizeApiErrorDetail(detail: unknown, fallback: string): string {
 // ── Core fetch wrapper ───────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  if (isTokenExpiringSoon()) {
-    redirectToLogin();
-    throw new ApiError(401, "Session expiring soon. Redirecting to login.");
+  if (isTokenExpiringSoon(30 * 60)) {
+    const refreshed = await refreshToken();
+    if (!refreshed) {
+      redirectToLogin();
+      throw new ApiError(401, "Session expired. Redirecting to login.");
+    }
   }
 
   const auth = getAuth();
@@ -137,6 +140,14 @@ async function fetchAttachmentDownloadJson(path: string): Promise<{
   mime_type?: string;
   file_size?: number;
 } | null> {
+  if (isTokenExpiringSoon(30 * 60)) {
+    const refreshed = await refreshToken();
+    if (!refreshed) {
+      redirectToLogin();
+      throw new ApiError(401, "Session expired. Redirecting to login.");
+    }
+  }
+
   const auth = getAuth();
   if (!auth?.token) {
     redirectToLogin();

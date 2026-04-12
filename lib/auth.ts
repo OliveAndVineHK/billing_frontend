@@ -2,6 +2,11 @@ const TOKEN_KEY = "billing_token";
 const ENTITY_ID_KEY = "billing_entity_id";
 const ENTITY_NAME_KEY = "billing_entity_name";
 
+const BILLING_TOKEN_MAX_AGE = 60 * 60 * 8; // 8 hours — matches JWT lifetime
+
+const API_BASE =
+  process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://localhost:8000";
+
 export type AuthInfo = {
   token: string;
   entityId: string;
@@ -9,9 +14,8 @@ export type AuthInfo = {
 };
 
 export function setAuth(token: string, entityId: string, entityName: string) {
-  const maxAge = 60 * 30; // 30 minutes — matches JWT exp issued by Flask
   const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
-  const opts = `path=/;max-age=${maxAge};SameSite=Lax${isSecure ? ";Secure" : ""}`;
+  const opts = `path=/;max-age=${BILLING_TOKEN_MAX_AGE};SameSite=Lax${isSecure ? ";Secure" : ""}`;
   document.cookie = `${TOKEN_KEY}=${encodeURIComponent(token)};${opts}`;
   document.cookie = `${ENTITY_ID_KEY}=${encodeURIComponent(entityId)};${opts}`;
   document.cookie = `${ENTITY_NAME_KEY}=${encodeURIComponent(entityName)};${opts}`;
@@ -93,4 +97,34 @@ const MODULE1_URL =
 export function redirectToLogin() {
   clearAuth();
   window.location.href = `${MODULE1_URL}/login`;
+}
+
+/**
+ * Exchanges the current valid billing JWT for a fresh 8-hour token via
+ * POST /api/v1/auth/token/refresh.
+ *
+ * Returns true and updates the stored cookies if the server issued a new token.
+ * Returns false if the token is already expired, missing, or the request failed.
+ *
+ * Uses raw fetch (not apiFetch) to avoid a circular import with api.ts.
+ */
+export async function refreshToken(): Promise<boolean> {
+  const auth = getAuth();
+  if (!auth?.token) return false;
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/auth/token/refresh`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${auth.token}`,
+        "X-Entity-Id": auth.entityId,
+      },
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { token?: string; expires_in?: number };
+    if (!data.token) return false;
+    setAuth(data.token, auth.entityId, auth.entityName);
+    return true;
+  } catch {
+    return false;
+  }
 }
