@@ -6,6 +6,7 @@ import { Header } from "@/components/layout";
 import { PaymentRequestDetailSkeleton } from "@/components/payment-request/PaymentRequestDetailSkeleton";
 import { PaymentRequestDetailStatusBadge } from "@/components/payment-request/PaymentRequestDetailStatusBadge";
 import { getAuth, type AuthInfo } from "@/lib/auth";
+import { fetchXeroStatus } from "@/lib/api";
 
 const PaymentRequestDetailBody = dynamic(
   () => import("@/components/payment-request/PaymentRequestDetailBody").then((m) => ({ default: m.PaymentRequestDetailBody })),
@@ -14,11 +15,16 @@ const PaymentRequestDetailBody = dynamic(
 
 export function PaymentRequestDetailPageClient() {
   const [auth, setAuth] = useState<AuthInfo | null>(null);
+  const [xeroConnected, setXeroConnected] = useState<boolean>(false);
   const [billStatusRefresh, setBillStatusRefresh] = useState(0);
   const bumpBillStatusInHeader = useCallback(() => setBillStatusRefresh((n) => n + 1), []);
 
   useEffect(() => {
-    setAuth(getAuth());
+    const a = getAuth();
+    setAuth(a);
+    if (a?.token) {
+      fetchXeroStatus().then(setXeroConnected);
+    }
   }, []);
 
   const entityAbbr = auth?.entityName
@@ -41,6 +47,7 @@ export function PaymentRequestDetailPageClient() {
         companyName={auth?.entityName || "Loading…"}
         companyAbbreviation={entityAbbr}
         statusBadge={<PaymentRequestDetailStatusBadge refreshSignal={billStatusRefresh} />}
+        xeroConnected={xeroConnected}
       />
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3 lg:pt-4">
         <PaymentRequestDetailBody onBillUpdated={bumpBillStatusInHeader} />

@@ -727,6 +727,22 @@ export function createEntityBillContact(payload: {
   });
 }
 
+// ── Xero status ──────────────────────────────────────────────────────
+
+/**
+ * Returns whether the current user has an active Xero connection.
+ * Used to show/hide the Xero connection indicator in the UI.
+ * Returns false (not null) on any network or auth failure.
+ */
+export async function fetchXeroStatus(): Promise<boolean> {
+  try {
+    const data = await apiFetch<{ connected: boolean }>("/auth/xero-status");
+    return data.connected;
+  } catch {
+    return false;
+  }
+}
+
 export function fetchCurrencies(): Promise<CurrencyInfo[]> {
   return apiFetch("/currencies/");
 }
