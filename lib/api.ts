@@ -487,6 +487,21 @@ export function deleteBill(billId: string): Promise<{ message: string }> {
   });
 }
 
+/**
+ * Return / un-return / void a payment request.
+ *
+ * status values:
+ *   "payment_requested" → bill is currently submitted (Payment Requested) → transitions to Returned
+ *   "returned"          → bill is currently Returned → transitions back to submitted (Payment Requested)
+ *   "void"              → bill is currently Returned → transitions to Voided
+ */
+export function returnBill(billId: string, status: "payment_requested" | "returned" | "void"): Promise<BillDetail> {
+  return apiFetch<BillDetail>(`/bills/${billId}/return/`, {
+    method: "POST",
+    body: JSON.stringify({ status }),
+  });
+}
+
 /** Publish a bill to Xero (single bill). */
 export function publishBill(billId: string): Promise<BillDetail> {
   return apiFetch<BillDetail>(`/bills/${billId}/publish/`, {
