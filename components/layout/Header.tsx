@@ -88,12 +88,6 @@ export function Header({
             >
               corporate_fare
             </span>
-            {xeroConnected && (
-              <span
-                className="absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-white"
-                title="Xero connected"
-              />
-            )}
           </span>
           <span className="min-w-0 max-w-[min(100%,6.5rem)] truncate text-sm font-medium text-primary sm:max-w-[9rem] sm:text-base md:max-w-[14rem] lg:max-w-md">
             {companyName}
