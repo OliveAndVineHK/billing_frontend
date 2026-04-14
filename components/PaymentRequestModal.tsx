@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
-import { formatFileSize, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
+import { formatFileSize, FullFilePreviewLink, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
 
@@ -795,9 +795,12 @@ function PaymentRequestInlinePreview({
           </p>
         </div>
       </div>
-      <div className="mt-3 min-h-[min(60dvh,420px)] overflow-auto rounded-lg bg-black/5 p-2 sm:p-3">
+      <FullFilePreviewLink
+        href={objectUrl}
+        className="mt-3 min-h-[min(60dvh,420px)] overflow-auto rounded-lg bg-black/5 p-2 sm:p-3"
+      >
         {isImageFile(file) ? (
-          <img src={objectUrl} alt={`Preview: ${file.name}`} className="mx-auto max-h-[min(65dvh,620px)] w-auto max-w-full object-contain"/>
+          <img src={objectUrl} alt={`Preview: ${file.name}`} className="mx-auto max-h-[min(65dvh,620px)] w-auto max-w-full object-contain" />
         ) : null}
         {isPdfFile(file) && !isImageFile(file) ? (
           <PdfJsCanvasPreview src={objectUrl} title={file.name} className="w-full" maxPageWidthCssPx={640} />
@@ -805,7 +808,7 @@ function PaymentRequestInlinePreview({
         {!isImageFile(file) && !isPdfFile(file) ? (
           <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>
         ) : null}
-      </div>
+      </FullFilePreviewLink>
     </div>
   );
 }
