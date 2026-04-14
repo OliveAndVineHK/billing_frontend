@@ -1,4 +1,11 @@
-import { getAuth, isTokenExpiringSoon, redirectToLogin, refreshToken } from "./auth";
+import {
+  getAuth,
+  getEmailFromToken,
+  isTokenExpiringSoon,
+  redirectToLogin,
+  refreshToken,
+} from "./auth";
+import { findEmailAddressInJson } from "./extractEmail";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://localhost:8000";
@@ -412,10 +419,90 @@ export type CurrencyInfo = {
 export type AuthMeUser = {
   first_name?: string | null;
   last_name?: string | null;
+  email?: string | null;
+  email_verified?: boolean | null;
+  is_email_verified?: boolean | null;
 };
 
-export function fetchAuthMe(): Promise<AuthMeUser> {
-  return apiFetch<AuthMeUser>("/auth/me");
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return v != null && typeof v === "object" && !Array.isArray(v);
+}
+
+export function normalizeAuthMeResponse(data: unknown): AuthMeUser {
+  if (Array.isArray(data) && data.length > 0) {
+    return normalizeAuthMeResponse(data[0]);
+  }
+  if (!isRecord(data)) return {};
+
+  const layers: Record<string, unknown>[] = [data];
+  const addLayer = (v: unknown) => {
+    if (isRecord(v)) layers.push(v);
+  };
+  addLayer(data.user);
+  addLayer(data.data);
+  if (isRecord(data.data)) {
+    const inner = data.data as Record<string, unknown>;
+    addLayer(inner.user);
+    addLayer(inner.attributes);
+    addLayer(inner.profile);
+  }
+  addLayer(data.result);
+  addLayer(data.payload);
+  addLayer(data.profile);
+  addLayer(data.account);
+
+  const pickStr = (keys: string[]): string | null => {
+    for (const key of keys) {
+      for (const layer of layers) {
+        const v = layer[key];
+        if (typeof v === "string") {
+          const t = v.trim();
+          if (t.length > 0) return t;
+        }
+      }
+    }
+    return null;
+  };
+
+  const pickBool = (keys: string[]): boolean | null => {
+    for (const key of keys) {
+      for (const layer of layers) {
+        const v = layer[key];
+        if (typeof v === "boolean") return v;
+      }
+    }
+    return null;
+  };
+
+  const directEmail =
+    pickStr(["email", "user_email", "userEmail", "mail", "primary_email", "contact_email", "email_address", "e_mail"]) ??
+    (() => {
+      const u = pickStr(["username", "user_name", "login"]);
+      return u && u.includes("@") ? u : null;
+    })();
+
+  const emailFromTree = directEmail ?? findEmailAddressInJson(data);
+
+  return {
+    first_name: pickStr(["first_name", "firstName", "given_name", "givenName"]),
+    last_name: pickStr(["last_name", "lastName", "family_name", "familyName", "surname"]),
+    email: emailFromTree,
+    email_verified: pickBool(["email_verified", "emailVerified"]),
+    is_email_verified: pickBool(["is_email_verified", "isEmailVerified"]),
+  };
+}
+
+function mergeEmailFromJwtIfMissing(base: AuthMeUser): AuthMeUser {
+  if (!base.email?.trim()) {
+    const fromJwt = getEmailFromToken();
+    if (fromJwt) return { ...base, email: fromJwt };
+  }
+  return base;
+}
+
+export async function fetchAuthMe(): Promise<AuthMeUser> {
+  const raw = await apiFetch<unknown>("/auth/me");
+  return mergeEmailFromJwtIfMissing(normalizeAuthMeResponse(raw));
 }
 
 // ── Bills ────────────────────────────────────────────────────────────

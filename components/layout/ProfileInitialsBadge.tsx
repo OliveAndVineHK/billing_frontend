@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchAuthMe } from "@/lib/api";
 
@@ -40,8 +41,13 @@ export function ProfileInitialsBadge() {
   }, []);
 
   return (
-    <span className="inline-flex items-center justify-center w-7 h-7 shrink-0 rounded-full bg-[#FFE6B1] text-[12px] font-semibold text-[#6B3A12]" aria-label={label} title={label}>
+    <Link
+      href="/profile"
+      className="inline-flex items-center justify-center w-7 h-7 shrink-0 rounded-full bg-[#FFE6B1] text-[12px] font-semibold text-[#6B3A12] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+      aria-label={`${label} — open My Profile`}
+      title={label}
+    >
       {abbr === null ? <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-primary/30" aria-hidden /> : abbr}
-    </span>
+    </Link>
   );
 }
