@@ -17,7 +17,7 @@ type UploadedEntry = { id: string; file: File };
 function getUploadedFileIconInfo(filename: string): { icon: string; iconClass: string } {
   const ext = filename.trim().split(".").pop()?.toLowerCase() ?? "";
   if (ext === "pdf") return { icon: "picture_as_pdf", iconClass: "text-red-600" };
-  if (ext === "jpg" || ext === "jpeg" || ext === "png") return { icon: "image", iconClass: "text-sky-600" };
+  if (ext === "jpg" || ext === "jpeg" || ext === "png" || ext === "heic" || ext === "heif" || ext === "webp" || ext === "gif") return { icon: "image", iconClass: "text-sky-600" };
   return { icon: "draft", iconClass: "text-primary" };
 }
 
@@ -148,7 +148,7 @@ export function UploadInvoiceAttachmentModal({ open, onClose, onUpload }: Upload
                   type="file"
                   className="absolute inset-0 z-20 h-full min-h-[156px] w-full cursor-pointer opacity-0 sm:min-h-[176px]"
                   multiple
-                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                  accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.gif,application/pdf,image/*"
                   onChange={handleFilesSelected}
                   aria-label="Choose attachment files to upload"
                 />

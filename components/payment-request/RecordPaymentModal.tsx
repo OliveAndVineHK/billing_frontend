@@ -12,7 +12,7 @@ import {
   updateBill,
   type PaymentItem,
 } from "@/lib/api";
-import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
+import { billStatusShouldRollbackWhenNoPayments, normalizeBillStatusKey } from "@/lib/billStatusRollback";
 import { DateTextField } from "@/components/DateTextField";
 import { useUserRole } from "@/lib/useUserRole";
 import { PaymentDeleteConfirmModal } from "./PaymentDeleteConfirmModal";
@@ -89,6 +89,10 @@ function isDraftBillStatus(status: string | null | undefined): boolean {
   return n === "draft";
 }
 
+function isPartiallyPaidBillStatus(status: string | null | undefined): boolean {
+  return normalizeBillStatusKey(status ?? "") === "partially_paid";
+}
+
 export function RecordPaymentModal({
   open,
   onClose,
@@ -114,7 +118,7 @@ export function RecordPaymentModal({
   const [draftAmount, setDraftAmount] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [finalizingPending, setFinalizingPending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [paymentPendingDelete, setPaymentPendingDelete] = useState<PaymentItem | null>(null);
   const [bankSlipPreviewOpen, setBankSlipPreviewOpen] = useState(false);
@@ -154,15 +158,32 @@ export function RecordPaymentModal({
     [totalPaid, remaining],
   );
 
+  /** Full Pay is locked when the bill is in Partially paid status (API `partially_paid`). */
+  const billIsPartiallyPaid = useMemo(
+    () => isPartiallyPaidBillStatus(billStatus),
+    [billStatus],
+  );
+
+  const fullPayLocked = hasPartialPaymentTowardsInvoice || billIsPartiallyPaid;
+
   const pendingPayments = useMemo(
     () => paymentsForBill.filter((p) => p.payment_status === "pending"),
     [paymentsForBill],
   );
 
   const draftBill = isDraftBillStatus(billStatus);
-  /** Non-draft bills need at least one bank slip file before pending payments can be saved (edit mode). */
-  const bankSlipRequiredToSave =
+  /** Non-draft bills need at least one bank slip file before pending rows can be finalized (edit mode). */
+  const bankSlipRequiredForPending =
     !readOnly && !draftBill && pendingPayments.length > 0 && bankSlipFileCount < 1;
+
+  const pendingIdsKey = useMemo(
+    () =>
+      pendingPayments
+        .map((p) => p.id)
+        .sort()
+        .join(","),
+    [pendingPayments],
+  );
 
   const syncSubmittedIfNoPaymentsLeft = useCallback(
     async (paymentsList: PaymentItem[]): Promise<boolean> => {
@@ -239,15 +260,56 @@ export function RecordPaymentModal({
   }, [open, payMode, remaining]);
 
   useEffect(() => {
-    if (!open || !hasPartialPaymentTowardsInvoice || payMode !== "full") return;
+    if (!open || !fullPayLocked || payMode !== "full") return;
     setPayMode("partial");
     setDraftAmount("");
-  }, [open, hasPartialPaymentTowardsInvoice, payMode]);
+  }, [open, fullPayLocked, payMode]);
+
+  useEffect(() => {
+    if (!open || readOnly || !billId || !pendingIdsKey || bankSlipRequiredForPending) return;
+
+    let cancelled = false;
+    (async () => {
+      setFinalizingPending(true);
+      setFormError(null);
+      try {
+        const ids = new Set(pendingIdsKey.split(",").filter(Boolean));
+        const data = await fetchPayments(billId);
+        if (cancelled) return;
+        const toComplete = data.payments.filter(
+          (p) =>
+            p.bill_id === billId &&
+            p.payment_status === "pending" &&
+            ids.has(p.id),
+        );
+        if (toComplete.length === 0) return;
+        await Promise.all(
+          toComplete.map((p) => updatePayment(p.bill_id, p.id, { payment_status: "completed" })),
+        );
+        if (cancelled) return;
+        await loadPayments();
+        onPaymentSaved?.();
+      } catch (err) {
+        if (!cancelled) {
+          setFormError(err instanceof Error ? err.message : "Failed to update payments.");
+        }
+      } finally {
+        if (!cancelled) setFinalizingPending(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, readOnly, billId, pendingIdsKey, bankSlipRequiredForPending, loadPayments, onPaymentSaved]);
 
   const handleAddPayment = async () => {
     setFormError(null);
-    if (payMode === "full" && hasPartialPaymentTowardsInvoice) {
-      setFormError("Use Partial Pay when a payment is already recorded against this invoice.");
+    if (payMode === "full" && fullPayLocked) {
+      setFormError(
+        billIsPartiallyPaid
+          ? "This bill is partially paid. Use Partial Pay for additional amounts."
+          : "Use Partial Pay when a payment is already recorded against this invoice.",
+      );
       return;
     }
     const amount = payMode === "full" ? remaining : parseAmount(draftAmount);
@@ -313,29 +375,6 @@ export function RecordPaymentModal({
     }
   };
 
-  const handleSavePayment = async () => {
-    setFormError(null);
-    if (bankSlipRequiredToSave) {
-      setFormError("Add at least one bank slip attachment before saving. Draft bills are exempt.");
-      return;
-    }
-    setSaving(true);
-    try {
-      await Promise.all(
-        pendingPayments.map((p) =>
-          updatePayment(p.bill_id, p.id, { payment_status: "completed" }),
-        ),
-      );
-      await loadPayments();
-      onPaymentSaved?.();
-      onClose();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Failed to save payments.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   if (!open) return null;
 
   const paymentDateTextClass =
@@ -394,25 +433,27 @@ export function RecordPaymentModal({
             <div className="mt-5 flex gap-2">
               <button
                 type="button"
-                disabled={hasPartialPaymentTowardsInvoice}
+                disabled={fullPayLocked}
                 title={
-                  hasPartialPaymentTowardsInvoice
-                    ? "Full Pay is only available before any partial payment is recorded. Use Partial Pay for the remaining balance."
+                  fullPayLocked
+                    ? billIsPartiallyPaid
+                      ? "Full Pay is not available while the bill status is Partially paid. Use Partial Pay for the remaining balance."
+                      : "Full Pay is only available before any partial payment is recorded. Use Partial Pay for the remaining balance."
                     : undefined
                 }
                 onClick={() => {
-                  if (hasPartialPaymentTowardsInvoice) return;
+                  if (fullPayLocked) return;
                   setFormError(null);
                   setPayMode("full");
                 }}
                 className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${
-                  hasPartialPaymentTowardsInvoice
+                  fullPayLocked
                     ? "cursor-not-allowed border border-gray-200 bg-gray-100 text-primary/45"
                     : payMode === "full"
                       ? "cursor-pointer bg-secondary text-white shadow-sm"
                       : "cursor-pointer border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"
                 }`}
-                aria-disabled={hasPartialPaymentTowardsInvoice}
+                aria-disabled={fullPayLocked}
               >
                 Full Pay
               </button>
@@ -527,24 +568,17 @@ export function RecordPaymentModal({
                 <span className="text-sm font-medium text-primary">Amount to be Paid</span>
                 <span className="text-2xl font-bold text-secondary sm:text-3xl">{formatMoney(remaining, currencyLabel)}</span>
               </div>
-              {bankSlipRequiredToSave ? (
+              {bankSlipRequiredForPending ? (
                 <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
-                  Add at least one bank slip attachment before saving. Draft bills do not require this.
+                  Add at least one bank slip attachment to finalize pending payments. Draft bills do not require this.
                 </p>
               ) : null}
-              <button
-                type="button"
-                onClick={handleSavePayment}
-                disabled={saving || bankSlipRequiredToSave}
-                title={
-                  bankSlipRequiredToSave
-                    ? "Upload at least one bank slip (Supporting documents) before saving."
-                    : undefined
-                }
-                className="box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px]"
-              >
-                {saving ? "Saving…" : "Save payment"}
-              </button>
+              {finalizingPending ? (
+                <p className="flex items-center justify-center gap-2 text-sm text-primary/70" role="status">
+                  <span className="material-symbols-outlined animate-spin text-secondary text-[18px]">progress_activity</span>
+                  Updating payments…
+                </p>
+              ) : null}
             </div>
           </div>
         ) : null}

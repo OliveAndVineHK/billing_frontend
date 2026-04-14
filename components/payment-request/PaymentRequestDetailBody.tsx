@@ -15,6 +15,7 @@ import {
   deletePayment as apiDeletePayment,
   isDuplicateBillReferenceError,
   publishBill,
+  returnBill as returnBillApi,
   updateBill,
   uploadBillAttachments,
   type BillDetail,
@@ -74,6 +75,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [accountCodeError, setAccountCodeError] = useState<string | null>(null);
 
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isReturning, setIsReturning] = useState(false);
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [recordPaymentReadOnly, setRecordPaymentReadOnly] = useState(false);
   const [deleteBillConfirmOpen, setDeleteBillConfirmOpen] = useState(false);
@@ -214,6 +216,25 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     setDeleteBillConfirmOpen(false);
   }, [requestId]);
 
+  // Auto-refresh: poll every 30 s + re-fetch when the tab becomes visible again.
+  // Only active while the bill is in a non-terminal status and the user is not
+  // currently editing (to avoid silently discarding in-progress changes).
+  useEffect(() => {
+    const TERMINAL = new Set(["paid", "voided", "cancelled"]);
+    if (!requestId || !bill || TERMINAL.has(bill.status ?? "") || isEditing) return;
+
+    const refresh = () => { void reloadBill(); };
+
+    const intervalId = window.setInterval(refresh, 30_000);
+    const onVisibility = () => { if (document.visibilityState === "visible") refresh(); };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [requestId, bill?.status, isEditing, reloadBill]);
+
   useEffect(() => {
     if (typeof window === "undefined" || loadingBill || loadError) return;
     const scrollToPaymentHistory = () => {
@@ -255,6 +276,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         if (abandoned?.()) return;
         attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
         attachmentUrlsRef.current = [];
+
+        // IndexedDB is a legacy local-blob cache. If blobs exist, use them
+        // (backward-compat). Afterwards a separate effect will replace them
+        // with S3 presigned URLs once the bill loads (see below).
         const next: InvoiceAttachmentPreviewItem[] = blobs.map((b) => {
           const url = URL.createObjectURL(b.blob);
           attachmentUrlsRef.current.push(url);
@@ -282,6 +307,28 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       attachmentUrlsRef.current = [];
     };
   }, [requestId, loadAttachmentsFromIndexedDb]);
+
+  // Once the bill loads (or refreshes), populate previews from S3 presigned URLs
+  // if no local-blob previews are already shown. This ensures existing attachments
+  // are always previewable without a secondary /download round-trip per file.
+  useEffect(() => {
+    if (!bill) return;
+    const serverAttachments = bill.attachments ?? [];
+    if (serverAttachments.length === 0) return;
+    setAttachments((prev) => {
+      // If we already have previews (uploaded during this session or from IndexedDB),
+      // don't replace them — the S3 URLs from the upload response are already set.
+      if (prev.length > 0) return prev;
+      return serverAttachments
+        .filter((ba) => ba.attachment?.download_url)
+        .map((ba) => ({
+          url: ba.attachment.download_url,
+          name: ba.attachment.original_name,
+          mime: ba.attachment.mime_type || "application/octet-stream",
+        }));
+    });
+    setAttachmentsReady(true);
+  }, [bill]);
 
   const viewData = useMemo(() => {
     if (!bill) return null;
@@ -340,17 +387,28 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         if (overrideStatus) {
           (payload as typeof payload & { status?: string }).status = overrideStatus;
         }
+        // When saving a returned bill, fold the status transition into the
+        // updateBill call so ALL roles (not just elevated) can save and move
+        // the bill back to "submitted" (Payment Requested).
+        if (!overrideStatus && bill.status === "returned") {
+          (payload as typeof payload & { status?: string }).status = "submitted";
+        }
         const updated = await updateBill(requestId, payload);
         setBill(updated);
         onBillUpdated?.();
         await loadPayments();
-        try {
-          await replaceAttachmentBlobsFromPreviewItems(requestId, attachments);
-        } catch {
-          await loadAttachmentsFromIndexedDb();
-          setActionError(
-            "Saved bill details but could not update stored invoice attachments. Try editing attachments again.",
-          );
+        // Only write to IndexedDB if there are local blob URLs still in the preview
+        // list (legacy path). S3 presigned URLs do not need local caching.
+        const hasLocalBlobs = attachments.some((a) => a.url.startsWith("blob:"));
+        if (hasLocalBlobs) {
+          try {
+            await replaceAttachmentBlobsFromPreviewItems(requestId, attachments);
+          } catch {
+            await loadAttachmentsFromIndexedDb();
+            setActionError(
+              "Saved bill details but could not update stored invoice attachments. Try editing attachments again.",
+            );
+          }
         }
         setIsEditing(false);
         setDraft(null);
@@ -421,7 +479,11 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     setIsDeleting(true);
     setActionError(null);
     try {
-      await deleteBill(requestId);
+      if (bill?.status === "returned") {
+        await returnBillApi(requestId, "void");
+      } else {
+        await deleteBill(requestId);
+      }
       setDeleteBillConfirmOpen(false);
       setIsEditing(false);
       setDraft(null);
@@ -433,7 +495,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     } finally {
       setIsDeleting(false);
     }
-  }, [requestId, reloadBill, bumpAudit, loadPayments]);
+  }, [requestId, bill, reloadBill, bumpAudit, loadPayments]);
 
   const handleSubmitDraft = useCallback(async () => {
     if (!requestId || !bill) return;
@@ -456,13 +518,18 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       const updated = await updateBill(requestId, { ...payload, status: "submitted" });
       setBill(updated);
       onBillUpdated?.();
-      try {
-        await replaceAttachmentBlobsFromPreviewItems(requestId, attachments);
-      } catch {
-        await loadAttachmentsFromIndexedDb();
-        setActionError(
-          "Bill was submitted but could not update stored invoice attachments. Try editing attachments again.",
-        );
+      // Only write to IndexedDB if there are local blob URLs still in the preview
+      // list (legacy path). S3 presigned URLs do not need local caching.
+      const hasLocalBlobs = attachments.some((a) => a.url.startsWith("blob:"));
+      if (hasLocalBlobs) {
+        try {
+          await replaceAttachmentBlobsFromPreviewItems(requestId, attachments);
+        } catch {
+          await loadAttachmentsFromIndexedDb();
+          setActionError(
+            "Bill was submitted but could not update stored invoice attachments. Try editing attachments again.",
+          );
+        }
       }
       setIsEditing(false);
       setDraft(null);
@@ -508,6 +575,22 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     }
   }, [requestId, bill, isPublishing, bumpAudit, onBillUpdated]);
 
+  const handleReturn = useCallback(async () => {
+    if (!requestId || !bill || isReturning) return;
+    setActionError(null);
+    setIsReturning(true);
+    try {
+      const updated = await returnBillApi(requestId, "payment_requested");
+      setBill(updated);
+      onBillUpdated?.();
+      bumpAudit();
+    } catch (e) {
+      setActionError(e instanceof ApiError ? e.message : "Could not return this payment request.");
+    } finally {
+      setIsReturning(false);
+    }
+  }, [requestId, bill, isReturning, bumpAudit, onBillUpdated]);
+
   const currencyLabel = formData ? currencyLabelForCode(formData.currencyCode) : "HK$";
 
   const billIsDraft = useMemo(
@@ -550,7 +633,8 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       isDeleting ||
       isPublishing ||
       billDisplayStatus === "Voided" ||
-      ((billDisplayStatus === "Paid" || billDisplayStatus === "Partially paid") && !isElevated),
+      ((billDisplayStatus === "Paid" || billDisplayStatus === "Partially paid") && !isElevated) ||
+      (billDisplayStatus === "Returned" && !isElevated),
     [loadingBill, bill, isDeleting, isPublishing, billDisplayStatus, isElevated],
   );
   const actionOverflowTriggerDisabled = loadingBill || !bill || bill?.status === "voided";
@@ -661,24 +745,27 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             onUpload={async (files) => {
               if (!requestId) return;
               // Upload to S3 + create BillAttachment records via API.
+              // The response includes a presigned download_url for each attachment.
               const created = await uploadBillAttachments(requestId, files);
               // Refresh bill so bill.attachments includes the new records.
               setBill((prev) => prev
                 ? { ...prev, attachments: [...(prev.attachments ?? []), ...created] }
                 : prev
               );
-              // Also update local preview state.
+              // Use the presigned S3 URL from the API response for preview —
+              // never use local blob URLs so preview is consistent across devices.
               setAttachments((prev) => {
                 const usedNames = new Set(prev.map((x) => x.name));
-                const added: InvoiceAttachmentPreviewItem[] = [];
-                for (const f of files) {
-                  const base = f.name.trim() || "attachment";
+                const added: InvoiceAttachmentPreviewItem[] = created.map((ba) => {
+                  const base = ba.attachment.original_name.trim() || "attachment";
                   const name = uniquifyFileName(base, usedNames);
                   usedNames.add(name);
-                  const url = URL.createObjectURL(f);
-                  attachmentUrlsRef.current.push(url);
-                  added.push({ url, name, mime: f.type || "application/octet-stream" });
-                }
+                  return {
+                    url: ba.attachment.download_url,
+                    name,
+                    mime: ba.attachment.mime_type || "application/octet-stream",
+                  };
+                });
                 return [...prev, ...added];
               });
               setAttachmentsReady(true);
@@ -791,62 +878,78 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             />
           ) : null}
 
-          {loadingBill || !bill ? (
-            <button
-              type="button"
-              disabled
-              aria-label={loadingBill ? "Loading bill" : "Add payment"}
-              className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
-            >
-              Add Payment
-              <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
-                add
-              </span>
-            </button>
-          ) : billIsDraft || bill?.status === "voided" ? (
-            <button
-              type="button"
-              disabled
-              aria-label={billIsDraft ? "Draft — add payment not available" : "Voided — add payment not available"}
-              className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
-            >
-              Add Payment
-              <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
-                add
-              </span>
-            </button>
-          ) : bill?.status === "paid" || bill?.status === "authorised" ? (
-            <button
-              type="button"
-              disabled={!isElevated}
-              onClick={() => {
-                setRecordPaymentReadOnly(true);
-                setRecordPaymentOpen(true);
-              }}
-              aria-label={
-                isElevated ? "View payments" : "Insufficient permissions — view payments not available"
-              }
-              className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-lg border-0 bg-secondary/15 px-3 text-left text-base font-medium text-secondary transition-colors hover:bg-secondary/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-[#F5F5F5] disabled:text-primary/40 disabled:hover:bg-[#F5F5F5] sm:h-[46px] sm:self-start sm:px-3.5"
-            >
-              View payments
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={!isElevated}
-              onClick={() => {
-                setRecordPaymentReadOnly(false);
-                setRecordPaymentOpen(true);
-              }}
-              aria-label="Add payment"
-              className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
-            >
-              Add Payment
-              <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
-                add
-              </span>
-            </button>
-          )}
+          <div className="flex w-full items-center justify-end gap-2">
+            {bill?.status === "submitted" && isElevated && (
+              <button
+                type="button"
+                aria-label="Return payment request"
+                disabled={isReturning || loadingBill}
+                onClick={() => void handleReturn()}
+                className="box-border inline-flex h-12 w-fit min-w-0 shrink-0 items-center justify-center gap-1.5 rounded-md border border-[#00C896] bg-[#00C896] px-3 text-base font-semibold text-white transition-colors hover:bg-[#00b386] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:h-[46px] sm:px-3.5"
+              >
+                <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
+                  undo
+                </span>
+                {isReturning ? "Returning…" : "Return"}
+              </button>
+            )}
+            {loadingBill || !bill ? (
+              <button
+                type="button"
+                disabled
+                aria-label={loadingBill ? "Loading bill" : "Add payment"}
+                className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
+              >
+                Add Payment
+                <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
+                  add
+                </span>
+              </button>
+            ) : billIsDraft || bill?.status === "voided" ? (
+              <button
+                type="button"
+                disabled
+                aria-label={billIsDraft ? "Draft — add payment not available" : "Voided — add payment not available"}
+                className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
+              >
+                Add Payment
+                <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
+                  add
+                </span>
+              </button>
+            ) : bill?.status === "paid" || bill?.status === "authorised" ? (
+              <button
+                type="button"
+                disabled={!isElevated}
+                onClick={() => {
+                  setRecordPaymentReadOnly(true);
+                  setRecordPaymentOpen(true);
+                }}
+                aria-label={
+                  isElevated ? "View payments" : "Insufficient permissions — view payments not available"
+                }
+                className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-lg border-0 bg-secondary/15 px-3 text-left text-base font-medium text-secondary transition-colors hover:bg-secondary/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-[#F5F5F5] disabled:text-primary/40 disabled:hover:bg-[#F5F5F5] sm:h-[46px] sm:self-start sm:px-3.5"
+              >
+                View payments
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={!isElevated}
+                onClick={() => {
+                  setRecordPaymentReadOnly(false);
+                  setRecordPaymentOpen(true);
+                }}
+                aria-label="Add payment"
+                className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
+              >
+                Add Payment
+                <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
+                  add
+                </span>
+              </button>
+            )}
+          </div>
           <PaymentHistoryCard
             canDeletePayments={isElevated}
             rows={payments.filter(shouldShowPaymentInHistory).map((p): PaymentHistoryRow => {

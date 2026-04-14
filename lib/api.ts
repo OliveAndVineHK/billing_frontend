@@ -1,4 +1,4 @@
-import { getAuth, isTokenExpiringSoon, redirectToLogin } from "./auth";
+import { getAuth, isTokenExpiringSoon, redirectToLogin, refreshToken } from "./auth";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://localhost:8000";
@@ -38,9 +38,12 @@ function normalizeApiErrorDetail(detail: unknown, fallback: string): string {
 // ── Core fetch wrapper ───────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  if (isTokenExpiringSoon()) {
-    redirectToLogin();
-    throw new ApiError(401, "Session expiring soon. Redirecting to login.");
+  if (isTokenExpiringSoon(30 * 60)) {
+    const refreshed = await refreshToken();
+    if (!refreshed) {
+      redirectToLogin();
+      throw new ApiError(401, "Session expired. Redirecting to login.");
+    }
   }
 
   const auth = getAuth();
@@ -137,6 +140,14 @@ async function fetchAttachmentDownloadJson(path: string): Promise<{
   mime_type?: string;
   file_size?: number;
 } | null> {
+  if (isTokenExpiringSoon(30 * 60)) {
+    const refreshed = await refreshToken();
+    if (!refreshed) {
+      redirectToLogin();
+      throw new ApiError(401, "Session expired. Redirecting to login.");
+    }
+  }
+
   const auth = getAuth();
   if (!auth?.token) {
     redirectToLogin();
@@ -342,6 +353,8 @@ export type Attachment = {
   file_extension: string;
   storage_provider: string;
   created_at: string;
+  /** Presigned S3 download URL (15-min TTL). Always use this for preview. */
+  download_url: string;
 };
 
 export type BillAttachment = {
@@ -471,6 +484,21 @@ export function updateBill(
 export function deleteBill(billId: string): Promise<{ message: string }> {
   return apiFetch<{ message: string }>(`/bills/${billId}`, {
     method: "DELETE",
+  });
+}
+
+/**
+ * Return / un-return / void a payment request.
+ *
+ * status values:
+ *   "payment_requested" → bill is currently submitted (Payment Requested) → transitions to Returned
+ *   "returned"          → bill is currently Returned → transitions back to submitted (Payment Requested)
+ *   "void"              → bill is currently Returned → transitions to Voided
+ */
+export function returnBill(billId: string, status: "payment_requested" | "returned" | "void"): Promise<BillDetail> {
+  return apiFetch<BillDetail>(`/bills/${billId}/return/`, {
+    method: "POST",
+    body: JSON.stringify({ status }),
   });
 }
 
@@ -607,7 +635,7 @@ export function uploadPaymentAttachment(
   );
 }
 
-// ── Audit ─────────────────────────────────────────────────────────
+// ── Audit  ─────────────────────────────────────────────────────────
 
 export type AuditItem = {
   id: string;
@@ -712,6 +740,22 @@ export function createEntityBillContact(payload: {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+// ── Xero status ──────────────────────────────────────────────────────
+
+/**
+ * Returns whether the current user has an active Xero connection.
+ * Used to show/hide the Xero connection indicator in the UI.
+ * Returns false (not null) on any network or auth failure.
+ */
+export async function fetchXeroStatus(): Promise<boolean> {
+  try {
+    const data = await apiFetch<{ connected: boolean }>("/auth/xero-status");
+    return data.connected;
+  } catch {
+    return false;
+  }
 }
 
 export function fetchCurrencies(): Promise<CurrencyInfo[]> {

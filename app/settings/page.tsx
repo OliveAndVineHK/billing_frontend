@@ -4,15 +4,21 @@ import { Suspense, useEffect, useState } from "react";
 import { Header } from "@/components/layout";
 import { SettingsContent } from "@/components/settings/SettingsContent";
 import { getAuth, clearAuth, type AuthInfo } from "@/lib/auth";
+import { fetchXeroStatus } from "@/lib/api";
 
 const MODULE1_URL =
   process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
 
 export default function SettingsPage() {
   const [auth, setAuthState] = useState<AuthInfo | null>(null);
+  const [xeroConnected, setXeroConnected] = useState<boolean>(false);
 
   useEffect(() => {
-    setAuthState(getAuth());
+    const a = getAuth();
+    setAuthState(a);
+    if (a?.token) {
+      fetchXeroStatus().then(setXeroConnected);
+    }
   }, []);
 
   const handleLogout = () => {
@@ -39,6 +45,7 @@ export default function SettingsPage() {
         companyName={auth?.entityName || "Loading…"}
         companyAbbreviation={entityAbbr}
         onLogout={handleLogout}
+        xeroConnected={xeroConnected}
       />
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
         <Suspense
