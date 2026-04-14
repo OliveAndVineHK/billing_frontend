@@ -742,6 +742,12 @@ export function createEntityBillContact(payload: {
   });
 }
 
+// ── Auth ─────────────────────────────────────────────────────────────
+
+export function fetchMe(): Promise<unknown> {
+  return apiFetch("/auth/me");
+}
+
 // ── Xero status ──────────────────────────────────────────────────────
 
 /**

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/layout";
 import { PaymentRequestView } from "@/components/payment-request";
 import { getAuth, clearAuth, type AuthInfo } from "@/lib/auth";
-import { fetchXeroStatus } from "@/lib/api";
+import { fetchXeroStatus, fetchMe } from "@/lib/api";
 
 const MODULE1_URL =
   process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
@@ -18,6 +18,7 @@ export default function Home() {
     setAuthState(a);
     if (a?.token) {
       fetchXeroStatus().then(setXeroConnected);
+      fetchMe().then((profile) => console.log("Profile:", profile));
     }
   }, []);
 
