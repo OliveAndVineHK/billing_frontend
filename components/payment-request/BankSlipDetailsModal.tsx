@@ -16,7 +16,7 @@ import {
   type PaymentItem,
 } from "@/lib/api";
 import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
-import { formatFileSize, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
+import { formatFileSize, FullFilePreviewLink, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
 import { AttachmentDeleteConfirmModal } from "./AttachmentDeleteConfirmModal";
 
 export type BankSlipFileRef = { id: string; name: string };
@@ -156,29 +156,27 @@ function PreviewContent({
 function BlobOrUrlPreviewContent({ fileName, url }: { fileName: string; url: string }) {
   if (isImageName(fileName)) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url}
-        alt={`Preview: ${fileName}`}
-        className="mx-auto max-h-[min(55dvh,480px)] w-auto max-w-full object-contain"
-      />
+      <FullFilePreviewLink href={url} className="rounded-lg">
+        <img
+          src={url}
+          alt={`Preview: ${fileName}`}
+          className="mx-auto max-h-[min(55dvh,480px)] w-auto max-w-full object-contain"
+        />
+      </FullFilePreviewLink>
     );
   }
   if (isPdfName(fileName)) {
-    return <PdfJsCanvasPreview src={url} title={fileName} className="w-full" maxPageWidthCssPx={560} />;
+    return (
+      <FullFilePreviewLink href={url} className="w-full rounded-lg">
+        <PdfJsCanvasPreview src={url} title={fileName} className="w-full" maxPageWidthCssPx={560} />
+      </FullFilePreviewLink>
+    );
   }
   return (
-    <div className="py-8 text-center">
+    <FullFilePreviewLink href={url} className={`rounded-lg py-8 text-center ${focusRing}`}>
       <p className="text-sm text-primary/70">Preview is not available for this file type.</p>
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={`mt-2 inline-block text-sm font-semibold text-secondary underline ${focusRing} rounded`}
-      >
-        Open file
-      </a>
-    </div>
+      <p className="mt-2 text-sm font-semibold text-secondary underline">Open full file in new tab</p>
+    </FullFilePreviewLink>
   );
 }
 
@@ -284,33 +282,32 @@ function FetchedPreviewContent({
 
   if (showImage) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url}
-        alt={`Preview: ${fileName}`}
-        className="mx-auto max-h-[min(55dvh,480px)] w-auto max-w-full object-contain"
-      />
+      <FullFilePreviewLink href={url} className="rounded-lg">
+        <img
+          src={url}
+          alt={`Preview: ${fileName}`}
+          className="mx-auto max-h-[min(55dvh,480px)] w-auto max-w-full object-contain"
+        />
+      </FullFilePreviewLink>
     );
   }
   if (showPdf) {
-    return <PdfJsCanvasPreview src={url} title={fileName} className="w-full" maxPageWidthCssPx={560} />;
+    return (
+      <FullFilePreviewLink href={url} className="w-full rounded-lg">
+        <PdfJsCanvasPreview src={url} title={fileName} className="w-full" maxPageWidthCssPx={560} />
+      </FullFilePreviewLink>
+    );
   }
   return (
-    <div className="py-8 text-center">
+    <FullFilePreviewLink href={url} className={`rounded-lg py-8 text-center ${focusRing}`}>
       <p className="text-sm text-primary/70">Preview is not available for this file type.</p>
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        download={fileName}
-        className={`mt-2 inline-flex items-center gap-2 text-sm font-semibold text-secondary underline ${focusRing} rounded`}
-      >
+      <p className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-secondary underline">
         <span className="material-symbols-outlined text-[28px] leading-none sm:text-[32px]" aria-hidden>
-          download
+          open_in_new
         </span>
-        Download file
-      </a>
-    </div>
+        Open full file in new tab
+      </p>
+    </FullFilePreviewLink>
   );
 }
 
@@ -406,9 +403,11 @@ function StagedBankSlipInlinePreview({
           </p>
         </div>
       </div>
-      <div className="mt-3 min-h-[min(50dvh,320px)] overflow-auto rounded-lg bg-black/5 p-2 sm:min-h-[240px] sm:p-3">
+      <FullFilePreviewLink
+        href={objectUrl}
+        className="mt-3 min-h-[min(50dvh,320px)] overflow-auto rounded-lg bg-black/5 p-2 sm:min-h-[240px] sm:p-3"
+      >
         {isImageFile(file) ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={objectUrl}
             alt={`Preview: ${file.name}`}
@@ -421,7 +420,7 @@ function StagedBankSlipInlinePreview({
         {!isImageFile(file) && !isPdfFile(file) ? (
           <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>
         ) : null}
-      </div>
+      </FullFilePreviewLink>
     </div>
   );
 }

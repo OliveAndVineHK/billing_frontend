@@ -1,8 +1,30 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
+
+export function FullFilePreviewLink({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Open full file in new tab"
+      className={className?.trim() ? `block cursor-pointer ${className}` : "block cursor-pointer"}
+    >
+      {children}
+    </a>
+  );
+}
 
 export function formatFileSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return "—";
