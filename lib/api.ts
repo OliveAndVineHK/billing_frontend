@@ -396,6 +396,15 @@ export type CurrencyInfo = {
   is_active: boolean;
 };
 
+export type AuthMeUser = {
+  first_name?: string | null;
+  last_name?: string | null;
+};
+
+export function fetchAuthMe(): Promise<AuthMeUser> {
+  return apiFetch<AuthMeUser>("/auth/me");
+}
+
 // ── Bills ────────────────────────────────────────────────────────────
 
 export function fetchBills(params?: {

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { NavMenu } from "./NavMenu";
+import { ProfileInitialsBadge } from "./ProfileInitialsBadge";
 
 type HeaderProps = {
   title?: string;
@@ -85,10 +86,7 @@ export function Header({
             {companyName}
           </span>
           <div className="flex shrink-0 items-center gap-1.5 pl-0.5 sm:gap-2 sm:pl-2">
-            <span
-              className="inline-block h-[28px] w-[28px] shrink-0 rounded-full bg-[#FFE6B1]"
-              aria-hidden
-            />
+            <ProfileInitialsBadge />
             <NavMenu items={navItems} companyAbbreviation={companyAbbreviation} onLogout={onLogout} />
           </div>
         </div>
