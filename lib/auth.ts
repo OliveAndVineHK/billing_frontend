@@ -1,3 +1,5 @@
+import { findEmailAddressInJson } from "./extractEmail";
+
 const TOKEN_KEY = "billing_token";
 const ENTITY_ID_KEY = "billing_entity_id";
 const ENTITY_NAME_KEY = "billing_entity_name";
@@ -65,6 +67,34 @@ export function getRoleFromToken(): string | null {
     const payload = JSON.parse(payloadJson) as Record<string, unknown>;
     if (typeof payload.role !== "string" || !payload.role) return null;
     return payload.role;
+  } catch {
+    return null;
+  }
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    let base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = base64.length % 4;
+    if (pad) base64 += "=".repeat(4 - pad);
+    const json = atob(base64);
+    const payload = JSON.parse(json) as unknown;
+    if (payload == null || typeof payload !== "object" || Array.isArray(payload)) return null;
+    return payload as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+export function getEmailFromToken(): string | null {
+  try {
+    const auth = getAuth();
+    if (!auth?.token) return null;
+    const payload = decodeJwtPayload(auth.token);
+    if (!payload) return null;
+    return findEmailAddressInJson(payload);
   } catch {
     return null;
   }
