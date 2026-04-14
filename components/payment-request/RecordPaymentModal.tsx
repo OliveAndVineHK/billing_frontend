@@ -152,11 +152,19 @@ export function RecordPaymentModal({
   );
   const remaining = Math.max(0, Math.round((invoiceAmount - totalPaid) * 100) / 100);
 
+  /** Additional payments after an installment must use Partial Pay (Full Pay only when nothing paid yet or bill fully open). */
+  const hasPartialPaymentTowardsInvoice = useMemo(
+    () => totalPaid > 1e-9 && remaining > 1e-9,
+    [totalPaid, remaining],
+  );
+
   /** Full Pay is locked when the bill is in Partially paid status (API `partially_paid`). */
   const billIsPartiallyPaid = useMemo(
     () => isPartiallyPaidBillStatus(billStatus),
     [billStatus],
   );
+
+  const fullPayLocked = hasPartialPaymentTowardsInvoice || billIsPartiallyPaid;
 
   const pendingPayments = useMemo(
     () => paymentsForBill.filter((p) => p.payment_status === "pending"),
@@ -252,6 +260,12 @@ export function RecordPaymentModal({
   }, [open, payMode, remaining]);
 
   useEffect(() => {
+    if (!open || !fullPayLocked || payMode !== "full") return;
+    setPayMode("partial");
+    setDraftAmount("");
+  }, [open, fullPayLocked, payMode]);
+
+  useEffect(() => {
     if (!open || readOnly || !billId || !pendingIdsKey || bankSlipRequiredForPending) return;
 
     let cancelled = false;
@@ -288,16 +302,14 @@ export function RecordPaymentModal({
     };
   }, [open, readOnly, billId, pendingIdsKey, bankSlipRequiredForPending, loadPayments, onPaymentSaved]);
 
-  useEffect(() => {
-    if (!open || !billIsPartiallyPaid || payMode !== "full") return;
-    setPayMode("partial");
-    setDraftAmount("");
-  }, [open, billIsPartiallyPaid, payMode]);
-
   const handleAddPayment = async () => {
     setFormError(null);
-    if (payMode === "full" && billIsPartiallyPaid) {
-      setFormError("This bill is partially paid. Use Partial Pay for additional amounts.");
+    if (payMode === "full" && fullPayLocked) {
+      setFormError(
+        billIsPartiallyPaid
+          ? "This bill is partially paid. Use Partial Pay for additional amounts."
+          : "Use Partial Pay when a payment is already recorded against this invoice.",
+      );
       return;
     }
     const amount = payMode === "full" ? remaining : parseAmount(draftAmount);
@@ -421,25 +433,27 @@ export function RecordPaymentModal({
             <div className="mt-5 flex gap-2">
               <button
                 type="button"
-                disabled={billIsPartiallyPaid}
+                disabled={fullPayLocked}
                 title={
-                  billIsPartiallyPaid
-                    ? "Full Pay is not available while the bill status is Partially paid. Use Partial Pay for the remaining balance."
+                  fullPayLocked
+                    ? billIsPartiallyPaid
+                      ? "Full Pay is not available while the bill status is Partially paid. Use Partial Pay for the remaining balance."
+                      : "Full Pay is only available before any partial payment is recorded. Use Partial Pay for the remaining balance."
                     : undefined
                 }
                 onClick={() => {
-                  if (billIsPartiallyPaid) return;
+                  if (fullPayLocked) return;
                   setFormError(null);
                   setPayMode("full");
                 }}
                 className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${
-                  billIsPartiallyPaid
+                  fullPayLocked
                     ? "cursor-not-allowed border border-gray-200 bg-gray-100 text-primary/45"
                     : payMode === "full"
                       ? "cursor-pointer bg-secondary text-white shadow-sm"
                       : "cursor-pointer border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"
                 }`}
-                aria-disabled={billIsPartiallyPaid}
+                aria-disabled={fullPayLocked}
               >
                 Full Pay
               </button>
