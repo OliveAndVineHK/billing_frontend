@@ -20,6 +20,16 @@ export type PdfJsCanvasPreviewProps = {
   maxPages?: number;
 };
 
+/**
+ * Returns true when `src` is a local URL (blob: or data:) that can be safely
+ * fetched by pdf.js without hitting CORS restrictions. Remote URLs (http/https)
+ * must be loaded via <iframe> instead because Backblaze B2 pre-signed URLs do
+ * not include CORS response headers, causing pdfjs.getDocument() to fail.
+ */
+function isLocalSrc(src: string): boolean {
+  return src.startsWith("blob:") || src.startsWith("data:");
+}
+
 export function PdfJsCanvasPreview({
   src,
   title = "PDF preview",
@@ -27,6 +37,35 @@ export function PdfJsCanvasPreview({
   maxPageWidthCssPx = 720,
   maxPages = DEFAULT_MAX_PAGES,
 }: PdfJsCanvasPreviewProps) {
+  // For remote pre-signed URLs (e.g. Backblaze B2), browsers can load a PDF
+  // natively via <iframe src> without any fetch/XHR, avoiding CORS entirely.
+  // pdf.js canvas rendering is only used for local blob: / data: URLs.
+  if (!isLocalSrc(src)) {
+    return (
+      <div className={className}>
+        <iframe
+          src={src}
+          title={title}
+          className="block h-[min(75vh,56rem)] w-full border-0"
+          // Sandboxing: allow-same-origin is required so the PDF plugin can
+          // operate; allow-scripts is intentionally omitted.
+          sandbox="allow-same-origin allow-forms"
+          aria-label={title}
+        />
+      </div>
+    );
+  }
+
+  return <PdfJsCanvasRenderer src={src} title={title} className={className} maxPageWidthCssPx={maxPageWidthCssPx} maxPages={maxPages} />;
+}
+
+function PdfJsCanvasRenderer({
+  src,
+  title,
+  className,
+  maxPageWidthCssPx,
+  maxPages,
+}: Required<PdfJsCanvasPreviewProps>) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
 

@@ -130,6 +130,14 @@ export async function replaceAttachmentBlobsFromPreviewItems(
   }
   const stored: StoredFile[] = await Promise.all(
     items.map(async (item) => {
+      // Only fetch blob: or data: URLs. Remote pre-signed URLs (e.g. Backblaze B2)
+      // cannot be fetched cross-origin — callers must filter to local URLs before
+      // calling this function (see hasLocalBlobs guard in PaymentRequestDetailBody).
+      if (!item.url.startsWith("blob:") && !item.url.startsWith("data:")) {
+        throw new Error(
+          `replaceAttachmentBlobsFromPreviewItems: refusing to fetch remote URL "${item.url.slice(0, 60)}…" (CORS not allowed). Only pass blob: or data: URLs.`,
+        );
+      }
       const res = await fetch(item.url);
       const buffer = await res.arrayBuffer();
       return {
