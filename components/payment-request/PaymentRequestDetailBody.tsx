@@ -51,6 +51,7 @@ import {
   paymentRequestDetailSaveButtonClass,
   type PaymentRequestDetailedInfoData,
 } from "./PaymentRequestDetailedInfo";
+import { recordPaymentDetailButtonClass, returnPaymentRequestButtonClass } from "./paymentRequestButtonClasses";
 export type PaymentRequestDetailBodyProps = {
   /** Called after the bill is refreshed from the server so the header status badge can update. */
   onBillUpdated?: () => void;
@@ -885,7 +886,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
                 aria-label="Return payment request"
                 disabled={isReturning || loadingBill}
                 onClick={() => void handleReturn()}
-                className="box-border inline-flex h-12 w-fit min-w-0 shrink-0 items-center justify-center gap-1.5 rounded-md border border-[#00C896] bg-[#00C896] px-3 text-base font-semibold text-white transition-colors hover:bg-[#00b386] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:h-[46px] sm:px-3.5"
+                className={returnPaymentRequestButtonClass}
               >
                 <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
                   undo
@@ -897,11 +898,11 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               <button
                 type="button"
                 disabled
-                aria-label={loadingBill ? "Loading bill" : "Add payment"}
-                className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
+                aria-label={loadingBill ? "Loading bill" : "Record payment"}
+                className={`${recordPaymentDetailButtonClass} sm:self-start`}
               >
-                Add Payment
-                <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
+                <span className="whitespace-nowrap">Record Payment</span>
+                <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>
                   add
                 </span>
               </button>
@@ -909,11 +910,11 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               <button
                 type="button"
                 disabled
-                aria-label={billIsDraft ? "Draft — add payment not available" : "Voided — add payment not available"}
-                className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
+                aria-label={billIsDraft ? "Draft — record payment not available" : "Voided — record payment not available"}
+                className={`${recordPaymentDetailButtonClass} sm:self-start`}
               >
-                Add Payment
-                <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
+                <span className="whitespace-nowrap">Record Payment</span>
+                <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>
                   add
                 </span>
               </button>
@@ -940,11 +941,11 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
                   setRecordPaymentReadOnly(false);
                   setRecordPaymentOpen(true);
                 }}
-                aria-label="Add payment"
-                className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-md border border-transparent bg-[#00C896]/10 px-3 text-left text-base font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#00C896]/10 sm:h-[46px] sm:self-start sm:px-3.5"
+                aria-label="Record payment"
+                className={`${recordPaymentDetailButtonClass} sm:self-start`}
               >
-                Add Payment
-                <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
+                <span className="whitespace-nowrap">Record Payment</span>
+                <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>
                   add
                 </span>
               </button>
