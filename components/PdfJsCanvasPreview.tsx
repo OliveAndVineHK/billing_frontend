@@ -214,7 +214,7 @@ function PdfJsCanvasRenderer({
   className,
   maxPageWidthCssPx,
   maxPages,
-}: Required<PdfJsCanvasPreviewProps>) {
+}: Required<Omit<PdfJsCanvasPreviewProps, "previewApiPath">>) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
 
