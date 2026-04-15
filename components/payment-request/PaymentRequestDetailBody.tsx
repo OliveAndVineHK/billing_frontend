@@ -713,8 +713,8 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             deleteReadOnly={selectedAttachmentIndices.length === 0 || deleteAttachmentPending}
             onUpload={isEditing ? handleOpenUploadAttachment : undefined}
             uploadReadOnly={false}
-            showUpload={false}
-            showAddMore={attachmentsReady && attachments.length > 0}
+            showUpload={isEditing && attachmentsReady && attachments.length === 0}
+            showAddMore={isEditing && attachmentsReady && attachments.length > 0}
           />
           <AttachmentDeleteConfirmModal
             open={deleteAttachmentConfirmOpen}
