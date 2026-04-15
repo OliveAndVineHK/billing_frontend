@@ -749,9 +749,9 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                     : isReturned
                       ? statusTagReturnedClass
                       : statusTagClass;
-            const articleClassName = `rounded-xl border border-gray-200 p-4 shadow-sm transition-colors ${isVoided ? "bg-[#8587c5]/10" : isPaid ? "bg-[#54D3DA]/10" : isPartiallyPaid ? "bg-[#70ebba]/10" : isPaymentRequested ? "bg-[#FF6B6B]/10" : "bg-[#F5F5F5]"} ${isVoided ? "cursor-default opacity-90" : isPaid ? "cursor-pointer active:bg-[#54D3DA]/20" : isPartiallyPaid ? "cursor-pointer active:bg-[#70ebba]/20" : isPaymentRequested ? "cursor-pointer active:bg-[#FF6B6B]/20" : "cursor-pointer active:bg-gray-200/60"}`;
+            const articleClassName = `rounded-xl border border-gray-200 p-4 shadow-sm transition-colors ${isVoided ? "bg-[#8587c5]/10" : isPaid ? "bg-[#54D3DA]/10" : isPartiallyPaid ? "bg-[#70ebba]/10" : isPaymentRequested ? "bg-[#FF6B6B]/10" : "bg-[#F5F5F5]"} ${isVoided ? "cursor-pointer opacity-90 active:bg-[#8587c5]/20" : isPaid ? "cursor-pointer active:bg-[#54D3DA]/20" : isPartiallyPaid ? "cursor-pointer active:bg-[#70ebba]/20" : isPaymentRequested ? "cursor-pointer active:bg-[#FF6B6B]/20" : "cursor-pointer active:bg-gray-200/60"}`;
             return (
-              <article key={row.id} role="listitem" className={articleClassName} onClick={() => { if (isVoided) return; onRowClick?.(row.id); }}>
+              <article key={row.id} role="listitem" className={articleClassName} onClick={() => { onRowClick?.(row.id); }}>
                 <div className="flex gap-3">
                   <div className="hidden shrink-0 pt-0.5 sm:block" onClick={(e) => e.stopPropagation()}>
                     <input type="checkbox" checked={selectedIds.has(row.id)} disabled={isVoided} onChange={() => toggleRow(row.id)} className={`${HEADER_CHECKBOX_CLASS} disabled:cursor-not-allowed disabled:opacity-40`} aria-label={isVoided ? `Voided — cannot select ${row.contactTitle}` : `Select row ${row.contactTitle}`} suppressHydrationWarning />
@@ -924,7 +924,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                 const bankslipReadOnly = isVoided || isDraft;
                 const xeroConnected = !isDraft && row.xeroActive;
                 return (
-                  <tr key={row.id} className={`transition-colors duration-150 ease-out ${isVoided ? "cursor-default" : "cursor-pointer hover:bg-gray-50"}`} onClick={() => { if (isVoided) return; onRowClick?.(row.id); }} aria-disabled={isVoided ? "true" : undefined}>
+                  <tr key={row.id} className={`transition-colors duration-150 ease-out cursor-pointer hover:bg-gray-50`} onClick={() => { onRowClick?.(row.id); }}>
                     <td className="border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3">
                       <input type="checkbox" checked={selectedIds.has(row.id)} disabled={isVoided} onChange={() => toggleRow(row.id)} onClick={(e) => e.stopPropagation()} className={`${HEADER_CHECKBOX_CLASS} disabled:cursor-not-allowed disabled:opacity-40`} aria-label={isVoided ? `Voided — cannot select ${row.contactTitle}` : `Select row ${row.contactTitle}`} suppressHydrationWarning />
                     </td>
