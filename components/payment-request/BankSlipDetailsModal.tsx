@@ -191,7 +191,7 @@ function FetchedPreviewContent({
 }) {
   const [state, setState] = useState<
     | { status: "loading" }
-    | { status: "ready"; url: string; mime: string }
+    | { status: "ready"; url: string; mime: string; previewApiPath?: string }
     | { status: "error" }
   >({ status: "loading" });
 
@@ -211,7 +211,14 @@ function FetchedPreviewContent({
 
         if (preview.kind === "embed") {
           const mime = (preview.mime_type || "").toLowerCase();
-          setState({ status: "ready", url: preview.url, mime });
+          // Build a Django proxy path for PDFs so the browser never loads
+          // the raw B2 presigned URL inside a canvas/frame — avoids Edge's
+          // cross-origin block ("Unsafe attempt to load URL https://s3.us-east-005...").
+          const isPdf = mime === "application/pdf" || isPdfName(fileName);
+          const previewApiPath = isPdf
+            ? `/api/v1/bills/${source.billId}/payments/${source.paymentId}/attachments/${source.attachmentId}/preview/`
+            : undefined;
+          setState({ status: "ready", url: preview.url, mime, previewApiPath });
           const sz = preview.file_size;
           if (sz != null && Number.isFinite(sz) && sz >= 0) {
             onResolvedFileSize?.(sz);
@@ -277,6 +284,7 @@ function FetchedPreviewContent({
   }
 
   const { url, mime } = state;
+  const previewApiPath = "previewApiPath" in state ? state.previewApiPath : undefined;
   const showImage = mime.startsWith("image/") || isImageName(fileName);
   const showPdf = mime === "application/pdf" || mime === "application/octet-stream" || isPdfName(fileName);
 
@@ -294,7 +302,13 @@ function FetchedPreviewContent({
   if (showPdf) {
     return (
       <FullFilePreviewLink href={url} className="w-full rounded-lg">
-        <PdfJsCanvasPreview src={url} title={fileName} className="w-full" maxPageWidthCssPx={560} />
+        <PdfJsCanvasPreview
+          src={url}
+          previewApiPath={previewApiPath}
+          title={fileName}
+          className="w-full"
+          maxPageWidthCssPx={560}
+        />
       </FullFilePreviewLink>
     );
   }
