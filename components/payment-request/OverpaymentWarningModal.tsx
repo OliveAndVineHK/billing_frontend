@@ -14,6 +14,7 @@ export type OverpaymentWarningModalProps = {
   totalPaid: number;
   currencyLabel: string;
   onCancel: () => void;
+  onOpenPaymentHistory?: () => void;
 };
 
 const overlayClass =
@@ -67,6 +68,7 @@ export function OverpaymentWarningModal({
   totalPaid,
   currencyLabel,
   onCancel,
+  onOpenPaymentHistory,
 }: OverpaymentWarningModalProps) {
   const router = useRouter();
   const titleId = useId();
@@ -183,7 +185,18 @@ export function OverpaymentWarningModal({
           <button type="button" className={cancelClass} onClick={onCancel}>
             Cancel
           </button>
-          <button type="button" className={primaryClass} onClick={goToPaymentHistory}>
+          <button
+            type="button"
+            className={primaryClass}
+            onClick={() => {
+              if (onOpenPaymentHistory) {
+                onCancel();
+                onOpenPaymentHistory();
+              } else {
+                goToPaymentHistory();
+              }
+            }}
+          >
             Payment history
           </button>
         </div>

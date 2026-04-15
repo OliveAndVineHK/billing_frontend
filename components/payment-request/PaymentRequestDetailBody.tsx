@@ -1059,6 +1059,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           .reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0)}
         currencyLabel={currencyLabel}
         onCancel={() => setOverpaymentWarningOpen(false)}
+        onOpenPaymentHistory={() => {
+          setRecordPaymentReadOnly(true);
+          setRecordPaymentOpen(true);
+        }}
       />
     </>
   );
