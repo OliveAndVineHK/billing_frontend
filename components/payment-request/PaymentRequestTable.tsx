@@ -7,6 +7,7 @@ import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsMod
 import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
 import { useUserRole } from "@/lib/useUserRole";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import { recordPaymentButtonClass } from "./paymentRequestButtonClasses";
 
 const COLUMN_TITLES = [
   "Contact / Description",
@@ -338,9 +339,6 @@ const statusTagReturnedClass =
 
 const statusTagVoidedClass =
   "inline-flex items-center rounded-lg bg-[#8587c5]/10 px-2.5 py-1 text-xs font-semibold text-[#8587c5] sm:text-sm";
-
-const recordPaymentButtonClass =
-  "box-border inline-flex h-10 min-h-10 w-max max-w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-xs font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-[#EDEDED] disabled:text-[#C0C0C0] disabled:shadow-none disabled:hover:opacity-100 sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm";
 
 const viewPaymentsButtonClass =
   "box-border inline-flex h-10 min-h-10 w-max max-w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-0 bg-secondary/15 px-3 text-xs font-medium text-secondary transition-colors hover:bg-secondary/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-[#F5F5F5] disabled:text-primary/40 disabled:hover:bg-[#F5F5F5] sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm";
