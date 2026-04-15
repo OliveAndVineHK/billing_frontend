@@ -951,7 +951,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             )}
           </div>
           <PaymentHistoryCard
-            canDeletePayments={isElevated}
+            canDeletePayments={isElevated && bill?.status !== "voided"}
             rows={payments.filter(shouldShowPaymentInHistory).map((p): PaymentHistoryRow => {
               const amt = parseFloat(p.amount || "0");
               const shortDate = p.payment_date
