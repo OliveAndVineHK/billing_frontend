@@ -11,6 +11,14 @@ export type InvoiceAttachmentPreviewItem = {
   url: string;
   name: string;
   mime: string;
+  /**
+   * Optional Django proxy path for PDF rendering. When set, PdfJsCanvasPreview
+   * will fetch bytes with auth headers instead of loading the raw storage URL,
+   * which avoids cross-origin iframe blocks in Edge and other browsers.
+   *
+   * Example: "/api/v1/bills/{billId}/attachments/{attachmentId}/preview/"
+   */
+  previewApiPath?: string;
 };
 
 type InvoiceAttachmentPreviewProps = {
@@ -29,7 +37,7 @@ type InvoiceAttachmentPreviewProps = {
   onSelectedIndicesChange?: (next: number[]) => void;
 };
 
-function PreviewBlock({ url, name, mime }: InvoiceAttachmentPreviewItem) {
+function PreviewBlock({ url, name, mime, previewApiPath }: InvoiceAttachmentPreviewItem) {
   const mimeLower = mime.toLowerCase();
   if (mimeLower.startsWith("image/")) {
     return (
@@ -45,6 +53,7 @@ function PreviewBlock({ url, name, mime }: InvoiceAttachmentPreviewItem) {
     return (
       <PdfJsCanvasPreview
         src={url}
+        previewApiPath={previewApiPath}
         title={name || "PDF preview"}
         className="w-full"
         maxPageWidthCssPx={900}

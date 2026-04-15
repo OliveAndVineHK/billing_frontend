@@ -326,6 +326,12 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           url: ba.attachment.download_url,
           name: ba.attachment.original_name,
           mime: ba.attachment.mime_type || "application/octet-stream",
+          // Proxy the file through Django so the browser always loads it from
+          // the trusted API origin — avoids Edge cross-origin iframe blocks.
+          previewApiPath:
+            (ba.attachment.mime_type || "").toLowerCase() === "application/pdf"
+              ? `/api/v1/bills/${requestId}/attachments/${ba.id}/preview/`
+              : undefined,
         }));
     });
     setAttachmentsReady(true);
@@ -765,6 +771,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
                     url: ba.attachment.download_url,
                     name,
                     mime: ba.attachment.mime_type || "application/octet-stream",
+                    previewApiPath:
+                      (ba.attachment.mime_type || "").toLowerCase() === "application/pdf"
+                        ? `/api/v1/bills/${requestId}/attachments/${ba.id}/preview/`
+                        : undefined,
                   };
                 });
                 return [...prev, ...added];

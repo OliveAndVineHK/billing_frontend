@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getAuth, isTokenExpiringSoon, redirectToLogin, refreshToken } from "@/lib/auth";
 
 let workerSrcConfigured = false;
 
@@ -12,8 +13,20 @@ function configureWorker(pdfjs: typeof import("pdfjs-dist")) {
 
 const DEFAULT_MAX_PAGES = 50;
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://localhost:8000";
+
 export type PdfJsCanvasPreviewProps = {
   src: string;
+  /**
+   * Optional Django proxy path for fetching the PDF with auth headers instead
+   * of using the raw storage URL directly. When provided the component fetches
+   * bytes server-to-client (authenticated) and renders via pdf.js canvas,
+   * avoiding cross-origin iframe restrictions in Edge and other browsers.
+   *
+   * Example: "/api/v1/bills/{billId}/attachments/{attachmentId}/preview/"
+   */
+  previewApiPath?: string;
   title?: string;
   className?: string;
   maxPageWidthCssPx?: number;
@@ -22,41 +35,177 @@ export type PdfJsCanvasPreviewProps = {
 
 /**
  * Returns true when `src` is a local URL (blob: or data:) that can be safely
- * fetched by pdf.js without hitting CORS restrictions. Remote URLs (http/https)
- * must be loaded via <iframe> instead because Backblaze B2 pre-signed URLs do
- * not include CORS response headers, causing pdfjs.getDocument() to fail.
+ * fetched by pdf.js without hitting CORS restrictions.
  */
 function isLocalSrc(src: string): boolean {
   return src.startsWith("blob:") || src.startsWith("data:");
 }
 
+/**
+ * Fetch a PDF from a Django proxy endpoint with JWT auth headers.
+ * Returns a blob: URL on success, or null on failure.
+ */
+async function fetchProxyBlob(apiPath: string): Promise<string | null> {
+  try {
+    if (isTokenExpiringSoon(30 * 60)) {
+      const refreshed = await refreshToken();
+      if (!refreshed) {
+        redirectToLogin();
+        return null;
+      }
+    }
+    const auth = getAuth();
+    if (!auth?.token) {
+      redirectToLogin();
+      return null;
+    }
+    const headers = new Headers();
+    headers.set("Authorization", `Bearer ${auth.token}`);
+    headers.set("X-Entity-Id", auth.entityId);
+    const url = `${API_BASE.replace(/\/$/, "")}${apiPath}`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    if (blob.size === 0) return null;
+    // Ensure the blob has the correct MIME type so pdf.js accepts it.
+    const typed =
+      blob.type && blob.type !== "application/octet-stream"
+        ? blob
+        : new Blob([await blob.arrayBuffer()], { type: "application/pdf" });
+    return URL.createObjectURL(typed);
+  } catch {
+    return null;
+  }
+}
+
 export function PdfJsCanvasPreview({
   src,
+  previewApiPath,
   title = "PDF preview",
   className = "",
   maxPageWidthCssPx = 720,
   maxPages = DEFAULT_MAX_PAGES,
 }: PdfJsCanvasPreviewProps) {
-  // For remote pre-signed URLs (e.g. Backblaze B2), browsers can load a PDF
-  // natively via <iframe src> without any fetch/XHR, avoiding CORS entirely.
-  // pdf.js canvas rendering is only used for local blob: / data: URLs.
-  if (!isLocalSrc(src)) {
+  // When a Django proxy path is supplied, fetch the PDF bytes with auth and
+  // render via pdf.js canvas — this avoids cross-origin iframe blocks entirely.
+  if (previewApiPath) {
     return (
-      <div className={className}>
-        <iframe
-          src={src}
-          title={title}
-          className="block h-[min(75vh,56rem)] w-full border-0"
-          // Sandboxing: allow-same-origin is required so the PDF plugin can
-          // operate; allow-scripts is intentionally omitted.
-          sandbox="allow-same-origin allow-forms"
-          aria-label={title}
-        />
+      <PdfJsProxyFetcher
+        apiPath={previewApiPath}
+        title={title}
+        className={className}
+        maxPageWidthCssPx={maxPageWidthCssPx}
+        maxPages={maxPages}
+      />
+    );
+  }
+
+  // blob: / data: URLs are safe for pdf.js canvas rendering.
+  if (isLocalSrc(src)) {
+    return (
+      <PdfJsCanvasRenderer
+        src={src}
+        title={title}
+        className={className}
+        maxPageWidthCssPx={maxPageWidthCssPx}
+        maxPages={maxPages}
+      />
+    );
+  }
+
+  // Fallback for any remaining remote URL: render via pdf.js canvas directly.
+  // (In practice this path should no longer be hit for B2 URLs — callers should
+  // pass previewApiPath instead to avoid CORS and Edge iframe restrictions.)
+  return (
+    <PdfJsCanvasRenderer
+      src={src}
+      title={title}
+      className={className}
+      maxPageWidthCssPx={maxPageWidthCssPx}
+      maxPages={maxPages}
+    />
+  );
+}
+
+/**
+ * Fetches the PDF bytes from a Django proxy path (with JWT auth), creates a
+ * blob URL, then hands it off to PdfJsCanvasRenderer.
+ */
+function PdfJsProxyFetcher({
+  apiPath,
+  title,
+  className,
+  maxPageWidthCssPx,
+  maxPages,
+}: {
+  apiPath: string;
+  title: string;
+  className: string;
+  maxPageWidthCssPx: number;
+  maxPages: number;
+}) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let createdUrl: string | null = null;
+    setBlobUrl(null);
+    setFetchError(false);
+
+    void (async () => {
+      const url = await fetchProxyBlob(apiPath);
+      if (cancelled) {
+        if (url) URL.revokeObjectURL(url);
+        return;
+      }
+      if (!url) {
+        setFetchError(true);
+        return;
+      }
+      createdUrl = url;
+      setBlobUrl(url);
+    })();
+
+    return () => {
+      cancelled = true;
+      if (createdUrl) {
+        URL.revokeObjectURL(createdUrl);
+        createdUrl = null;
+      }
+    };
+  }, [apiPath]);
+
+  if (fetchError) {
+    return (
+      <div className={`${className} flex flex-col items-center gap-2 py-8 text-center text-sm text-primary/70`}>
+        <p>Could not display this PDF in preview.</p>
       </div>
     );
   }
 
-  return <PdfJsCanvasRenderer src={src} title={title} className={className} maxPageWidthCssPx={maxPageWidthCssPx} maxPages={maxPages} />;
+  if (!blobUrl) {
+    return (
+      <div className={`${className} flex min-h-[200px] items-center justify-center py-8 text-sm text-primary/60`}>
+        <span className="inline-flex items-center gap-2">
+          <span className="material-symbols-outlined animate-spin text-secondary text-[22px]" aria-hidden>
+            progress_activity
+          </span>
+          Loading PDF…
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <PdfJsCanvasRenderer
+      src={blobUrl}
+      title={title}
+      className={className}
+      maxPageWidthCssPx={maxPageWidthCssPx}
+      maxPages={maxPages}
+    />
+  );
 }
 
 function PdfJsCanvasRenderer({
