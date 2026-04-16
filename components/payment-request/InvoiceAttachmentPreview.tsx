@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
 
 const MIN_SCALE = 0.6;
@@ -165,7 +165,7 @@ export function InvoiceAttachmentPreview({
 
   const inner = (
     <div
-      className="flex w-full shrink-0 flex-col gap-4 p-2 sm:p-3" style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}>
+      className="flex w-full shrink-0 flex-col gap-2 p-1.5 sm:p-2" style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}>
       {isLoadingAttachments ? (
         <div className="flex w-full min-w-0 flex-col gap-3 rounded border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="h-4 w-[75%] animate-pulse rounded bg-gray-200" />
@@ -173,41 +173,53 @@ export function InvoiceAttachmentPreview({
         </div>
       ) : (
         items.map((item, i) => (
-          <figure
-            key={item ? `${item.url}-${i}` : `placeholder-${i}`}
-            className="relative mx-auto w-full min-w-0 max-w-full overflow-hidden rounded border border-gray-200 bg-white shadow-sm"
-          >
-            {item ? (
-              <>
-                {editMode ? (
-                  <label className="absolute left-2 top-2 z-10 inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={effectiveSelected.has(i)}
-                      onChange={(e) => {
-                        setEffectiveSelected((prev) => {
-                          if (e.target.checked) prev.add(i);
-                          else prev.delete(i);
-                          return prev;
-                        });
-                      }}
-                      className={`${ATTACHMENT_CHECKBOX_CLASS} cursor-pointer`}
-                      aria-label={`Select attachment ${item.name || i + 1}`}
-                    />
-                  </label>
-                ) : null}
-                <PreviewBlock {...item} />
-              </>
-            ) : (
-              <div className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 bg-gray-50 px-4 text-center text-sm text-primary/60">
-                <span className="material-symbols-outlined text-[40px] text-primary/35" aria-hidden>
-                  description
+          <Fragment key={item ? `${item.url}-${i}` : `placeholder-${i}`}>
+            {i > 0 && item != null ? (
+              <div
+                className="flex w-full shrink-0 items-center gap-2.5 py-0.5"
+                role="separator"
+                aria-label="Next file"
+              >
+                <span className="h-px min-w-0 flex-1 bg-gray-300" aria-hidden />
+                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/50 sm:text-[11px]">
+                  Next file
                 </span>
-                <span>Invoice attachment preview</span>
-                <span className="text-xs text-primary/45">Pinch to zoom on mobile</span>
+                <span className="h-px min-w-0 flex-1 bg-gray-300" aria-hidden />
               </div>
-            )}
-          </figure>
+            ) : null}
+            <figure className="relative mx-auto w-full min-w-0 max-w-full overflow-hidden rounded border border-gray-200 bg-white shadow-sm">
+              {item ? (
+                <>
+                  {editMode ? (
+                    <label className="absolute left-2 top-2 z-10 inline-flex cursor-pointer items-center">
+                      <input
+                        type="checkbox"
+                        checked={effectiveSelected.has(i)}
+                        onChange={(e) => {
+                          setEffectiveSelected((prev) => {
+                            if (e.target.checked) prev.add(i);
+                            else prev.delete(i);
+                            return prev;
+                          });
+                        }}
+                        className={`${ATTACHMENT_CHECKBOX_CLASS} cursor-pointer`}
+                        aria-label={`Select attachment ${item.name || i + 1}`}
+                      />
+                    </label>
+                  ) : null}
+                  <PreviewBlock {...item} />
+                </>
+              ) : (
+                <div className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 bg-gray-50 px-4 text-center text-sm text-primary/60">
+                  <span className="material-symbols-outlined text-[40px] text-primary/35" aria-hidden>
+                    description
+                  </span>
+                  <span>Invoice attachment preview</span>
+                  <span className="text-xs text-primary/45">Pinch to zoom on mobile</span>
+                </div>
+              )}
+            </figure>
+          </Fragment>
         ))
       )}
     </div>
