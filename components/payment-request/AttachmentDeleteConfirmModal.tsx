@@ -79,7 +79,7 @@ export function AttachmentDeleteConfirmModal({
             At least one attachment required
           </h2>
           <p id={descId} className="mt-3 text-sm leading-relaxed text-primary/80">
-            This bill must keep at least one supporting document.
+            Any bill must have at least one supporting document. You may refresh the page to restore the last saved document.
           </p>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button type="button" className={okPrimaryClass} onClick={onClose}>
