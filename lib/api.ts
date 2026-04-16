@@ -731,7 +731,7 @@ export function uploadPaymentAttachment(
   );
 }
 
-// ── Audit  ─────────────────────────────────────────────────────────
+// ── Audit   ─────────────────────────────────────────────────────────
 
 export type AuditItem = {
   id: string;
