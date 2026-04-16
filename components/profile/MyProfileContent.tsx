@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, fetchAuthMe, type AuthMeUser } from "@/lib/api";
+import { getAuth } from "@/lib/auth";
+import { useUserRole } from "@/lib/useUserRole";
 
 export type MyProfileContentProps = {
   onLogOut: () => void;
@@ -24,12 +26,29 @@ function displayName(me: AuthMeUser | null): string {
   return parts.length ? parts.join(" ") : "—";
 }
 
+function formatRoleForDisplay(role: string | null): string {
+  if (!role?.trim()) return "—";
+  return role
+    .trim()
+    .toLowerCase()
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
+  const { role } = useUserRole();
+  const [entityName, setEntityName] = useState("");
   const [profile, setProfile] = useState<AuthMeUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
   const [updateHint, setUpdateHint] = useState(false);
+
+  useEffect(() => {
+    setEntityName((getAuth()?.entityName ?? "").trim());
+  }, []);
 
   const load = useCallback(async () => {
     setError(null);
@@ -58,6 +77,8 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
   const abbr = initialsFromNames(profile?.first_name, profile?.last_name);
   const emailRaw = (profile?.email ?? "").trim();
   const emailDisplay = loading ? "…" : emailRaw || "—";
+  const entityDisplay = entityName || "—";
+  const roleDisplay = formatRoleForDisplay(role);
 
   return (
     <div className="mx-auto w-full max-w-lg px-4 pb-8 pt-4 sm:px-6 sm:pt-6">
@@ -80,6 +101,24 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
         <h1 className="mt-5 text-xl font-bold text-black sm:text-2xl">{loading ? "…" : displayName(profile)}</h1>
       </div>
 
+      <section
+        className="mt-4 w-full rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm sm:p-5"
+        aria-label="Entity and role"
+      >
+        <div className="flex flex-col gap-5">
+          <div className="min-w-0 w-full">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/60">Entity</p>
+            <p className="mt-1 break-words text-base font-semibold text-black">{entityDisplay}</p>
+          </div>
+          <div className="border-t border-gray-100 pt-5">
+            <div className="min-w-0 w-full">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/60">Your role</p>
+              <p className="mt-1 text-base font-semibold text-black">{roleDisplay}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {error ? (
         <div className="mt-6 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800" role="alert">
           {error}
@@ -89,17 +128,11 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
       <div className="mt-8 flex flex-col gap-4">
         <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-3">
-            <div className="flex w-full items-center justify-between gap-3">
+            <div className="flex w-full items-center gap-3">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-[#54D3DA]" aria-hidden>
                 <span className="material-symbols-outlined text-[22px] leading-none [font-variation-settings:'FILL'_1,'wght'_400,'GRAD'_0,'opsz'_24]">
                   mail
                 </span>
-              </span>
-              <span
-                className="material-symbols-outlined shrink-0 text-[22px] leading-none text-secondary [font-variation-settings:'FILL'_1,'wght'_400,'GRAD'_0,'opsz'_24]"
-                aria-hidden
-              >
-                verified
               </span>
             </div>
             <div className="min-w-0 w-full">
