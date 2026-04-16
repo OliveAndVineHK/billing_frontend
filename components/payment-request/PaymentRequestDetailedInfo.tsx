@@ -41,6 +41,10 @@ export type PaymentRequestDetailedInfoProps = {
   /** Inline error under Bill No. (e.g. duplicate invoice number from API). */
   billNoError?: string | null;
   accountCodeError?: string | null;
+  invoiceDateError?: string | null;
+  dueDateError?: string | null;
+  amountError?: string | null;
+  contactError?: string | null;
   accountOptions?: ThemedSelectOption[];
   /** Contacts for typeahead / create-in-Xero (edit mode). */
   entityBillContacts?: EntityBillContact[];
@@ -108,22 +112,29 @@ function formatLongDate(iso: string): string {
 function ReadOnlyTextBox({
   children,
   emphasis = "normal",
+  highlightError = false,
 }: {
   children: React.ReactNode;
   emphasis?: "normal" | "semibold";
+  highlightError?: boolean;
 }) {
   return (
-    <div className={`flex h-11 min-h-[44px] w-full items-center rounded-lg bg-transparent px-3 text-base text-black sm:min-h-11 sm:text-sm ${emphasis === "semibold" ? "font-semibold" : "font-normal"}`}>
+    <div
+      className={`flex h-11 min-h-[44px] w-full items-center rounded-lg bg-transparent px-3 text-base text-black sm:min-h-11 sm:text-sm ${emphasis === "semibold" ? "font-semibold" : "font-normal"} ${highlightError ? "ring-2 ring-inset ring-red-500" : ""}`}
+    >
       <span className="min-w-0 flex-1 truncate">{children}</span>
     </div>
   );
 }
 
 /** Matches ThemedSelect split trigger (contact / account) — non-interactive. */
-function ReadOnlySelectShell({ value }: { value?: string | null }) {
+function ReadOnlySelectShell({ value, highlightError = false }: { value?: string | null; highlightError?: boolean }) {
   const display = (value ?? "").trim() || "—";
   return (
-    <div className="box-border flex h-11 min-h-[44px] min-w-0 w-full cursor-default overflow-hidden rounded-lg bg-transparent p-0 text-left text-base font-normal text-black sm:min-h-11 sm:text-sm" aria-readonly="true">
+    <div
+      className={`box-border flex h-11 min-h-[44px] min-w-0 w-full cursor-default overflow-hidden rounded-lg bg-transparent p-0 text-left text-base font-normal text-black sm:min-h-11 sm:text-sm ${highlightError ? "ring-2 ring-inset ring-red-500" : ""}`}
+      aria-readonly="true"
+    >
       <span className="flex min-h-[44px] min-w-0 flex-1 items-center py-0 pl-3 pr-3 sm:min-h-11">
         <span className="min-w-0 flex-1 truncate">{display}</span>
       </span>
@@ -135,25 +146,32 @@ function ReadOnlySelectShell({ value }: { value?: string | null }) {
 function ReadOnlyAmountRow({
   currencyDisplayLabel,
   amount,
+  highlightError = false,
 }: {
   currencyDisplayLabel: string;
   amount: string;
+  highlightError?: boolean;
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-0">
       <div className="box-border flex h-11 min-h-[44px] w-full shrink-0 items-center justify-between gap-2 rounded-lg bg-transparent px-2 pl-3 pr-2 text-base font-semibold text-[#656565] sm:w-24 sm:rounded-l-lg sm:rounded-r-none sm:px-3 sm:text-sm" aria-label="Currency">
         <span className="min-w-0 flex-1 truncate">{currencyDisplayLabel}</span>
       </div>
-      <div className="box-border flex min-h-[52px] min-w-0 w-full items-center rounded-lg bg-transparent px-3 py-1 text-xl font-semibold tabular-nums text-black sm:min-h-14 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:text-2xl sm:leading-snug" aria-readonly="true">
+      <div
+        className={`box-border flex min-h-[52px] min-w-0 w-full items-center rounded-lg bg-transparent px-3 py-1 text-xl font-semibold tabular-nums text-black sm:min-h-14 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:text-2xl sm:leading-snug ${highlightError ? "ring-2 ring-inset ring-red-500" : ""}`}
+        aria-readonly="true"
+      >
         <span className="min-w-0 flex-1 truncate">{amount || "—"}</span>
       </div>
     </div>
   );
 }
 
-function ReadOnlyDateRow({ display }: { display: string }) {
+function ReadOnlyDateRow({ display, highlightError = false }: { display: string; highlightError?: boolean }) {
   return (
-    <div className="flex h-11 min-h-[44px] w-full items-center rounded-lg bg-transparent px-3 text-base font-semibold text-black sm:min-h-11 sm:text-sm">
+    <div
+      className={`flex h-11 min-h-[44px] w-full items-center rounded-lg bg-transparent px-3 text-base font-semibold text-black sm:min-h-11 sm:text-sm ${highlightError ? "ring-2 ring-inset ring-red-500" : ""}`}
+    >
       <span className="min-w-0 flex-1 truncate">{display}</span>
     </div>
   );
@@ -166,6 +184,10 @@ export function PaymentRequestDetailedInfo({
   disabled = false,
   billNoError = null,
   accountCodeError = null,
+  invoiceDateError = null,
+  dueDateError = null,
+  amountError = null,
+  contactError = null,
   onPatchChange,
   onEdit,
   onCancel,
@@ -202,11 +224,21 @@ export function PaymentRequestDetailedInfo({
   const idDueDate = `detail-due-date-${uid}`;
   const idBillNoError = `detail-bill-no-err-${uid}`;
   const idAccountError = `detail-account-err-${uid}`;
+  const idInvoiceDateError = `detail-inv-date-err-${uid}`;
+  const idDueDateError = `detail-due-date-err-${uid}`;
+  const idAmountError = `detail-amount-err-${uid}`;
+  const idContactError = `detail-contact-err-${uid}`;
 
   const dateTextInputClass =
     "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
   const dateCalendarBtnClass =
     "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11 disabled:cursor-not-allowed disabled:opacity-50";
+
+  const dateTextInputClassError =
+    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border border-red-500 bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-primary/45 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200/50 [color-scheme:light] sm:min-h-11 sm:text-sm";
+
+  const dateCalendarBtnClassError =
+    "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-red-500 bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11 disabled:cursor-not-allowed disabled:opacity-50";
 
   const accountOptions = mergeSelectOption(accountOptionsProp ?? [], accountCode);
   const currencyOptions = currencyOptionsForEditing(currencyCode);
@@ -283,17 +315,25 @@ export function PaymentRequestDetailedInfo({
               Invoice Date<span className="text-red-500"> *</span>
             </FieldLabel>
             {isEditing ? (
-              <DateTextField
-                id={idInvoiceDate}
-                value={invoiceDate ?? ""}
-                onChange={(iso) => patch({ invoiceDate: iso })}
-                disabled={disabled}
-                calendarAriaLabel="Open calendar for invoice date"
-                textInputClassName={dateTextInputClass}
-                calendarButtonClassName={dateCalendarBtnClass}
-              />
+              <>
+                <DateTextField
+                  id={idInvoiceDate}
+                  value={invoiceDate ?? ""}
+                  onChange={(iso) => patch({ invoiceDate: iso })}
+                  disabled={disabled}
+                  invalid={!!invoiceDateError}
+                  calendarAriaLabel="Open calendar for invoice date"
+                  textInputClassName={invoiceDateError ? dateTextInputClassError : dateTextInputClass}
+                  calendarButtonClassName={invoiceDateError ? dateCalendarBtnClassError : dateCalendarBtnClass}
+                />
+                {invoiceDateError ? (
+                  <p id={idInvoiceDateError} className="mt-1 text-xs text-red-600" role="alert">
+                    {invoiceDateError}
+                  </p>
+                ) : null}
+              </>
             ) : (
-              <ReadOnlyDateRow display={formatLongDate(invoiceDate)} />
+              <ReadOnlyDateRow display={formatLongDate(invoiceDate)} highlightError={!!invoiceDateError} />
             )}
           </div>
           <div>
@@ -301,17 +341,25 @@ export function PaymentRequestDetailedInfo({
               Due Date<span className="text-red-500"> *</span>
             </FieldLabel>
             {isEditing ? (
-              <DateTextField
-                id={idDueDate}
-                value={dueDate ?? ""}
-                onChange={(iso) => patch({ dueDate: iso })}
-                disabled={disabled}
-                calendarAriaLabel="Open calendar for due date"
-                textInputClassName={dateTextInputClass}
-                calendarButtonClassName={dateCalendarBtnClass}
-              />
+              <>
+                <DateTextField
+                  id={idDueDate}
+                  value={dueDate ?? ""}
+                  onChange={(iso) => patch({ dueDate: iso })}
+                  disabled={disabled}
+                  invalid={!!dueDateError}
+                  calendarAriaLabel="Open calendar for due date"
+                  textInputClassName={dueDateError ? dateTextInputClassError : dateTextInputClass}
+                  calendarButtonClassName={dueDateError ? dateCalendarBtnClassError : dateCalendarBtnClass}
+                />
+                {dueDateError ? (
+                  <p id={idDueDateError} className="mt-1 text-xs text-red-600" role="alert">
+                    {dueDateError}
+                  </p>
+                ) : null}
+              </>
             ) : (
-              <ReadOnlyDateRow display={formatLongDate(dueDate)} />
+              <ReadOnlyDateRow display={formatLongDate(dueDate)} highlightError={!!dueDateError} />
             )}
           </div>
         </div>
@@ -321,12 +369,44 @@ export function PaymentRequestDetailedInfo({
             Amount<span className="text-red-500"> *</span>
           </FieldLabel>
           {isEditing ? (
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-0">
-              <ThemedSelect id={idCurrency} ariaLabel="Currency" value={currencyModalValue ?? ""} onChange={(v) => patch({ currencyCode: modalCurrencyToIsoCode(v) })} options={currencyOptions} className="w-full shrink-0 sm:w-24" fullWidth uniformFill triggerClassName="w-full px-2 sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3" disabled={disabled} />
-              <input id={idAmount} type="text" inputMode="decimal" value={amount ?? ""} onChange={(e) => patch({ amount: e.target.value })} className={amountValueInputClass} disabled={disabled} />
-            </div>
+            <>
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-0">
+                <ThemedSelect
+                  id={idCurrency}
+                  ariaLabel="Currency"
+                  value={currencyModalValue ?? ""}
+                  onChange={(v) => patch({ currencyCode: modalCurrencyToIsoCode(v) })}
+                  options={currencyOptions}
+                  className="w-full shrink-0 sm:w-24"
+                  fullWidth
+                  uniformFill
+                  triggerClassName="w-full px-2 sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3"
+                  disabled={disabled}
+                />
+                <input
+                  id={idAmount}
+                  type="text"
+                  inputMode="decimal"
+                  value={amount ?? ""}
+                  onChange={(e) => patch({ amount: e.target.value })}
+                  aria-invalid={!!amountError}
+                  aria-describedby={amountError ? idAmountError : undefined}
+                  className={
+                    amountError
+                      ? `${amountValueInputClass} border-red-500 focus:border-red-500 focus:ring-red-200/50`
+                      : amountValueInputClass
+                  }
+                  disabled={disabled}
+                />
+              </div>
+              {amountError ? (
+                <p id={idAmountError} className="mt-1 text-xs text-red-600" role="alert">
+                  {amountError}
+                </p>
+              ) : null}
+            </>
           ) : (
-            <ReadOnlyAmountRow currencyDisplayLabel={currencyDisplayLabel} amount={amount} />
+            <ReadOnlyAmountRow currencyDisplayLabel={currencyDisplayLabel} amount={amount} highlightError={!!amountError} />
           )}
         </div>
 
@@ -354,19 +434,27 @@ export function PaymentRequestDetailedInfo({
             Contact<span className="text-red-500"> *</span>
           </FieldLabel>
           {isEditing ? (
-            <BillContactPicker
-              id={idContact}
-              contacts={entityBillContacts}
-              xeroContactId={xero_contact_id}
-              contactName={contact}
-              onChange={(next) =>
-                patch({ contact: next.contact, xero_contact_id: next.xero_contact_id })
-              }
-              refetchContacts={onRefetchEntityBillContacts ?? (async () => {})}
-              disabled={disabled}
-            />
+            <>
+              <BillContactPicker
+                id={idContact}
+                contacts={entityBillContacts}
+                xeroContactId={xero_contact_id}
+                contactName={contact}
+                onChange={(next) =>
+                  patch({ contact: next.contact, xero_contact_id: next.xero_contact_id })
+                }
+                refetchContacts={onRefetchEntityBillContacts ?? (async () => {})}
+                disabled={disabled}
+                error={!!contactError}
+              />
+              {contactError ? (
+                <p id={idContactError} className="mt-1 text-xs text-red-600" role="alert">
+                  {contactError}
+                </p>
+              ) : null}
+            </>
           ) : (
-            <ReadOnlySelectShell value={contact} />
+            <ReadOnlySelectShell value={contact} highlightError={!!contactError} />
           )}
         </div>
 

@@ -37,6 +37,7 @@ import {
 } from "@/lib/paymentRequestAttachmentStore";
 import { ActivityHistoryAccordion } from "./ActivityHistoryAccordion";
 import { BillActionBar } from "./BillActionBar";
+import { BillDraftSubmitButton } from "./BillDraftSubmitButton";
 import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { InvoiceAttachmentToolbar } from "./InvoiceAttachmentToolbar";
 import { OverpaymentWarningModal } from "./OverpaymentWarningModal";
@@ -57,6 +58,23 @@ export type PaymentRequestDetailBodyProps = {
   onBillUpdated?: () => void;
 };
 
+type DetailSubmitFieldErrors = Partial<
+  Record<"invoiceDate" | "dueDate" | "amount" | "contact" | "accountCode", string>
+>;
+
+function validateDetailRequiredForSubmit(d: PaymentRequestDetailedInfoData): DetailSubmitFieldErrors | null {
+  const errors: DetailSubmitFieldErrors = {};
+  if (!d.accountCode.trim()) errors.accountCode = "Please select an account code.";
+  if (!d.contact.trim()) errors.contact = "Contact is required.";
+  if (!d.invoiceDate.trim()) errors.invoiceDate = "Invoice date is required.";
+  if (!d.dueDate.trim()) errors.dueDate = "Due date is required.";
+  const amt = Number.parseFloat((d.amount ?? "").replace(/,/g, ""));
+  if (!(d.amount ?? "").trim() || !Number.isFinite(amt) || amt <= 0) {
+    errors.amount = "Enter a valid amount greater than zero.";
+  }
+  return Object.keys(errors).length ? errors : null;
+}
+
 export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetailBodyProps) {
   const params = useParams();
   const requestId = typeof params?.id === "string" ? params.id : "";
@@ -74,6 +92,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [actionError, setActionError] = useState<string | null>(null);
   const [billNoError, setBillNoError] = useState<string | null>(null);
   const [accountCodeError, setAccountCodeError] = useState<string | null>(null);
+  const [submitAttemptFieldErrors, setSubmitAttemptFieldErrors] = useState<DetailSubmitFieldErrors | null>(null);
 
   const [isPublishing, setIsPublishing] = useState(false);
   const [isReturning, setIsReturning] = useState(false);
@@ -364,6 +383,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     setActionError(null);
     setBillNoError(null);
     setAccountCodeError(null);
+    setSubmitAttemptFieldErrors(null);
   }, [bill, accountOptions]);
 
   const handleCancel = useCallback(() => {
@@ -372,6 +392,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     setActionError(null);
     setBillNoError(null);
     setAccountCodeError(null);
+    setSubmitAttemptFieldErrors(null);
     void loadAttachmentsFromIndexedDb();
   }, [loadAttachmentsFromIndexedDb]);
 
@@ -382,6 +403,19 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     if (Object.prototype.hasOwnProperty.call(patch, "accountCode")) {
       setAccountCodeError(null);
     }
+    setSubmitAttemptFieldErrors((prev) => {
+      if (!prev) return null;
+      const next = { ...prev };
+      if (Object.prototype.hasOwnProperty.call(patch, "invoiceDate")) delete next.invoiceDate;
+      if (Object.prototype.hasOwnProperty.call(patch, "dueDate")) delete next.dueDate;
+      if (Object.prototype.hasOwnProperty.call(patch, "amount")) delete next.amount;
+      if (Object.prototype.hasOwnProperty.call(patch, "currencyCode")) delete next.amount;
+      if (Object.prototype.hasOwnProperty.call(patch, "contact") || Object.prototype.hasOwnProperty.call(patch, "xero_contact_id")) {
+        delete next.contact;
+      }
+      if (Object.prototype.hasOwnProperty.call(patch, "accountCode")) delete next.accountCode;
+      return Object.keys(next).length ? next : null;
+    });
     setDraft((d) => (d ? { ...d, ...patch } : null));
   }, []);
 
@@ -421,6 +455,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         setDraft(null);
         setBillNoError(null);
         setAccountCodeError(null);
+        setSubmitAttemptFieldErrors(null);
         bumpAudit();
       } catch (e) {
         if (isDuplicateBillReferenceError(e)) {
@@ -440,10 +475,13 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     setActionError(null);
     setBillNoError(null);
     setAccountCodeError(null);
-    if (!draft.accountCode.trim()) {
-      setAccountCodeError("Please select an account code.");
+
+    const detailErrors = validateDetailRequiredForSubmit(draft);
+    if (detailErrors) {
+      setSubmitAttemptFieldErrors(detailErrors);
       return;
     }
+    setSubmitAttemptFieldErrors(null);
 
     if (attachmentsReady && attachments.length === 0) {
       setMinimumAttachmentModalOpen(true);
@@ -511,14 +549,38 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     setActionError(null);
     setBillNoError(null);
     setAccountCodeError(null);
-    if (!info.accountCode.trim()) {
-      if (isEditing && draft) {
-        setAccountCodeError("Please select an account code.");
-      } else {
-        setActionError("Account code is required. Click Edit, choose an account code, then submit.");
+
+    const detailErrors = validateDetailRequiredForSubmit(info);
+    if (detailErrors) {
+      setSubmitAttemptFieldErrors(detailErrors);
+      if (!isEditing && viewData) {
+        setDraft({
+          ...viewData,
+          accountCode: enrichAccountCodeWithOptions(viewData.accountCode, accountOptions),
+        });
+        setIsEditing(true);
       }
       return;
     }
+    setSubmitAttemptFieldErrors(null);
+
+    if (attachmentsReady && attachments.length === 0) {
+      setMinimumAttachmentModalOpen(true);
+      return;
+    }
+
+    const completedPayments = payments.filter(
+      (p) => p.bill_id === requestId && p.payment_status !== "pending",
+    );
+    if (completedPayments.length > 0) {
+      const totalPaid = completedPayments.reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0);
+      const newAmount = Number.parseFloat(info.amount.replace(/,/g, ""));
+      if (Number.isFinite(newAmount) && newAmount < totalPaid - 1e-9) {
+        setOverpaymentWarningOpen(true);
+        return;
+      }
+    }
+
     setIsSubmittingDraft(true);
     try {
       const payload = buildBillUpdatePayload(bill, info);
@@ -541,12 +603,14 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       setIsEditing(false);
       setDraft(null);
       setAccountCodeError(null);
+      setSubmitAttemptFieldErrors(null);
       await loadPayments();
       bumpAudit();
     } catch (e) {
       if (isDuplicateBillReferenceError(e)) {
         setBillNoError(e.message);
         setActionError(e.message);
+        setSubmitAttemptFieldErrors(null);
       } else {
         setActionError(e instanceof ApiError ? e.message : "Could not submit this bill.");
       }
@@ -559,7 +623,11 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     isEditing,
     draft,
     viewData,
+    accountOptions,
     attachments,
+    attachmentsReady,
+    attachments.length,
+    payments,
     loadPayments,
     loadAttachmentsFromIndexedDb,
     bumpAudit,
@@ -610,6 +678,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     () => (bill?.status ?? "").trim().toLowerCase().replace(/-/g, "_"),
     [bill?.status],
   );
+  const billIsReturned = billStatusNormalized === "returned";
   const xeroPublishedToMenu = useMemo(() => {
     if (!bill) return false;
     if ((bill.published ?? "").trim() === "published") return true;
@@ -823,21 +892,6 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
                 </>
               )
             }
-            draftSubmit={
-              billIsDraft
-                ? {
-                    show: true,
-                    onClick: handleSubmitDraft,
-                    disabled:
-                      loadingBill ||
-                      !bill ||
-                      isSubmittingDraft ||
-                      isSaving ||
-                      isDeleting,
-                    pending: isSubmittingDraft,
-                  }
-                : undefined
-            }
             useActionsOverflowMenu
             overflowShowPublish={actionOverflowShowPublish}
             overflowShowRepublish={actionOverflowShowRepublish}
@@ -877,7 +931,13 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               isSaving={isSaving}
               disabled={!bill || bill?.status === "voided" || ((bill?.status === "paid" || bill?.status === "authorised") && !isElevated)}
               billNoError={isEditing ? billNoError : null}
-              accountCodeError={isEditing ? accountCodeError : null}
+              accountCodeError={
+                isEditing ? (accountCodeError ?? submitAttemptFieldErrors?.accountCode ?? null) : null
+              }
+              invoiceDateError={submitAttemptFieldErrors?.invoiceDate ?? null}
+              dueDateError={submitAttemptFieldErrors?.dueDate ?? null}
+              amountError={submitAttemptFieldErrors?.amount ?? null}
+              contactError={submitAttemptFieldErrors?.contact ?? null}
               accountOptions={accountOptions}
               entityBillContacts={entityBillContacts}
               onRefetchEntityBillContacts={refetchEntityBillContacts}
@@ -916,11 +976,25 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
                   add
                 </span>
               </button>
-            ) : billIsDraft || bill?.status === "voided" ? (
+            ) : billIsDraft || billIsReturned ? (
+              <div className="sm:self-start">
+                <BillDraftSubmitButton
+                  onClick={() => void handleSubmitDraft()}
+                  disabled={
+                    loadingBill ||
+                    !bill ||
+                    isSubmittingDraft ||
+                    isSaving ||
+                    isDeleting
+                  }
+                  pending={isSubmittingDraft}
+                />
+              </div>
+            ) : bill?.status === "voided" ? (
               <button
                 type="button"
                 disabled
-                aria-label={billIsDraft ? "Draft — record payment not available" : "Voided — record payment not available"}
+                aria-label="Voided — record payment not available"
                 className={`${recordPaymentDetailButtonClass} sm:self-start`}
               >
                 <span className="whitespace-nowrap">Record Payment</span>
