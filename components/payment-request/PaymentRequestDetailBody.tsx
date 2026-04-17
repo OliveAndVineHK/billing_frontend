@@ -964,19 +964,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
                 {isReturning ? "Returning…" : "Return"}
               </button>
             )}
-            {loadingBill || !bill ? (
-              <button
-                type="button"
-                disabled
-                aria-label={loadingBill ? "Loading bill" : "Record payment"}
-                className={`${recordPaymentDetailButtonClass} sm:self-start`}
-              >
-                <span className="whitespace-nowrap">Record Payment</span>
-                <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>
-                  add
-                </span>
-              </button>
-            ) : billIsDraft || billIsReturned ? (
+            {loadingBill || !bill ? null : billIsDraft || billIsReturned ? (
               <div className="sm:self-start">
                 <BillDraftSubmitButton
                   onClick={() => void handleSubmitDraft()}
