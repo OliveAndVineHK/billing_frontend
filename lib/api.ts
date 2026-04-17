@@ -226,10 +226,6 @@ async function fetchBytesFromResolvedFileUrl(absolute: string): Promise<Blob | n
   return b.size > 0 ? b : null;
 }
 
-/**
- * Ordered `/download` candidates for preview (see `fetchAttachmentDownloadJson`).
- * Tries payment-attachment id on the payment route first, then bill file id on the bill route.
- */
 function buildPaymentAttachmentDownloadPaths(
   billId: string,
   paymentId: string,
@@ -239,14 +235,13 @@ function buildPaymentAttachmentDownloadPaths(
   const payBase = `/bills/${billId}/payments/${paymentId}/attachments`;
   const billAttBase = `/bills/${billId}/attachments`;
   const nested = storageAttachmentId?.trim();
-  const ordered: string[] = [`${payBase}/${paymentAttachmentId}/download`];
-  if (nested && nested !== paymentAttachmentId) {
-    ordered.push(`${billAttBase}/${nested}/download`);
-  }
-  ordered.push(`${billAttBase}/${paymentAttachmentId}/download`);
+  const ordered: string[] = [];
   if (nested && nested !== paymentAttachmentId) {
     ordered.push(`${payBase}/${nested}/download`);
+    ordered.push(`${billAttBase}/${nested}/download`);
   }
+  ordered.push(`${payBase}/${paymentAttachmentId}/download`);
+  ordered.push(`${billAttBase}/${paymentAttachmentId}/download`);
   const seen = new Set<string>();
   return ordered.filter((p) => (seen.has(p) ? false : !!seen.add(p)));
 }
