@@ -1148,17 +1148,17 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                   </li>
                 ))}
               </ul>
-              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-3 py-2">
+              <div className="flex items-center gap-2 border-t border-gray-200 px-3 py-2">
                 <button
                   type="button"
-                  className="inline-flex h-9 min-h-[44px] items-center rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-9"
+                  className="inline-flex h-9 min-h-[44px] w-full min-w-0 flex-1 items-center justify-center rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-9"
                   onClick={() => setColumnVisibilityDraft({ ...DEFAULT_COLUMN_VISIBILITY })}
                 >
                   Reset
                 </button>
                 <button
                   type="button"
-                  className="inline-flex h-9 min-h-[44px] items-center rounded-lg bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-9"
+                  className="inline-flex h-9 min-h-[44px] w-full min-w-0 flex-1 items-center justify-center rounded-lg bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-9"
                   onClick={() => {
                     const next = { ...columnVisibilityDraft };
                     setColumnVisibility(next);
@@ -1166,7 +1166,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                     setColumnsMenu(null);
                   }}
                 >
-                  Save Changes
+                  Apply
                 </button>
               </div>
             </div>,

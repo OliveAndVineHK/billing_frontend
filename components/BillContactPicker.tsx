@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 import { ApiError, createEntityBillContact, type EntityBillContact } from "@/lib/api";
 
 const inputClass =
-  "box-border h-11 min-h-[44px] w-full rounded-lg border bg-white px-3 text-base text-black placeholder:text-primary/45 focus:outline-none focus:ring-2 sm:min-h-11 sm:text-sm ";
+  "box-border h-11 min-h-[44px] w-full rounded-2xl border bg-white px-3 text-base text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 sm:min-h-11 sm:text-sm ";
 
 export type BillContactPickerProps = {
   id: string;
@@ -130,7 +130,7 @@ export function BillContactPicker({
 
   const borderTone = error
     ? "border-red-500 focus:border-red-500 focus:ring-red-200/50 "
-    : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25 ";
+    : "border-gray-300 focus:border-secondary focus:ring-secondary/25 ";
 
   const addRowText = creating
     ? "Creating contact…"
@@ -142,7 +142,7 @@ export function BillContactPicker({
         ref={menuRef}
         id={listboxId}
         role="listbox"
-        className="fixed z-[410] max-h-60 overflow-y-auto overflow-x-hidden rounded-lg border border-[#EDEDED] bg-white py-1 shadow-lg ring-1 ring-black/5 [-webkit-overflow-scrolling:touch]"
+        className="fixed z-[410] max-h-60 overflow-y-auto overflow-x-hidden rounded-lg border border-gray-300 bg-white py-1 shadow-lg ring-1 ring-black/5 [-webkit-overflow-scrolling:touch]"
         style={{
           top: menuPos.top,
           left: menuPos.left,

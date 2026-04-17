@@ -79,10 +79,10 @@ const shellClass =
 const focusRing = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary";
 
 const bankSlipModalFooterCancelClass =
-  "box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:min-h-[44px] sm:w-auto sm:px-4";
+  "box-border h-12 min-h-[48px] w-full min-w-0 cursor-pointer rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:min-h-[44px] sm:flex-1 sm:px-4";
 
 const bankSlipModalFooterPrimaryClass =
-  "box-border h-12 min-h-[48px] w-full cursor-pointer rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px] sm:w-auto";
+  "box-border h-12 min-h-[48px] w-full min-w-0 cursor-pointer rounded-lg border border-transparent bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px] sm:flex-1";
 
 type StagedBankSlipEntry = { id: string; file: File };
 
@@ -714,7 +714,7 @@ export function BankSlipDetailsModal({
                   previewSubtitleId={previewSubtitleId}
                 />
               ) : selectedStagedId && stagedPreviewFile && !stagedObjectUrl ? (
-                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
+                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
                   Loading preview…
                 </div>
               ) : selectedEntry ? (
@@ -726,11 +726,11 @@ export function BankSlipDetailsModal({
                   fileSizeBytes={selectedEntry.fileSizeBytes}
                 />
               ) : files.length === 0 && !showInlineUpload ? (
-                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
+                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
                   No bank slip files uploaded for these payments yet.
                 </div>
               ) : (
-                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
+                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">
                   {showInlineUpload && files.length === 0 && stagedUploads.length === 0
                     ? "No uploaded files"
                     : "Select a file to preview"}
@@ -755,7 +755,7 @@ export function BankSlipDetailsModal({
                       key={f.id}
                       className={
                         "relative flex items-center justify-start rounded-lg border bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3 " +
-                        (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-gray-200")
+                        (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-gray-300")
                       }
                     >
                       <button
@@ -804,7 +804,7 @@ export function BankSlipDetailsModal({
                       key={`staged-${id}`}
                       className={
                         "relative flex items-center justify-start rounded-lg border bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3 " +
-                        (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-gray-200")
+                        (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-gray-300")
                       }
                     >
                       <button
@@ -854,11 +854,11 @@ export function BankSlipDetailsModal({
                   aria-label="Choose bank slip files to upload"
                 />
                 <div className="pointer-events-none">
-                  <div className="flex min-h-[156px] flex-col items-center justify-center gap-3 overflow-visible rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 py-5 sm:min-h-[176px] sm:gap-4 sm:py-6">
-                    <span className="material-symbols-outlined inline-block origin-center text-[48px] leading-none text-primary/45 [font-variation-settings:'FILL'_0,'wght'_400,'GRAD'_0,'opsz'_48] scale-[1.78] sm:text-[48px] sm:scale-[2.02]" aria-hidden>cloud_upload</span>
+                  <div className="flex min-h-[156px] flex-col items-center justify-center gap-3 overflow-visible rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-5 sm:min-h-[176px] sm:gap-4 sm:py-6">
+                    <span className="material-symbols-outlined inline-block origin-center text-[48px] leading-none text-gray-400 [font-variation-settings:'FILL'_0,'wght'_400,'GRAD'_0,'opsz'_48] scale-[1.78] sm:text-[48px] sm:scale-[2.02]" aria-hidden>cloud_upload</span>
                     <div className="flex flex-col items-center">
-                      <p className="px-2 text-center text-[14px] font-medium leading-tight text-black">Click to upload or drag and drop</p>
-                      <p className="mt-1 px-2 text-center text-[12px] leading-tight text-primary/55">PDF, JPEG, PNG (Max 5MB)</p>
+                      <p className="px-2 text-center text-[14px] font-medium leading-tight text-gray-700">Click to upload or drag and drop</p>
+                      <p className="mt-1 px-2 text-center text-[12px] leading-tight text-gray-400">PDF, JPEG, PNG (Max 5MB)</p>
                     </div>
                   </div>
                 </div>

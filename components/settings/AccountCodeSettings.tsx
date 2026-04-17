@@ -139,7 +139,7 @@ export function AccountCodeSettings() {
               <label htmlFor="settings-account-search" className="sr-only">
                 Search account code
               </label>
-              <input id="settings-account-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search account code" autoComplete="off" className="box-border h-11 w-full rounded-lg border border-gray-300 bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-gray-600 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25" />
+              <input id="settings-account-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search account code" autoComplete="off" className="box-border h-11 w-full rounded-lg border border-gray-300 bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25" />
               <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center justify-center text-gray-300" aria-hidden>
                 <span className="material-symbols-outlined inline-flex text-[22px] leading-none">search</span>
               </span>

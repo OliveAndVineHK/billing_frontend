@@ -58,14 +58,14 @@ export type PaymentRequestDetailedInfoProps = {
 };
 
 const fieldLabelClass =
-  "mb-1.5 block text-[11px] font-semibold tracking-wide text-primary/55 sm:text-xs";
+  "mb-1.5 block text-[11px] font-semibold tracking-wide text-gray-700 sm:text-xs";
 
 /** Same as modal text inputs (Bill No., Description, etc.). */
 const modalTextInputClass =
-  "box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm";
+  "box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm";
 
 const amountValueInputClass =
-  "box-border h-11 min-h-[44px] min-w-0 w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:border-l-0 sm:text-sm focus:border-secondary focus:ring-secondary/25";
+  "box-border h-11 min-h-[44px] min-w-0 w-full rounded-2xl border border-gray-300 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-2xl sm:border-l-0 sm:text-sm focus:border-secondary focus:ring-secondary/25";
 
 const cancelButtonClass =
   "box-border h-11 min-h-[44px] shrink-0 cursor-pointer rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[44px] sm:px-5";
@@ -154,7 +154,7 @@ function ReadOnlyAmountRow({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-0">
-      <div className="box-border flex h-11 min-h-[44px] w-full shrink-0 items-center justify-between gap-2 rounded-lg bg-transparent px-2 pl-3 pr-2 text-base font-semibold text-[#656565] sm:w-24 sm:rounded-l-lg sm:rounded-r-none sm:px-3 sm:text-sm" aria-label="Currency">
+      <div className="box-border flex h-11 min-h-[44px] w-full shrink-0 items-center justify-between gap-2 rounded-lg bg-transparent px-2 pl-3 pr-2 text-base font-semibold text-black sm:w-24 sm:rounded-l-lg sm:rounded-r-none sm:px-3 sm:text-sm" aria-label="Currency">
         <span className="min-w-0 flex-1 truncate">{currencyDisplayLabel}</span>
       </div>
       <div
@@ -230,15 +230,15 @@ export function PaymentRequestDetailedInfo({
   const idContactError = `detail-contact-err-${uid}`;
 
   const dateTextInputClass =
-    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
+    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white py-0 pl-3 pr-3 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
   const dateCalendarBtnClass =
-    "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11 disabled:cursor-not-allowed disabled:opacity-50";
+    "hidden";
 
   const dateTextInputClassError =
-    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border border-red-500 bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-primary/45 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200/50 [color-scheme:light] sm:min-h-11 sm:text-sm";
+    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-2xl border border-red-500 bg-white py-0 pl-3 pr-3 text-base text-black placeholder:text-gray-700 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200/50 [color-scheme:light] sm:min-h-11 sm:text-sm";
 
   const dateCalendarBtnClassError =
-    "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-red-500 bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11 disabled:cursor-not-allowed disabled:opacity-50";
+    "hidden";
 
   const accountOptions = mergeSelectOption(accountOptionsProp ?? [], accountCode);
   const currencyOptions = currencyOptionsForEditing(currencyCode);
@@ -292,7 +292,7 @@ export function PaymentRequestDetailedInfo({
                 aria-describedby={billNoError ? idBillNoError : undefined}
                 className={
                   billNoError
-                    ? "box-border h-11 min-h-[44px] w-full rounded-lg border border-red-500 bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200/50 sm:min-h-11 sm:text-sm"
+                    ? "box-border h-11 min-h-[44px] w-full rounded-lg border border-red-500 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200/50 sm:min-h-11 sm:text-sm"
                     : modalTextInputClass
                 }
                 placeholder="MBIOVI-115803031626"
@@ -380,7 +380,7 @@ export function PaymentRequestDetailedInfo({
                   className="w-full shrink-0 sm:w-24"
                   fullWidth
                   uniformFill
-                  triggerClassName="w-full px-2 sm:rounded-l-lg sm:rounded-r-none sm:border-r-0 sm:px-3"
+                  triggerClassName="w-full px-2 sm:px-3 rounded-2xl sm:rounded-l-2xl sm:rounded-r-none sm:border-r-0 bg-white text-black hover:bg-white"
                   disabled={disabled}
                 />
                 <input
@@ -472,6 +472,8 @@ export function PaymentRequestDetailedInfo({
                 placeholder="Select an account code"
                 disabled={disabled}
                 error={!!accountCodeError}
+                triggerClassName="!rounded-2xl"
+                plainChevron
               />
               {accountCodeError ? <p id={idAccountError} className="mt-1 text-xs text-red-600" role="alert">{accountCodeError}</p> : null}
             </>
