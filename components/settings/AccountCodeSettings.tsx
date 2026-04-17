@@ -122,11 +122,14 @@ export function AccountCodeSettings() {
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
         <button type="button" onClick={() => setExpanded((e) => !e)} className="flex w-full items-start justify-between gap-3 px-4 py-4 text-left sm:px-5" aria-expanded={expanded}>
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-medium text-gray-800 sm:text-lg">Bill Account Code</h2>
+            <h2 className="text-base font-semibold text-gray-800 sm:text-lg">Bill Account Code</h2>
             <p className="text-sm text-gray-600">Only selected account code will appear when adding a bill in Bill.</p>
           </div>
-          <span className="material-symbols-outlined shrink-0 cursor-pointer text-[24px] leading-none text-primary" aria-hidden>
-            {expanded ? "expand_more" : "expand_less"}
+          <span
+            className={`material-symbols-outlined shrink-0 cursor-pointer text-[24px] leading-none text-gray-400 transition-transform duration-200 ease-out ${expanded ? "rotate-0" : "rotate-180"}`}
+            aria-hidden
+          >
+            expand_more
           </span>
         </button>
 
@@ -136,7 +139,7 @@ export function AccountCodeSettings() {
               <label htmlFor="settings-account-search" className="sr-only">
                 Search account code
               </label>
-              <input id="settings-account-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search account code" autoComplete="off" className="box-border h-11 w-full rounded-lg border border-gray-300 bg-white py-0 pl-3 pr-11 text-sm text-black placeholder:text-gray-600 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25" />
+              <input id="settings-account-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search account code" autoComplete="off" className="box-border h-11 w-full rounded-lg border border-gray-300 bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-gray-600 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25" />
               <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center justify-center text-gray-300" aria-hidden>
                 <span className="material-symbols-outlined inline-flex text-[22px] leading-none">search</span>
               </span>
@@ -145,7 +148,7 @@ export function AccountCodeSettings() {
             {loading ? (
               <>
                 <div className="flex items-center justify-between gap-3 px-3 sm:px-4">
-                  <span className="min-w-0 flex-1 text-right text-sm font-medium text-primary">Select all</span>
+                  <span className="min-w-0 flex-1 text-right text-base font-normal text-primary">Select all</span>
                   <input
                     ref={selectAllRef}
                     type="checkbox"
@@ -170,7 +173,7 @@ export function AccountCodeSettings() {
             ) : filtered.length === 0 ? (
               <>
                 <div className="flex items-center justify-between gap-3 px-3 sm:px-4">
-                  <span className="min-w-0 flex-1 text-right text-sm font-medium text-primary">Select all</span>
+                  <span className="min-w-0 flex-1 text-right text-base font-normal text-primary">Select all</span>
                   <input
                     ref={selectAllRef}
                     type="checkbox"
@@ -189,7 +192,7 @@ export function AccountCodeSettings() {
                 aria-label="Account codes"
               >
                 <li className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-white px-3 py-3 sm:px-4">
-                  <span className="min-w-0 flex-1 text-right text-sm font-medium text-primary">Select all</span>
+                  <span className="min-w-0 flex-1 text-right text-base font-normal text-primary">Select all</span>
                   <input
                     ref={selectAllRef}
                     type="checkbox"
@@ -204,7 +207,7 @@ export function AccountCodeSettings() {
                   const isChecked = selectedIds.has(row.id);
                   return (
                     <li key={row.id} className={`flex items-center justify-between gap-3 px-3 py-3 sm:px-4 ${index > 0 ? "border-t border-gray-100" : ""}`}>
-                      <span className="min-w-0 flex-1 text-base font-light text-gray-700">{row.label}</span>
+                      <span className="min-w-0 flex-1 text-base font-normal text-gray-700">{row.label}</span>
                       <input type="checkbox" checked={isChecked} onChange={() => toggleRow(row.id)} className={CHECKBOX_CLASS} aria-label={`Include ${row.label} in bill account dropdown`}/>
                     </li>
                   );
@@ -223,7 +226,7 @@ export function AccountCodeSettings() {
               {saveMessage.text}
             </p>
           ) : null}
-          <button type="button" onClick={handleSave} disabled={!hasChanges || saving} className="box-border h-12 w-full rounded-lg bg-secondary text-base font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm">
+          <button type="button" onClick={handleSave} disabled={saving} className="box-border h-12 w-full cursor-pointer rounded-lg bg-secondary text-base font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm">
             {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
