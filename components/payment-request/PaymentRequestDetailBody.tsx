@@ -1117,21 +1117,29 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
 
           <div className="flex w-full items-center justify-end gap-2">
             {bill?.status === "submitted" && isElevated && (
-              <button
-                type="button"
-                aria-label="Return payment request"
-                disabled={isReturning || loadingBill}
-                onClick={() => void handleReturn()}
-                className={returnPaymentRequestButtonClass}
+              <div
+                className={isEditing ? "invisible pointer-events-none" : undefined}
+                aria-hidden={isEditing || undefined}
               >
-                <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
-                  undo
-                </span>
-                {isReturning ? "Returning…" : "Return"}
-              </button>
+                <button
+                  type="button"
+                  aria-label="Return payment request"
+                  disabled={isReturning || loadingBill || isEditing}
+                  onClick={() => void handleReturn()}
+                  className={returnPaymentRequestButtonClass}
+                >
+                  <span className="material-symbols-outlined shrink-0 text-[18px] leading-none" aria-hidden>
+                    undo
+                  </span>
+                  {isReturning ? "Returning…" : "Return"}
+                </button>
+              </div>
             )}
             {loadingBill || !bill ? null : billIsDraft || billIsReturned ? (
-              <div className="sm:self-start">
+              <div
+                className={`sm:self-start${isEditing ? " invisible pointer-events-none" : ""}`}
+                aria-hidden={isEditing || undefined}
+              >
                 <BillDraftSubmitButton
                   onClick={() => void handleSubmitDraft()}
                   disabled={
@@ -1139,54 +1147,70 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
                     !bill ||
                     isSubmittingDraft ||
                     isSaving ||
-                    isDeleting
+                    isDeleting ||
+                    isEditing
                   }
                   pending={isSubmittingDraft}
                 />
               </div>
             ) : bill?.status === "voided" ? (
-              <button
-                type="button"
-                disabled
-                aria-label="Voided — record payment not available"
-                className={`${recordPaymentDetailButtonClass} sm:self-start`}
+              <div
+                className={isEditing ? "invisible pointer-events-none sm:self-start" : "sm:self-start"}
+                aria-hidden={isEditing || undefined}
               >
-                <span className="whitespace-nowrap">Record Payment</span>
-                <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>
-                  add
-                </span>
-              </button>
+                <button
+                  type="button"
+                  disabled
+                  aria-label="Voided — record payment not available"
+                  className={recordPaymentDetailButtonClass}
+                >
+                  <span className="whitespace-nowrap">Record Payment</span>
+                  <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>
+                    add
+                  </span>
+                </button>
+              </div>
             ) : bill?.status === "paid" || bill?.status === "authorised" ? (
-              <button
-                type="button"
-                disabled={!isElevated}
-                onClick={() => {
-                  setRecordPaymentReadOnly(true);
-                  setRecordPaymentOpen(true);
-                }}
-                aria-label={
-                  isElevated ? "View payments" : "Insufficient permissions — view payments not available"
-                }
-                className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-lg border-0 bg-secondary/15 px-3 text-left text-base font-medium text-secondary transition-colors hover:bg-secondary/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-[#F5F5F5] disabled:text-primary/40 disabled:hover:bg-[#F5F5F5] sm:h-[46px] sm:self-start sm:px-3.5"
+              <div
+                className={isEditing ? "invisible pointer-events-none sm:self-start" : "sm:self-start"}
+                aria-hidden={isEditing || undefined}
               >
-                View payments
-              </button>
+                <button
+                  type="button"
+                  disabled={!isElevated || isEditing}
+                  onClick={() => {
+                    setRecordPaymentReadOnly(true);
+                    setRecordPaymentOpen(true);
+                  }}
+                  aria-label={
+                    isElevated ? "View payments" : "Insufficient permissions — view payments not available"
+                  }
+                  className="box-border inline-flex h-12 w-fit max-w-full min-w-0 shrink-0 cursor-pointer items-center justify-start gap-1.5 rounded-lg border-0 bg-secondary/15 px-3 text-left text-base font-medium text-secondary transition-colors hover:bg-secondary/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-[#F5F5F5] disabled:text-primary/40 disabled:hover:bg-[#F5F5F5] sm:h-[46px] sm:px-3.5"
+                >
+                  View payments
+                </button>
+              </div>
             ) : (
-              <button
-                type="button"
-                disabled={!isElevated}
-                onClick={() => {
-                  setRecordPaymentReadOnly(false);
-                  setRecordPaymentOpen(true);
-                }}
-                aria-label="Record payment"
-                className={`${recordPaymentDetailButtonClass} sm:self-start`}
+              <div
+                className={isEditing ? "invisible pointer-events-none sm:self-start" : "sm:self-start"}
+                aria-hidden={isEditing || undefined}
               >
-                <span className="whitespace-nowrap">Record Payment</span>
-                <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>
-                  add
-                </span>
-              </button>
+                <button
+                  type="button"
+                  disabled={!isElevated || isEditing}
+                  onClick={() => {
+                    setRecordPaymentReadOnly(false);
+                    setRecordPaymentOpen(true);
+                  }}
+                  aria-label="Record payment"
+                  className={recordPaymentDetailButtonClass}
+                >
+                  <span className="whitespace-nowrap">Record Payment</span>
+                  <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>
+                    add
+                  </span>
+                </button>
+              </div>
             )}
           </div>
           <PaymentHistoryCard
