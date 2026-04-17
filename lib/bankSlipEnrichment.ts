@@ -48,6 +48,20 @@ function formatPaymentDisplayAmount(currencyCode: string | undefined, amount: st
   return symbol ? `${symbol} ${formatted}` : formatted;
 }
 
+function directImagePreviewUrl(att: {
+  download_url?: string;
+  mime_type?: string;
+  original_name: string;
+}): string | undefined {
+  const u = att.download_url?.trim();
+  if (!u) return undefined;
+  const mime = (att.mime_type || "").toLowerCase();
+  const name = (att.original_name || "").trim();
+  if (mime.startsWith("image/")) return u;
+  if (/\.(jpe?g|png|gif|webp|heic|heif)$/i.test(name)) return u;
+  return undefined;
+}
+
 function paymentToDetailsBase(
   row: {
     contactTitle: string;
@@ -107,10 +121,12 @@ export async function buildBankSlipDetailsFromPaymentList(
       const size = a.attachment.file_size;
       const fileSizeBytes =
         typeof size === "number" && Number.isFinite(size) && size >= 0 ? Math.round(size) : undefined;
+      const imagePreviewUrl = directImagePreviewUrl(a.attachment);
       files.push({
         id: a.id,
         name: a.attachment.original_name,
         ...(fileSizeBytes != null ? { fileSizeBytes } : {}),
+        ...(imagePreviewUrl ? { previewUrl: imagePreviewUrl } : {}),
         fetchSource: {
           billId,
           paymentId: p.id,

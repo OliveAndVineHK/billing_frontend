@@ -11,6 +11,9 @@ export type InvoiceAttachmentPreviewItem = {
   url: string;
   name: string;
   mime: string;
+  billAttachmentId?: string;
+  pendingUploadKey?: string;
+  pendingFile?: File;
   /**
    * Optional Django proxy path for PDF rendering. When set, PdfJsCanvasPreview
    * will fetch bytes with auth headers instead of loading the raw storage URL,

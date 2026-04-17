@@ -18,6 +18,7 @@ import {
   returnBill as returnBillApi,
   updateBill,
   uploadBillAttachments,
+  type BillAttachment,
   type BillDetail,
   type EntityBillContact,
   type PaymentItem,
@@ -198,11 +199,18 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [attachments, setAttachments] = useState<InvoiceAttachmentPreviewItem[]>([]);
   const [attachmentsReady, setAttachmentsReady] = useState(false);
   const attachmentUrlsRef = useRef<string[]>([]);
+  const attachmentHydrationEpochRef = useRef(0);
+  const pendingBillAttachmentDeletesRef = useRef<Set<string>>(new Set());
+  const attachmentsRef = useRef<InvoiceAttachmentPreviewItem[]>([]);
   const [selectedAttachmentIndices, setSelectedAttachmentIndices] = useState<number[]>([]);
   const [uploadAttachmentOpen, setUploadAttachmentOpen] = useState(false);
   const [deleteAttachmentConfirmOpen, setDeleteAttachmentConfirmOpen] = useState(false);
   const [minimumAttachmentModalOpen, setMinimumAttachmentModalOpen] = useState(false);
   const [deleteAttachmentPending, setDeleteAttachmentPending] = useState(false);
+
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
 
   useEffect(() => {
     if (!requestId) {
@@ -283,6 +291,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const loadAttachmentsFromIndexedDb = useCallback(
     async (opts?: { abandoned?: () => boolean }) => {
       const abandoned = opts?.abandoned;
+      const epochAtStart = attachmentHydrationEpochRef.current;
       if (!requestId) {
         attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
         attachmentUrlsRef.current = [];
@@ -293,7 +302,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       if (!abandoned?.()) setAttachmentsReady(false);
       try {
         const blobs = await loadAttachmentBlobs(requestId);
-        if (abandoned?.()) return;
+        if (abandoned?.() || epochAtStart !== attachmentHydrationEpochRef.current) return;
         attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
         attachmentUrlsRef.current = [];
 
@@ -305,18 +314,53 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           attachmentUrlsRef.current.push(url);
           return { url, name: b.name, mime: b.type };
         });
+        if (epochAtStart !== attachmentHydrationEpochRef.current) return;
         setAttachments(next);
       } catch {
-        if (abandoned?.()) return;
+        if (abandoned?.() || epochAtStart !== attachmentHydrationEpochRef.current) return;
         attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
         attachmentUrlsRef.current = [];
         setAttachments([]);
       } finally {
-        if (!abandoned?.()) setAttachmentsReady(true);
+        if (!abandoned?.() && epochAtStart === attachmentHydrationEpochRef.current) {
+          setAttachmentsReady(true);
+        }
       }
     },
     [requestId],
   );
+
+  const mapServerAttachmentsToPreviewItems = useCallback(
+    (serverAttachments: BillAttachment[]): InvoiceAttachmentPreviewItem[] =>
+      serverAttachments
+        .filter((ba) => ba.attachment?.download_url)
+        .map((ba) => ({
+          url: ba.attachment.download_url,
+          name: ba.attachment.original_name,
+          mime: ba.attachment.mime_type || "application/octet-stream",
+          previewApiPath:
+            (ba.attachment.mime_type || "").toLowerCase() === "application/pdf"
+              ? `/api/v1/bills/${requestId}/attachments/${ba.id}/preview/`
+              : undefined,
+          billAttachmentId: ba.id,
+        })),
+    [requestId],
+  );
+
+  const commitPendingAttachmentDeletes = useCallback(async (rid: string) => {
+    const pending = [...pendingBillAttachmentDeletesRef.current];
+    if (pending.length === 0) return;
+    await Promise.all(pending.map((id) => deleteBillAttachment(rid, id)));
+    pendingBillAttachmentDeletesRef.current.clear();
+  }, []);
+
+  useEffect(() => {
+    pendingBillAttachmentDeletesRef.current.clear();
+    attachmentsRef.current.forEach((a) => {
+      if (a.pendingUploadKey && a.url.startsWith("blob:")) URL.revokeObjectURL(a.url);
+    });
+    attachmentHydrationEpochRef.current += 1;
+  }, [requestId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -328,33 +372,30 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     };
   }, [requestId, loadAttachmentsFromIndexedDb]);
 
-  // Once the bill loads (or refreshes), populate previews from S3 presigned URLs
-  // if no local-blob previews are already shown. This ensures existing attachments
-  // are always previewable without a secondary /download round-trip per file.
   useEffect(() => {
     if (!bill) return;
     const serverAttachments = bill.attachments ?? [];
+
+    if (!isEditing) {
+      attachmentHydrationEpochRef.current += 1;
+      attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+      attachmentUrlsRef.current = [];
+      if (serverAttachments.length > 0) {
+        setAttachments(mapServerAttachmentsToPreviewItems(serverAttachments));
+      } else {
+        setAttachments([]);
+      }
+      setAttachmentsReady(true);
+      return;
+    }
+
     if (serverAttachments.length === 0) return;
     setAttachments((prev) => {
-      // If we already have previews (uploaded during this session or from IndexedDB),
-      // don't replace them — the S3 URLs from the upload response are already set.
       if (prev.length > 0) return prev;
-      return serverAttachments
-        .filter((ba) => ba.attachment?.download_url)
-        .map((ba) => ({
-          url: ba.attachment.download_url,
-          name: ba.attachment.original_name,
-          mime: ba.attachment.mime_type || "application/octet-stream",
-          // Proxy the file through Django so the browser always loads it from
-          // the trusted API origin — avoids Edge cross-origin iframe blocks.
-          previewApiPath:
-            (ba.attachment.mime_type || "").toLowerCase() === "application/pdf"
-              ? `/api/v1/bills/${requestId}/attachments/${ba.id}/preview/`
-              : undefined,
-        }));
+      return mapServerAttachmentsToPreviewItems(serverAttachments);
     });
     setAttachmentsReady(true);
-  }, [bill]);
+  }, [bill, isEditing, mapServerAttachmentsToPreviewItems]);
 
   const viewData = useMemo(() => {
     if (!bill) return null;
@@ -387,14 +428,60 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   }, [bill, accountOptions]);
 
   const handleCancel = useCallback(() => {
-    setIsEditing(false);
-    setDraft(null);
     setActionError(null);
     setBillNoError(null);
     setAccountCodeError(null);
     setSubmitAttemptFieldErrors(null);
-    void loadAttachmentsFromIndexedDb();
-  }, [loadAttachmentsFromIndexedDb]);
+    pendingBillAttachmentDeletesRef.current.clear();
+
+    const applyAttachmentsFromServerBill = (b: BillDetail) => {
+      attachmentHydrationEpochRef.current += 1;
+      const serverAttachments = b.attachments ?? [];
+      attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+      attachmentUrlsRef.current = [];
+      if (serverAttachments.length > 0) {
+        setAttachments(mapServerAttachmentsToPreviewItems(serverAttachments));
+      } else {
+        setAttachments([]);
+      }
+      setAttachmentsReady(true);
+    };
+
+    if (!requestId) {
+      attachmentsRef.current.forEach((a) => {
+        if (a.pendingUploadKey && a.url.startsWith("blob:")) URL.revokeObjectURL(a.url);
+      });
+      setDraft(null);
+      setIsEditing(false);
+      return;
+    }
+    void (async () => {
+      try {
+        const fresh = await fetchBill(requestId);
+        attachmentsRef.current.forEach((a) => {
+          if (a.pendingUploadKey && a.url.startsWith("blob:")) URL.revokeObjectURL(a.url);
+        });
+        setBill(fresh);
+        onBillUpdated?.();
+        setDraft(null);
+        setIsEditing(false);
+      } catch {
+        attachmentsRef.current.forEach((a) => {
+          if (a.pendingUploadKey && a.url.startsWith("blob:")) URL.revokeObjectURL(a.url);
+        });
+        setDraft(null);
+        setIsEditing(false);
+        if (bill) applyAttachmentsFromServerBill(bill);
+        else {
+          attachmentHydrationEpochRef.current += 1;
+          attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+          attachmentUrlsRef.current = [];
+          setAttachments([]);
+          setAttachmentsReady(true);
+        }
+      }
+    })();
+  }, [requestId, bill, mapServerAttachmentsToPreviewItems, onBillUpdated]);
 
   const handlePatch = useCallback((patch: Partial<PaymentRequestDetailedInfoData>) => {
     if (Object.prototype.hasOwnProperty.call(patch, "billNo")) {
@@ -435,15 +522,38 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           (payload as typeof payload & { status?: string }).status = "submitted";
         }
         const updated = await updateBill(requestId, payload);
-        setBill(updated);
+        await commitPendingAttachmentDeletes(requestId);
+
+        const stagedForApi = attachments.filter(
+          (a): a is InvoiceAttachmentPreviewItem & { pendingFile: File } =>
+            Boolean(a.pendingUploadKey && a.pendingFile),
+        );
+        if (stagedForApi.length > 0) {
+          await uploadBillAttachments(
+            requestId,
+            stagedForApi.map((a) => a.pendingFile),
+          );
+          for (const a of stagedForApi) {
+            if (a.url.startsWith("blob:")) URL.revokeObjectURL(a.url);
+          }
+        }
+
+        const blobsForIndexedDb = attachments.filter(
+          (a) => a.url.startsWith("blob:") && !a.pendingUploadKey,
+        );
+
+        let nextBill: BillDetail = updated;
+        try {
+          nextBill = await fetchBill(requestId);
+        } catch {
+          /* keep `updated` if refetch fails */
+        }
+        setBill(nextBill);
         onBillUpdated?.();
-        await loadPayments();
-        // Only write to IndexedDB if there are local blob URLs still in the preview
-        // list (legacy path). S3 presigned URLs do not need local caching.
-        const hasLocalBlobs = attachments.some((a) => a.url.startsWith("blob:"));
-        if (hasLocalBlobs) {
+
+        if (blobsForIndexedDb.length > 0) {
           try {
-            await replaceAttachmentBlobsFromPreviewItems(requestId, attachments);
+            await replaceAttachmentBlobsFromPreviewItems(requestId, blobsForIndexedDb);
           } catch {
             await loadAttachmentsFromIndexedDb();
             setActionError(
@@ -451,6 +561,21 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             );
           }
         }
+
+        attachmentHydrationEpochRef.current += 1;
+        attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+        attachmentUrlsRef.current = [];
+        const serverAttachments = nextBill.attachments ?? [];
+        if (serverAttachments.length > 0) {
+          setAttachments(mapServerAttachmentsToPreviewItems(serverAttachments));
+        } else if (blobsForIndexedDb.length > 0) {
+          await loadAttachmentsFromIndexedDb();
+        } else {
+          setAttachments([]);
+        }
+        setAttachmentsReady(true);
+
+        await loadPayments();
         setIsEditing(false);
         setDraft(null);
         setBillNoError(null);
@@ -467,7 +592,18 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         setIsSaving(false);
       }
     },
-    [requestId, bill, draft, attachments, bumpAudit, loadPayments, loadAttachmentsFromIndexedDb, onBillUpdated],
+    [
+      requestId,
+      bill,
+      draft,
+      attachments,
+      bumpAudit,
+      loadPayments,
+      loadAttachmentsFromIndexedDb,
+      onBillUpdated,
+      commitPendingAttachmentDeletes,
+      mapServerAttachmentsToPreviewItems,
+    ],
   );
 
   const handleSave = useCallback(async () => {
@@ -523,6 +659,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     if (!requestId) return;
     setIsDeleting(true);
     setActionError(null);
+    pendingBillAttachmentDeletesRef.current.clear();
+    attachmentsRef.current.forEach((a) => {
+      if (a.pendingUploadKey && a.url.startsWith("blob:")) URL.revokeObjectURL(a.url);
+    });
     try {
       if (bill?.status === "returned") {
         await returnBillApi(requestId, "void");
@@ -585,14 +725,38 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     try {
       const payload = buildBillUpdatePayload(bill, info);
       const updated = await updateBill(requestId, { ...payload, status: "submitted" });
-      setBill(updated);
+      await commitPendingAttachmentDeletes(requestId);
+
+      const stagedForApi = attachments.filter(
+        (a): a is InvoiceAttachmentPreviewItem & { pendingFile: File } =>
+          Boolean(a.pendingUploadKey && a.pendingFile),
+      );
+      if (stagedForApi.length > 0) {
+        await uploadBillAttachments(
+          requestId,
+          stagedForApi.map((a) => a.pendingFile),
+        );
+        for (const a of stagedForApi) {
+          if (a.url.startsWith("blob:")) URL.revokeObjectURL(a.url);
+        }
+      }
+
+      const blobsForIndexedDb = attachments.filter(
+        (a) => a.url.startsWith("blob:") && !a.pendingUploadKey,
+      );
+
+      let nextBill: BillDetail = updated;
+      try {
+        nextBill = await fetchBill(requestId);
+      } catch {
+        /* keep `updated` if refetch fails */
+      }
+      setBill(nextBill);
       onBillUpdated?.();
-      // Only write to IndexedDB if there are local blob URLs still in the preview
-      // list (legacy path). S3 presigned URLs do not need local caching.
-      const hasLocalBlobs = attachments.some((a) => a.url.startsWith("blob:"));
-      if (hasLocalBlobs) {
+
+      if (blobsForIndexedDb.length > 0) {
         try {
-          await replaceAttachmentBlobsFromPreviewItems(requestId, attachments);
+          await replaceAttachmentBlobsFromPreviewItems(requestId, blobsForIndexedDb);
         } catch {
           await loadAttachmentsFromIndexedDb();
           setActionError(
@@ -600,6 +764,20 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           );
         }
       }
+
+      attachmentHydrationEpochRef.current += 1;
+      attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+      attachmentUrlsRef.current = [];
+      const serverAttachments = nextBill.attachments ?? [];
+      if (serverAttachments.length > 0) {
+        setAttachments(mapServerAttachmentsToPreviewItems(serverAttachments));
+      } else if (blobsForIndexedDb.length > 0) {
+        await loadAttachmentsFromIndexedDb();
+      } else {
+        setAttachments([]);
+      }
+      setAttachmentsReady(true);
+
       setIsEditing(false);
       setDraft(null);
       setAccountCodeError(null);
@@ -632,6 +810,8 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     loadAttachmentsFromIndexedDb,
     bumpAudit,
     onBillUpdated,
+    commitPendingAttachmentDeletes,
+    mapServerAttachmentsToPreviewItems,
   ]);
 
   const handlePublishToXero = useCallback(async () => {
@@ -744,34 +924,29 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     setAttachments((prev) => {
       const next = prev.filter((_, idx) => !removeSet.has(idx));
       for (let i = 0; i < prev.length; i++) {
-        if (removeSet.has(i)) URL.revokeObjectURL(prev[i].url);
+        if (removeSet.has(i) && prev[i].url.startsWith("blob:")) {
+          URL.revokeObjectURL(prev[i].url);
+        }
       }
       return next;
     });
     setSelectedAttachmentIndices([]);
 
-    // Delete matching BillAttachment records from the API.
-    if (requestId && bill?.attachments) {
-      const namesToDelete = new Set(itemsToDelete.map((x) => x.name));
-      for (const ba of bill.attachments) {
-        if (namesToDelete.has(ba.attachment?.original_name ?? "")) {
-          void deleteBillAttachment(requestId, ba.id).catch((e) =>
-            console.error("Failed to delete attachment:", e),
-          );
-        }
+    const idsToStage = new Set<string>();
+    for (const item of itemsToDelete) {
+      if (item.pendingUploadKey) continue;
+      if (item.billAttachmentId) {
+        idsToStage.add(item.billAttachmentId);
+        continue;
       }
-      setBill((prev) =>
-        prev
-          ? {
-              ...prev,
-              attachments: prev.attachments?.filter(
-                (ba) => !namesToDelete.has(ba.attachment?.original_name ?? ""),
-              ) ?? [],
-            }
-          : prev,
+      const match = bill?.attachments?.find(
+        (ba) =>
+          (ba.attachment?.original_name ?? "").trim() === item.name.trim(),
       );
+      if (match) idsToStage.add(match.id);
     }
-  }, [attachments, selectedAttachmentIndices, requestId, bill]);
+    idsToStage.forEach((id) => pendingBillAttachmentDeletesRef.current.add(id));
+  }, [attachments, selectedAttachmentIndices, bill]);
 
   return (
     <>
@@ -820,32 +995,23 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             onClose={() => setUploadAttachmentOpen(false)}
             onUpload={async (files) => {
               if (!requestId) return;
-              // Upload to S3 + create BillAttachment records via API.
-              // The response includes a presigned download_url for each attachment.
-              const created = await uploadBillAttachments(requestId, files);
-              // Refresh bill so bill.attachments includes the new records.
-              setBill((prev) => prev
-                ? { ...prev, attachments: [...(prev.attachments ?? []), ...created] }
-                : prev
-              );
-              // Use the presigned S3 URL from the API response for preview —
-              // never use local blob URLs so preview is consistent across devices.
               setAttachments((prev) => {
                 const usedNames = new Set(prev.map((x) => x.name));
-                const added: InvoiceAttachmentPreviewItem[] = created.map((ba) => {
-                  const base = ba.attachment.original_name.trim() || "attachment";
+                const added: InvoiceAttachmentPreviewItem[] = [];
+                for (const file of files) {
+                  const key = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+                  const objectUrl = URL.createObjectURL(file);
+                  const base = file.name.trim() || "attachment";
                   const name = uniquifyFileName(base, usedNames);
                   usedNames.add(name);
-                  return {
-                    url: ba.attachment.download_url,
+                  added.push({
+                    url: objectUrl,
                     name,
-                    mime: ba.attachment.mime_type || "application/octet-stream",
-                    previewApiPath:
-                      (ba.attachment.mime_type || "").toLowerCase() === "application/pdf"
-                        ? `/api/v1/bills/${requestId}/attachments/${ba.id}/preview/`
-                        : undefined,
-                  };
-                });
+                    mime: file.type || "application/octet-stream",
+                    pendingUploadKey: key,
+                    pendingFile: file,
+                  });
+                }
                 return [...prev, ...added];
               });
               setAttachmentsReady(true);
