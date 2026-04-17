@@ -120,24 +120,24 @@ export function AccountCodeSettings() {
   return (
     <div className="w-full pb-8 pt-2 sm:pt-3">
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        <button type="button" onClick={() => setExpanded((e) => !e)} className="flex w-full items-start justify-between gap-3 border-b border-gray-100 px-4 py-4 text-left transition-colors hover:bg-gray-50 sm:px-5" aria-expanded={expanded}>
+        <button type="button" onClick={() => setExpanded((e) => !e)} className="flex w-full items-start justify-between gap-3 px-4 py-4 text-left sm:px-5" aria-expanded={expanded}>
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold text-black sm:text-lg">Account Code</h2>
-            <p className="mt-1 text-sm text-primary/65">Only selected account code will appear when adding a bill in Bill.</p>
+            <h2 className="text-base font-medium text-gray-800 sm:text-lg">Bill Account Code</h2>
+            <p className="text-sm text-gray-600">Only selected account code will appear when adding a bill in Bill.</p>
           </div>
-          <span className="material-symbols-outlined shrink-0 text-[24px] leading-none text-primary" aria-hidden>
-            {expanded ? "expand_less" : "expand_more"}
+          <span className="material-symbols-outlined shrink-0 cursor-pointer text-[24px] leading-none text-primary" aria-hidden>
+            {expanded ? "expand_more" : "expand_less"}
           </span>
         </button>
 
         {expanded ? (
-          <div className="flex flex-col gap-3 px-4 py-4 sm:px-5 sm:py-5">
+          <div className="flex flex-col gap-3 px-4 pb-4 sm:px-5 sm:pb-5">
             <div className="relative">
               <label htmlFor="settings-account-search" className="sr-only">
                 Search account code
               </label>
-              <input id="settings-account-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search account code" autoComplete="off" className="box-border h-11 w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-11 text-sm text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25" />
-              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center justify-center text-primary/55" aria-hidden>
+              <input id="settings-account-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search account code" autoComplete="off" className="box-border h-11 w-full rounded-lg border border-gray-300 bg-white py-0 pl-3 pr-11 text-sm text-black placeholder:text-gray-600 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25" />
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center justify-center text-gray-300" aria-hidden>
                 <span className="material-symbols-outlined inline-flex text-[22px] leading-none">search</span>
               </span>
             </div>
@@ -185,10 +185,10 @@ export function AccountCodeSettings() {
               </>
             ) : (
               <ul
-                className="visible-scrollbar max-h-[min(24rem,50vh)] divide-y divide-gray-100 overflow-y-auto overscroll-contain rounded-lg border border-gray-100 [scrollbar-gutter:stable]"
+                className="visible-scrollbar max-h-[min(24rem,50vh)] overflow-y-auto overscroll-contain rounded-b-lg border-b border-r border-gray-100 [scrollbar-gutter:stable]"
                 aria-label="Account codes"
               >
-                <li className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-gray-100 bg-white px-3 py-3 sm:px-4">
+                <li className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-white px-3 py-3 sm:px-4">
                   <span className="min-w-0 flex-1 text-right text-sm font-medium text-primary">Select all</span>
                   <input
                     ref={selectAllRef}
@@ -200,13 +200,11 @@ export function AccountCodeSettings() {
                     aria-label="Select all visible account codes"
                   />
                 </li>
-                {filtered.map((row) => {
+                {filtered.map((row, index) => {
                   const isChecked = selectedIds.has(row.id);
-                  const wasSaved = savedIds.has(row.id);
-                  const changed = isChecked !== wasSaved;
                   return (
-                    <li key={row.id} className={`flex items-center justify-between gap-3 px-3 py-3 sm:px-4 ${changed ? "bg-secondary/5" : ""}`}>
-                      <span className="min-w-0 flex-1 text-sm font-medium text-primary">{row.label}</span>
+                    <li key={row.id} className={`flex items-center justify-between gap-3 px-3 py-3 sm:px-4 ${index > 0 ? "border-t border-gray-100" : ""}`}>
+                      <span className="min-w-0 flex-1 text-base font-light text-gray-700">{row.label}</span>
                       <input type="checkbox" checked={isChecked} onChange={() => toggleRow(row.id)} className={CHECKBOX_CLASS} aria-label={`Include ${row.label} in bill account dropdown`}/>
                     </li>
                   );
@@ -214,18 +212,22 @@ export function AccountCodeSettings() {
               </ul>
             )}
 
-            {saveMessage ? (
-              <p className={`text-center text-sm font-medium ${saveMessage.type === "success" ? "text-emerald-600" : "text-red-600"}`} role="alert">
-                {saveMessage.text}
-              </p>
-            ) : null}
-
-            <button type="button" onClick={handleSave} disabled={!hasChanges || saving} className="mt-1 box-border h-12 w-full rounded-lg bg-secondary text-base font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm">
-              {saving ? "Saving…" : hasChanges ? `Save Changes (${changedIds.length})` : "No Changes"}
-            </button>
           </div>
         ) : null}
       </div>
+
+      {expanded ? (
+        <div className="mt-3 flex w-full flex-col gap-3">
+          {saveMessage ? (
+            <p className={`text-center text-sm font-medium ${saveMessage.type === "success" ? "text-emerald-600" : "text-red-600"}`} role="alert">
+              {saveMessage.text}
+            </p>
+          ) : null}
+          <button type="button" onClick={handleSave} disabled={!hasChanges || saving} className="box-border h-12 w-full rounded-lg bg-secondary text-base font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm">
+            {saving ? "Saving…" : "Save Changes"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
