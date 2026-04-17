@@ -13,15 +13,15 @@ const FILTER_DATE_TYPE_OPTIONS = [
 ] as const;
 
 /** Filter panel field labels — sentence case (not all-caps). */
-const fieldLabelClass = "mb-1.5 block text-[11px] font-semibold tracking-wide text-primary/55 sm:text-xs";
+const fieldLabelClass = "mb-1.5 block text-[11px] font-semibold tracking-wide text-gray-700 sm:text-xs";
 
 const textInputClass =
-  "box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm";
+  "box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm";
 
 const filterDateTextClass =
-  "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
+  "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
 const filterDateCalendarBtnClass =
-  "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
+  "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-2xl border-l border-gray-300 bg-gray-300 text-primary transition-colors hover:bg-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
 
 export const PAYMENT_REQUEST_STATUS_FILTERS = ["All", "Draft", "Payment Requested", "Returned", "Paid", "Partially paid", "Voided"] as const;
 export type PaymentRequestStatusFilter = (typeof PAYMENT_REQUEST_STATUS_FILTERS)[number];
@@ -321,7 +321,7 @@ export function PaymentRequestToolbar({
           Search by contact or description
         </label>
         <div className="relative min-w-0 flex-1">
-          <input id="payment-request-search" type="search" name="q" value={searchQuery ?? ""} onChange={(e) => onSearchChange(e.target.value)} placeholder="Search by contact or description" autoComplete="off" className="box-border h-11 min-h-[44px] w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-3 text-base leading-normal text-black placeholder:text-primary/50 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:h-[42px] sm:min-h-[42px] sm:text-sm" suppressHydrationWarning />
+          <input id="payment-request-search" type="search" name="q" value={searchQuery ?? ""} onChange={(e) => onSearchChange(e.target.value)} placeholder="Search by contact or description" autoComplete="off" className="box-border h-11 min-h-[44px] w-full rounded-lg border border-primary/25 bg-white py-0 pl-3 pr-3 text-base leading-normal text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:h-[42px] sm:min-h-[42px] sm:text-sm" suppressHydrationWarning />
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <div ref={filterWrapRef} className="relative">
@@ -331,7 +331,7 @@ export function PaymentRequestToolbar({
               <div data-filter-menu-panel role="dialog" aria-label="Filters" className="fixed z-[400] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg" style={{ top: filterMenu.top, left: filterMenu.left, width: filterMenu.width }}>
                 <div className="border-b border-gray-200 px-3 py-2">
                   <h3 className="text-sm font-semibold text-primary">Filters</h3>
-                  <p className="mt-1 text-xs leading-snug text-primary/65">Adjust criteria, then save changes to update the list. Closing without saving keeps the current filters.</p>
+                  <p className="mt-1 text-xs leading-snug text-primary/65">Adjust criteria, then apply to update the list. Closing without applying keeps the current filters.</p>
                 </div>
                 <div className="px-3 py-4 sm:px-4">
                   <div className="flex flex-col gap-5">
@@ -341,7 +341,7 @@ export function PaymentRequestToolbar({
                       </label>
                       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
                         <input id={`${filterFieldIds}-min-amount`} type="text" inputMode="decimal" value={minAmount ?? ""} onChange={(e) => setMinAmount(e.target.value)} placeholder="0.00" className={textInputClass} />
-                        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-primary/55 sm:text-xs">To</span>
+                        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-gray-700 sm:text-xs">To</span>
                         <input id={`${filterFieldIds}-max-amount`} type="text" inputMode="decimal" value={maxAmount ?? ""} onChange={(e) => setMaxAmount(e.target.value)} placeholder="0.00" className={textInputClass} />
                       </div>
                     </div>
@@ -356,6 +356,8 @@ export function PaymentRequestToolbar({
                         options={[...FILTER_DATE_TYPE_OPTIONS]}
                         placeholder="Select date type"
                         ariaLabel="Date type"
+                        triggerClassName="!rounded-2xl"
+                        plainChevron
                       />
                     </div>
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
@@ -389,9 +391,9 @@ export function PaymentRequestToolbar({
                   </div>
                 </div>
                 <div className="border-t border-gray-200 px-3 py-2 sm:px-4">
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <button type="button" onClick={onResetFilterDraft} className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px]">Reset</button>
-                    <button type="button" onClick={onSaveFilterChanges} className="box-border h-12 min-h-[48px] min-w-0 rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px]">Save changes</button>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={onResetFilterDraft} className="box-border h-12 min-h-[48px] w-full min-w-0 flex-1 rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px]">Reset</button>
+                    <button type="button" onClick={onSaveFilterChanges} className="box-border h-12 min-h-[48px] w-full min-w-0 flex-1 rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px]">Apply</button>
                   </div>
                 </div>
               </div>,

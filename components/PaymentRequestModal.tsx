@@ -122,7 +122,7 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-1.5 block text-[11px] font-semibold tracking-wide text-primary/55 sm:text-xs"
+      className="mb-1.5 block text-[11px] font-semibold tracking-wide text-gray-700 sm:text-xs"
     >
       {children}
       {required ? <span className="text-red-500"> *</span> : null}
@@ -500,9 +500,9 @@ export function PaymentRequestModal({
               {previewFile && previewObjectUrl ? (
                 <PaymentRequestInlinePreview file={previewFile} objectUrl={previewObjectUrl} previewSubtitleId={previewSubtitleId} getUploadedFileIconInfo={getUploadedFileIconInfo} />
               ) : previewFile && !previewObjectUrl ? (
-                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">Loading preview…</div>
+                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">Loading preview…</div>
               ) : (
-                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">Select a file to preview</div>
+                <div className="flex min-h-[156px] items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 text-center text-sm text-primary/60 sm:min-h-[176px]">Select a file to preview</div>
               )}
             </div>
 
@@ -519,7 +519,7 @@ export function PaymentRequestModal({
               const { icon, iconClass } = getUploadedFileIconInfo(file.name);
               const selected = previewFileId === id;
               return (
-              <li key={id} className={"relative flex items-center justify-start rounded-lg border bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3 " + (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-[#EDEDED]")}>
+              <li key={id} className={"relative flex items-center justify-start rounded-lg border bg-white px-3 py-2.5 pr-11 sm:gap-2 sm:pr-3 " + (selected ? "border-secondary/50 ring-2 ring-secondary/20" : "border-gray-300")}>
                 <button type="button" onClick={() => setPreviewFileId(id)} className="flex min-w-0 flex-1 cursor-pointer items-center justify-start gap-2 rounded-md text-left" aria-pressed={selected} aria-label={`Preview ${file.name}`}>
                   <span className={`material-symbols-outlined shrink-0 text-[22px] leading-none sm:text-[26px] ${iconClass}`} aria-hidden>{icon}</span>
                   <span className="min-w-0 break-words text-left text-sm leading-snug text-black sm:flex-1 sm:truncate sm:leading-normal">{file.name}</span>
@@ -535,11 +535,11 @@ export function PaymentRequestModal({
           <div className="relative">
             <input ref={fileInputRef} type="file" className="absolute inset-0 z-20 h-full min-h-[156px] w-full cursor-pointer opacity-0 sm:min-h-[176px]" multiple accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.gif,.xls,.xlsx,.xlsm,application/pdf,image/*,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleFilesSelected} aria-label="Choose files to upload" />
             <div className="pointer-events-none">
-              <div className="flex min-h-[156px] flex-col items-center justify-center gap-3 overflow-visible rounded-lg border-2 border-dashed border-[#EDEDED] bg-gray-50 px-4 py-5 sm:min-h-[176px] sm:gap-4 sm:py-6">
-                <span className="material-symbols-outlined inline-block origin-center text-[48px] leading-none text-primary/45 [font-variation-settings:'FILL'_0,'wght'_400,'GRAD'_0,'opsz'_48] scale-[1.78] sm:text-[48px] sm:scale-[2.02]" aria-hidden>cloud_upload</span>
+              <div className="flex min-h-[156px] flex-col items-center justify-center gap-3 overflow-visible rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-5 sm:min-h-[176px] sm:gap-4 sm:py-6">
+                <span className="material-symbols-outlined inline-block origin-center text-[48px] leading-none text-gray-400 [font-variation-settings:'FILL'_0,'wght'_400,'GRAD'_0,'opsz'_48] scale-[1.78] sm:text-[48px] sm:scale-[2.02]" aria-hidden>cloud_upload</span>
                 <div className="flex flex-col items-center">
-                  <p className="px-2 text-center text-[14px] font-medium leading-tight text-black">Click to upload or drag and drop</p>
-                  <p className="mt-1 px-2 text-center text-[12px] leading-tight text-primary/55">PDF, JPEG, PNG, XLS, XLSX (Max 5MB)</p>
+                  <p className="px-2 text-center text-[14px] font-medium leading-tight text-gray-700">Click or drag files here to upload</p>
+                  <p className="mt-1 px-2 text-center text-[12px] leading-tight text-gray-400">PDF, JPEG, PNG (Max 5MB)</p>
                 </div>
               </div>
             </div>
@@ -578,10 +578,10 @@ export function PaymentRequestModal({
                 aria-invalid={!!fieldErrors.billNo}
                 aria-describedby={fieldErrors.billNo ? "pr-bill-no-error" : undefined}
                 className={
-                  "box-border h-11 min-h-[44px] w-full rounded-lg border bg-white px-3 text-base text-black placeholder:text-primary/45 focus:outline-none focus:ring-2 sm:min-h-11 sm:text-sm " +
+                  "box-border h-11 min-h-[44px] w-full rounded-2xl border bg-white px-3 text-base text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 sm:min-h-11 sm:text-sm " +
                   (fieldErrors.billNo
                     ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
-                    : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
+                    : "border-gray-300 focus:border-secondary focus:ring-secondary/25")
                 }
                 placeholder="MBIOVI-115803031626"
               />
@@ -607,12 +607,12 @@ export function PaymentRequestModal({
                   invalid={!!fieldErrors.invoiceDate}
                   calendarAriaLabel="Open calendar for invoice date"
                   textInputClassName={
-                    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-primary/45 focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
+                    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-2xl border bg-white py-0 pl-3 pr-3 text-base text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
                     (fieldErrors.invoiceDate
                       ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
-                      : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
+                      : "border-gray-300 focus:border-secondary focus:ring-secondary/25")
                   }
-                  calendarButtonClassName="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                  calendarButtonClassName="hidden"
                 />
                 {fieldErrors.invoiceDate ? (
                   <p className="mt-1 text-xs text-red-600" role="alert">
@@ -634,12 +634,12 @@ export function PaymentRequestModal({
                   invalid={!!fieldErrors.dueDate}
                   calendarAriaLabel="Open calendar for due date"
                   textInputClassName={
-                    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-primary/45 focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
+                    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-2xl border bg-white py-0 pl-3 pr-3 text-base text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 [color-scheme:light] sm:min-h-11 sm:text-sm " +
                     (fieldErrors.dueDate
                       ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
-                      : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
+                      : "border-gray-300 focus:border-secondary focus:ring-secondary/25")
                   }
-                  calendarButtonClassName="absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                  calendarButtonClassName="hidden"
                 />
                 {fieldErrors.dueDate ? (
                   <p className="mt-1 text-xs text-red-600" role="alert">
@@ -663,7 +663,7 @@ export function PaymentRequestModal({
                   className="w-24 shrink-0"
                   fullWidth
                   uniformFill
-                  triggerClassName="w-full px-2 sm:px-3 rounded-l-lg rounded-r-none border-r-0"
+                  triggerClassName="w-full px-2 sm:px-3 rounded-l-2xl rounded-r-none border-r-0 bg-white text-black hover:bg-white"
                 />
                 <input
                   id="pr-amount"
@@ -677,10 +677,10 @@ export function PaymentRequestModal({
                   placeholder="0.00"
                   aria-invalid={!!fieldErrors.amount}
                   className={
-                    "box-border h-11 min-h-[44px] min-w-0 flex-1 rounded-l-none rounded-r-lg border border-l-0 bg-white px-3 text-base text-black placeholder:text-primary/45 focus:outline-none focus:ring-2 sm:min-h-11 sm:text-sm " +
+                    "box-border h-11 min-h-[44px] min-w-0 flex-1 rounded-l-none rounded-r-2xl border border-l-0 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 sm:min-h-11 sm:text-sm " +
                     (fieldErrors.amount
                       ? "border-red-500 focus:border-red-500 focus:ring-red-200/50"
-                      : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25")
+                      : "border-gray-300 focus:border-secondary focus:ring-secondary/25")
                   }
                 />
               </div>
@@ -698,8 +698,8 @@ export function PaymentRequestModal({
                 type="text"
                 value={description ?? ""}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Description (Optional)"
-                className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
+                placeholder="Description (optional)"
+                className="box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm"
               />
             </div>
 
@@ -741,6 +741,8 @@ export function PaymentRequestModal({
                 options={accountOptions}
                 placeholder="Select an account code"
                 error={!!fieldErrors.accountCode}
+                triggerClassName="!rounded-2xl"
+                plainChevron
               />
               {fieldErrors.accountCode ? (
                 <p className="mt-1 text-xs text-red-600" role="alert">
@@ -752,16 +754,16 @@ export function PaymentRequestModal({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col gap-2 border-t border-gray-100 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-5 sm:pb-5">
-          <div className="order-1 flex w-full min-w-0 gap-2 sm:order-2 sm:ml-auto sm:w-auto">
-            <button type="button" onClick={handleCancel} className="box-border h-12 min-h-[48px] min-w-0 flex-1 cursor-pointer rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px] sm:flex-none sm:px-4">
+        <div className="flex shrink-0 flex-col gap-2 border-t border-gray-100 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-5 sm:pb-5">
+          <div className="order-1 flex w-full min-w-0 gap-2">
+            <button type="button" onClick={handleCancel} className="box-border h-12 min-h-[48px] min-w-0 flex-1 cursor-pointer rounded-lg border-2 border-secondary bg-white px-3 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10">
               Cancel
             </button>
-            <button type="button" onClick={() => void handleConfirm()} disabled={confirmSubmitting} className="box-border h-12 min-h-[48px] min-w-0 flex-1 rounded-lg border border-transparent bg-secondary px-4 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:min-h-[44px] sm:flex-none sm:px-5">
+            <button type="button" onClick={() => void handleConfirm()} disabled={confirmSubmitting} className="box-border h-12 min-h-[48px] min-w-0 flex-1 rounded-lg border border-transparent bg-secondary px-4 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
               {confirmSubmitting ? "Confirming…" : "Confirm"}
             </button>
           </div>
-          <button type="button" onClick={() => void handleSaveDraft()} disabled={draftSubmitting} className="order-2 box-border h-12 min-h-[48px] w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-semibold text-primary transition-colors hover:bg-gray-50 enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 sm:order-1 sm:h-11 sm:min-h-[44px] sm:w-auto">
+          <button type="button" onClick={() => void handleSaveDraft()} disabled={draftSubmitting} className="order-2 box-border h-12 min-h-[48px] w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-semibold text-primary transition-colors hover:bg-gray-50 enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
             {draftSubmitting ? "Saving…" : "Save as Draft"}
           </button>
         </div>

@@ -378,9 +378,9 @@ export function RecordPaymentModal({
   if (!open) return null;
 
   const paymentDateTextClass =
-    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
+    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
   const paymentDateCalendarBtnClass =
-    "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-lg border-l border-[#EDEDED] bg-[#EDEDED] text-primary transition-colors hover:bg-[#E4E4E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
+    "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-2xl border-l border-gray-300 bg-gray-300 text-primary transition-colors hover:bg-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
 
   return (
     <>
@@ -448,16 +448,16 @@ export function RecordPaymentModal({
                 }}
                 className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${
                   fullPayLocked
-                    ? "cursor-not-allowed border border-gray-200 bg-gray-100 text-primary/45"
+                    ? "cursor-not-allowed border-2 border-gray-200 bg-gray-100 text-primary/45"
                     : payMode === "full"
                       ? "cursor-pointer bg-secondary text-white shadow-sm"
-                      : "cursor-pointer border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"
+                      : "cursor-pointer border-2 border-secondary/40 bg-white text-secondary hover:bg-secondary/5"
                 }`}
                 aria-disabled={fullPayLocked}
               >
                 Full Pay
               </button>
-              <button type="button" onClick={() => { setFormError(null); setPayMode("partial"); setDraftAmount(""); }} className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "partial" ? "bg-secondary text-white shadow-sm" : "border border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Partial Pay</button>
+              <button type="button" onClick={() => { setFormError(null); setPayMode("partial"); setDraftAmount(""); }} className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "partial" ? "bg-secondary text-white shadow-sm" : "border-2 border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Partial Pay</button>
             </div>
           ) : null}
 
@@ -544,7 +544,7 @@ export function RecordPaymentModal({
                 {payMode === "partial" ? (
                   <div className="min-w-0">
                     <label htmlFor={amountFieldId} className="sr-only">Payment amount</label>
-                    <input id={amountFieldId} type="text" inputMode="decimal" placeholder="0.0" value={draftAmount ?? ""} onChange={(e) => setDraftAmount(e.target.value)} className="box-border h-11 min-h-[44px] w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-base text-black placeholder:text-primary/45 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm" />
+                    <input id={amountFieldId} type="text" inputMode="decimal" placeholder="0.0" value={draftAmount ?? ""} onChange={(e) => setDraftAmount(e.target.value)} className="box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm" />
                   </div>
                 ) : null}
               </div>

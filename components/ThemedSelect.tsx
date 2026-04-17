@@ -25,6 +25,8 @@ type ThemedSelectProps = {
   fullWidth?: boolean;
   /** One filled control (e.g. currency) — no white + chevron strip split. */
   uniformFill?: boolean;
+  /** For split style only: render chevron without gray boxed segment. */
+  plainChevron?: boolean;
   error?: boolean;
   disabled?: boolean;
 };
@@ -40,6 +42,7 @@ export function ThemedSelect({
   triggerClassName = "",
   fullWidth = true,
   uniformFill = false,
+  plainChevron = false,
   error = false,
   disabled = false,
 }: ThemedSelectProps) {
@@ -136,21 +139,21 @@ export function ThemedSelect({
   const displayLabel = placeholderShowing
     ? placeholder
     : selected?.label ?? (options[0]?.label ?? "");
-  const displayTextClass = placeholderShowing ? "text-primary/45" : "";
+  const displayTextClass = placeholderShowing ? "text-gray-700" : "";
 
   const uniformBase =
     "box-border flex h-11 min-h-[44px] min-w-0 cursor-pointer items-center justify-between gap-2 rounded-lg border py-0 pl-3 pr-2 text-left text-base font-normal transition-colors focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm " +
     (fullWidth ? "w-full " : "w-auto ") +
     (error
       ? "border-red-500 bg-red-50 text-black focus:border-red-500 focus:ring-red-200/50 "
-      : "border-[#EDEDED] bg-[#EDEDED] text-[#656565] hover:bg-[#E4E4E4] focus:border-secondary focus:ring-secondary/25 ");
+      : "border-gray-300 bg-[#EDEDED] text-[#656565] hover:bg-[#E4E4E4] focus:border-secondary focus:ring-secondary/25 ");
 
   const splitBase =
     "box-border flex h-11 min-h-[44px] min-w-0 cursor-pointer items-stretch gap-0 overflow-hidden rounded-lg border bg-white p-0 text-left text-base font-normal text-black transition-colors focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm " +
     (fullWidth ? "w-full " : "w-auto ") +
     (error
       ? "border-red-500 focus:border-red-500 focus:ring-red-200/50 "
-      : "border-[#EDEDED] focus:border-secondary focus:ring-secondary/25 ");
+      : "border-gray-300 focus:border-secondary focus:ring-secondary/25 ");
 
   const menu = isOpen ? (
     <ul
@@ -158,7 +161,7 @@ export function ThemedSelect({
       id={listboxId}
       role="listbox"
       data-themed-select-menu
-      className="fixed z-[400] overflow-auto rounded-lg border border-[#EDEDED] bg-white py-1 shadow-lg ring-1 ring-black/5"
+      className="fixed z-[400] overflow-auto rounded-lg border border-gray-300 bg-white py-1 shadow-lg ring-1 ring-black/5"
       style={{
         ...(menuPos.placement === "above"
           ? { top: "auto", bottom: menuPos.bottom }
@@ -214,7 +217,13 @@ export function ThemedSelect({
           <span className="flex min-h-[44px] min-w-0 flex-1 items-center py-0 pl-3 pr-2 sm:min-h-11">
             <span className={`min-w-0 flex-1 truncate ${displayTextClass}`}>{displayLabel}</span>
           </span>
-          <span className="flex w-11 min-w-[44px] shrink-0 items-center justify-center border-l border-[#EDEDED] bg-[#EDEDED] transition-colors hover:bg-[#E4E4E4] sm:min-h-11">
+          <span
+            className={
+              plainChevron
+                ? "flex shrink-0 items-center justify-center px-3 sm:min-h-11"
+                : "flex w-11 min-w-[44px] shrink-0 items-center justify-center border-l border-gray-300 bg-[#EDEDED] transition-colors hover:bg-[#E4E4E4] sm:min-h-11"
+            }
+          >
             {chevron}
           </span>
         </button>
