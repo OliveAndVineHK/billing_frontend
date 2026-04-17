@@ -46,16 +46,52 @@ export function ThemedSelect({
   /** Avoid uncontrolled→controlled warnings if parent ever passes undefined before data loads. */
   const selectedValue = value ?? "";
   const [isOpen, setIsOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
+  const [menuPos, setMenuPos] = useState<{
+    placement: "below" | "above";
+    top: number;
+    left: number;
+    width: number;
+    bottom: number;
+    maxHeight: number;
+  }>({ placement: "below", top: 0, left: 0, width: 0, bottom: 0, maxHeight: 240 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLUListElement>(null);
   const listboxId = useId();
 
+  /** Positions the listbox and caps height so it stays within the viewport (fixed portal). */
   const updatePosition = useCallback(() => {
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    setMenuPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    const gap = 4;
+    const edge = 8;
+    const maxPreferred = 240;
+    const vh = window.innerHeight;
+    const spaceBelow = vh - rect.bottom - gap - edge;
+    const spaceAbove = rect.top - gap - edge;
+    const openAbove = spaceBelow < maxPreferred && spaceAbove > spaceBelow;
+    const maxHeight = openAbove
+      ? Math.min(maxPreferred, Math.max(48, spaceAbove))
+      : Math.min(maxPreferred, Math.max(48, spaceBelow));
+    if (openAbove) {
+      setMenuPos({
+        placement: "above",
+        top: 0,
+        left: rect.left,
+        width: rect.width,
+        bottom: vh - rect.top + gap,
+        maxHeight,
+      });
+    } else {
+      setMenuPos({
+        placement: "below",
+        top: rect.bottom + gap,
+        left: rect.left,
+        width: rect.width,
+        bottom: 0,
+        maxHeight,
+      });
+    }
   }, []);
 
   useLayoutEffect(() => {
@@ -122,11 +158,14 @@ export function ThemedSelect({
       id={listboxId}
       role="listbox"
       data-themed-select-menu
-      className="fixed z-[400] max-h-60 overflow-auto rounded-lg border border-[#EDEDED] bg-white py-1 shadow-lg ring-1 ring-black/5"
+      className="fixed z-[400] overflow-auto rounded-lg border border-[#EDEDED] bg-white py-1 shadow-lg ring-1 ring-black/5"
       style={{
-        top: menuPos.top,
+        ...(menuPos.placement === "above"
+          ? { top: "auto", bottom: menuPos.bottom }
+          : { top: menuPos.top, bottom: "auto" }),
         left: menuPos.left,
         width: Math.max(menuPos.width, 120),
+        maxHeight: menuPos.maxHeight,
       }}
     >
       {menuOptions.map((opt) => {

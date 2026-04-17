@@ -10,6 +10,7 @@ export type AccountCodeRow = { id: string; label: string };
 export function AccountCodeSettings() {
   const [rows, setRows] = useState<AccountCodeRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
@@ -21,11 +22,20 @@ export function AccountCodeSettings() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchEntityBillAccounts({ forceChartSync: true, includeInactive: true })
+    fetchEntityBillAccounts({ forceChartSync: true, includeInactive: true, accountType: "EXPENSE,DIRECTCOSTS" })
       .then((accounts) => {
         if (cancelled) return;
+        // Sort: active (ticked) accounts first, then inactive (unticked).
+        // Within each group, sort alphabetically by "code - name" — mirrors
+        // Module 1's settings_entity.html sort logic.
+        const sorted = [...accounts].sort((a, b) => {
+          if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+          const aLabel = `${a.account_code} - ${a.account_name}`;
+          const bLabel = `${b.account_code} - ${b.account_name}`;
+          return aLabel.localeCompare(bLabel, undefined, { sensitivity: "base" });
+        });
         setRows(
-          accounts.map((a) => ({
+          sorted.map((a) => ({
             id: a.id,
             label: `${a.account_code} - ${a.account_name}`,
           })),
@@ -34,7 +44,9 @@ export function AccountCodeSettings() {
         setSelectedIds(activeIds);
         setSavedIds(activeIds);
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) setError("Failed to load account codes. Please try again.");
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
@@ -80,6 +92,8 @@ export function AccountCodeSettings() {
     return () => clearTimeout(t);
   }, [saveMessage]);
 
+  // rows is already sorted at load time (active first, then alphabetical within each group).
+  // Do not re-sort on toggle — Module 1 only re-sorts on initial load and search, not on checkbox change.
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return rows;
@@ -100,7 +114,24 @@ export function AccountCodeSettings() {
   const toggleRow = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      const wasActive = next.has(id);
+      if (wasActive) next.delete(id); else next.add(id);
+      // Move the toggled row: unticked → bottom, ticked → before the first unticked row.
+      setRows((prevRows) => {
+        const idx = prevRows.findIndex((r) => r.id === id);
+        if (idx === -1) return prevRows;
+        const row = prevRows[idx];
+        const without = prevRows.filter((r) => r.id !== id);
+        if (wasActive) {
+          // Unticking — append to end.
+          return [...without, row];
+        } else {
+          // Ticking — insert before the first unticked row.
+          const firstUnticked = without.findIndex((r) => !next.has(r.id));
+          if (firstUnticked === -1) return [...without, row];
+          return [...without.slice(0, firstUnticked), row, ...without.slice(firstUnticked)];
+        }
+      });
       return next;
     });
   };
@@ -132,6 +163,11 @@ export function AccountCodeSettings() {
 
         {expanded ? (
           <div className="flex flex-col gap-3 px-4 py-4 sm:px-5 sm:py-5">
+            {error ? (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">
+                {error}
+              </p>
+            ) : null}
             <div className="relative">
               <label htmlFor="settings-account-search" className="sr-only">
                 Search account code
