@@ -80,7 +80,7 @@ export function buildBillUpdatePayload(
     const ua = Number.isFinite(amount) ? amount : 0;
     payload.line_items = [
       {
-        description: draft.description || "Line item",
+        description: draft.description || "",
         quantity: 1,
         unit_amount: ua,
         line_amount: ua,
