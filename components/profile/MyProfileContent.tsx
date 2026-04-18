@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, fetchAuthMe, type AuthMeUser } from "@/lib/api";
+import { ApiError, fetchAuthMe, updateProfile, type AuthMeUser } from "@/lib/api";
 import { getAuth } from "@/lib/auth";
 import { useUserRole } from "@/lib/useUserRole";
 
@@ -45,6 +45,11 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
   const [error, setError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
   const [updateHint, setUpdateHint] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setEntityName((getAuth()?.entityName ?? "").trim());
@@ -72,6 +77,46 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
     setRefreshTick((n) => n + 1);
     setUpdateHint(true);
     window.setTimeout(() => setUpdateHint(false), 2500);
+  };
+
+  const handleEditClick = () => {
+    if (!profile) return;
+    setEditFirstName((profile.first_name ?? "").trim());
+    setEditLastName((profile.last_name ?? "").trim());
+    setSaveError(null);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setSaveError(null);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profile?.email) {
+      setSaveError("Email is required");
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      await updateProfile({
+        email: profile.email.trim(),
+        first_name: editFirstName.trim(),
+        last_name: editLastName.trim(),
+      });
+
+      setIsEditing(false);
+      setRefreshTick((n) => n + 1);
+      setUpdateHint(true);
+      window.setTimeout(() => setUpdateHint(false), 2500);
+    } catch (e) {
+      setSaveError(e instanceof ApiError ? e.message : "Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const abbr = initialsFromNames(profile?.first_name, profile?.last_name);
@@ -125,6 +170,12 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
         </div>
       ) : null}
 
+      {saveError ? (
+        <div className="mt-6 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800" role="alert">
+          {saveError}
+        </div>
+      ) : null}
+
       <div className="mt-8 flex flex-col gap-4">
         <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-3">
@@ -150,24 +201,80 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
                   account_circle
                 </span>
               </span>
-              <span
-                className="shrink-0 cursor-not-allowed select-none text-sm font-semibold text-secondary"
-                aria-disabled="true"
-                title="Edit name (not available yet)"
-              >
-                Edit
-              </span>
+              {!isEditing ? (
+                <button
+                  type="button"
+                  onClick={handleEditClick}
+                  disabled={loading}
+                  className="shrink-0 cursor-pointer select-none text-sm font-semibold text-secondary transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Edit name"
+                >
+                  Edit
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    disabled={saving}
+                    className="shrink-0 cursor-pointer select-none text-sm font-semibold text-gray-600 transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveProfile}
+                    disabled={saving}
+                    className="shrink-0 cursor-pointer select-none text-sm font-semibold text-secondary transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {saving ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="grid w-full grid-cols-2 gap-4 text-left">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/55">First name</p>
-                <p className="mt-0.5 font-semibold text-black">{loading ? "…" : (profile?.first_name ?? "").trim() || "—"}</p>
+            {!isEditing ? (
+              <div className="grid w-full grid-cols-2 gap-4 text-left">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/55">First name</p>
+                  <p className="mt-0.5 font-semibold text-black">{loading ? "…" : (profile?.first_name ?? "").trim() || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/55">Last name</p>
+                  <p className="mt-0.5 font-semibold text-black">{loading ? "…" : (profile?.last_name ?? "").trim() || "—"}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/55">Last name</p>
-                <p className="mt-0.5 font-semibold text-black">{loading ? "…" : (profile?.last_name ?? "").trim() || "—"}</p>
+            ) : (
+              <div className="grid w-full grid-cols-2 gap-4 text-left">
+                <div>
+                  <label htmlFor="firstName" className="text-[11px] font-semibold uppercase tracking-wide text-primary/55">
+                    First name
+                  </label>
+                  <input
+                    id="firstName"
+                    type="text"
+                    value={editFirstName}
+                    onChange={(e) => setEditFirstName(e.target.value)}
+                    disabled={saving}
+                    className="mt-0.5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/20 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-60"
+                    placeholder="First name"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="lastName" className="text-[11px] font-semibold uppercase tracking-wide text-primary/55">
+                    Last name
+                  </label>
+                  <input
+                    id="lastName"
+                    type="text"
+                    value={editLastName}
+                    onChange={(e) => setEditLastName(e.target.value)}
+                    disabled={saving}
+                    className="mt-0.5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/20 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-60"
+                    placeholder="Last name"
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </section>
 

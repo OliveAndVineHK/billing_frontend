@@ -841,6 +841,27 @@ export function fetchMe(): Promise<unknown> {
   return apiFetch("/auth/me");
 }
 
+export type ProfileUpdatePayload = {
+  email: string;
+  first_name: string;
+  last_name: string;
+};
+
+export type ProfileUpdateResponse = {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+};
+
+export function updateProfile(payload: ProfileUpdatePayload): Promise<ProfileUpdateResponse> {
+  return apiFetch<ProfileUpdateResponse>("/profile/me", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 // ── Xero status ──────────────────────────────────────────────────────
 
 /**
