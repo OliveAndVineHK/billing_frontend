@@ -79,7 +79,7 @@ function validateDetailRequiredForSubmit(d: PaymentRequestDetailedInfoData): Det
 export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetailBodyProps) {
   const params = useParams();
   const requestId = typeof params?.id === "string" ? params.id : "";
-  const { isElevated } = useUserRole();
+  const { isElevated, isViewOnly } = useUserRole();
 
   const [bill, setBill] = useState<BillDetail | null>(null);
   const [loadingBill, setLoadingBill] = useState(true);
@@ -868,19 +868,21 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     () =>
       !xeroPublishedToMenu &&
       isElevated &&
+      !isViewOnly &&
       !!bill &&
       billDisplayStatus !== "Draft" &&
       billDisplayStatus !== "Voided",
-    [isElevated, bill, billDisplayStatus, xeroPublishedToMenu],
+    [isElevated, isViewOnly, bill, billDisplayStatus, xeroPublishedToMenu],
   );
   const actionOverflowShowRepublish = useMemo(
     () =>
       xeroPublishedToMenu &&
       isElevated &&
+      !isViewOnly &&
       !!bill &&
       billDisplayStatus !== "Draft" &&
       billDisplayStatus !== "Voided",
-    [isElevated, bill, billDisplayStatus, xeroPublishedToMenu],
+    [isElevated, isViewOnly, bill, billDisplayStatus, xeroPublishedToMenu],
   );
   const actionOverflowVoidDisabled = useMemo(
     () =>
@@ -888,10 +890,11 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       !bill ||
       isDeleting ||
       isPublishing ||
+      isViewOnly ||
       billDisplayStatus === "Voided" ||
       ((billDisplayStatus === "Paid" || billDisplayStatus === "Partially paid") && !isElevated) ||
       (billDisplayStatus === "Returned" && !isElevated),
-    [loadingBill, bill, isDeleting, isPublishing, billDisplayStatus, isElevated],
+    [loadingBill, bill, isDeleting, isPublishing, isViewOnly, billDisplayStatus, isElevated],
   );
   const actionOverflowTriggerDisabled = loadingBill || !bill || bill?.status === "voided";
 
@@ -899,9 +902,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     () =>
       loadingBill ||
       !bill ||
+      isViewOnly ||
       bill.status === "voided" ||
       ((bill.status === "paid" || bill.status === "authorised") && !isElevated),
-    [loadingBill, bill, isElevated],
+    [loadingBill, bill, isViewOnly, isElevated],
   );
 
   const handleOpenUploadAttachment = useCallback(() => {
@@ -1022,8 +1026,8 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           <BillActionBar
             onDeleteBill={handleRequestDeleteBill}
             onPublishToXero={handlePublishToXero}
-            deleteDisabled={loadingBill || !bill || isDeleting || isPublishing || bill?.status === "voided" || ((bill?.status === "paid" || bill?.status === "authorised") && !isElevated)}
-            publishDisabled={loadingBill || !bill || bill?.status === "voided" || !isElevated}
+            deleteDisabled={loadingBill || !bill || isDeleting || isPublishing || isViewOnly || bill?.status === "voided" || ((bill?.status === "paid" || bill?.status === "authorised") && !isElevated)}
+            publishDisabled={loadingBill || !bill || isViewOnly || bill?.status === "voided" || !isElevated}
             publishStatus={(bill?.published as "not_published" | "published" | "failed") ?? "not_published"}
             publishPending={isPublishing}
             showVoidBill={false}
@@ -1116,7 +1120,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
           ) : null}
 
           <div className="flex w-full items-center justify-end gap-2">
-            {bill?.status === "submitted" && isElevated && (
+            {bill?.status === "submitted" && isElevated && !isViewOnly && (
               <div
                 className={isEditing ? "invisible pointer-events-none" : undefined}
                 aria-hidden={isEditing || undefined}
@@ -1145,6 +1149,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
                   disabled={
                     loadingBill ||
                     !bill ||
+                    isViewOnly ||
                     isSubmittingDraft ||
                     isSaving ||
                     isDeleting ||
@@ -1197,12 +1202,15 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               >
                 <button
                   type="button"
-                  disabled={!isElevated || isEditing}
+                  disabled={!isElevated || isViewOnly || isEditing}
+                  title={isViewOnly ? "You have view-only access and cannot perform this action" : undefined}
                   onClick={() => {
-                    setRecordPaymentReadOnly(false);
-                    setRecordPaymentOpen(true);
+                    if (!isViewOnly) {
+                      setRecordPaymentReadOnly(false);
+                      setRecordPaymentOpen(true);
+                    }
                   }}
-                  aria-label="Record payment"
+                  aria-label={isViewOnly ? "View-only access — record payment not available" : "Record payment"}
                   className={recordPaymentDetailButtonClass}
                 >
                   <span className="whitespace-nowrap">Record Payment</span>
@@ -1214,7 +1222,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             )}
           </div>
           <PaymentHistoryCard
-            canDeletePayments={isElevated && bill?.status !== "voided"}
+            canDeletePayments={isElevated && !isViewOnly && bill?.status !== "voided"}
             rows={payments.filter(shouldShowPaymentInHistory).map((p): PaymentHistoryRow => {
               const amt = parseFloat(p.amount || "0");
               const shortDate = p.payment_date
