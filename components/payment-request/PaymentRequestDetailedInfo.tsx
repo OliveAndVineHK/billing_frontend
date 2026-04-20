@@ -55,6 +55,8 @@ export type PaymentRequestDetailedInfoProps = {
   onSave?: () => void;
   className?: string;
   editInCardHeader?: boolean;
+  /** Renders to the right of the Contact control (same row as the picker / read-only value). */
+  contactHeaderEnd?: ReactNode;
 };
 
 const fieldLabelClass =
@@ -197,6 +199,7 @@ export function PaymentRequestDetailedInfo({
   entityBillContacts = [],
   onRefetchEntityBillContacts,
   editInCardHeader = true,
+  contactHeaderEnd,
 }: PaymentRequestDetailedInfoProps) {
   const {
     billNo,
@@ -433,29 +436,34 @@ export function PaymentRequestDetailedInfo({
           <FieldLabel htmlFor={idContact} editing={isEditing}>
             Contact<span className="text-red-500"> *</span>
           </FieldLabel>
-          {isEditing ? (
-            <>
-              <BillContactPicker
-                id={idContact}
-                contacts={entityBillContacts}
-                xeroContactId={xero_contact_id}
-                contactName={contact}
-                onChange={(next) =>
-                  patch({ contact: next.contact, xero_contact_id: next.xero_contact_id })
-                }
-                refetchContacts={onRefetchEntityBillContacts ?? (async () => {})}
-                disabled={disabled}
-                error={!!contactError}
-              />
-              {contactError ? (
-                <p id={idContactError} className="mt-1 text-xs text-red-600" role="alert">
-                  {contactError}
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <ReadOnlySelectShell value={contact} highlightError={!!contactError} />
-          )}
+          <div className={contactHeaderEnd ? "flex items-center gap-2 sm:gap-3" : undefined}>
+            <div className={contactHeaderEnd ? "min-w-0 flex-1" : undefined}>
+              {isEditing ? (
+                <>
+                  <BillContactPicker
+                    id={idContact}
+                    contacts={entityBillContacts}
+                    xeroContactId={xero_contact_id}
+                    contactName={contact}
+                    onChange={(next) =>
+                      patch({ contact: next.contact, xero_contact_id: next.xero_contact_id })
+                    }
+                    refetchContacts={onRefetchEntityBillContacts ?? (async () => {})}
+                    disabled={disabled}
+                    error={!!contactError}
+                  />
+                  {contactError ? (
+                    <p id={idContactError} className="mt-1 text-xs text-red-600" role="alert">
+                      {contactError}
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <ReadOnlySelectShell value={contact} highlightError={!!contactError} />
+              )}
+            </div>
+            {contactHeaderEnd ? <div className="shrink-0">{contactHeaderEnd}</div> : null}
+          </div>
         </div>
 
         <div>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useUserRole } from "@/lib/useUserRole";
 import {
   ApiError,
@@ -42,7 +43,7 @@ import { BillDraftSubmitButton } from "./BillDraftSubmitButton";
 import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { InvoiceAttachmentToolbar } from "./InvoiceAttachmentToolbar";
 import { OverpaymentWarningModal } from "./OverpaymentWarningModal";
-import { PaymentHistoryCard, type PaymentHistoryRow } from "./PaymentHistoryCard";
+import { PaymentHistoryListPanel, type PaymentHistoryRow } from "./PaymentHistoryCard";
 import { RecordPaymentModal } from "./RecordPaymentModal";
 import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
 import { AttachmentDeleteConfirmModal } from "./AttachmentDeleteConfirmModal";
@@ -76,6 +77,41 @@ function validateDetailRequiredForSubmit(d: PaymentRequestDetailedInfoData): Det
   return Object.keys(errors).length ? errors : null;
 }
 
+function computePaymentHistoryPanelStyle(anchorRoot: HTMLDivElement | null): CSSProperties | null {
+  if (typeof window === "undefined" || !anchorRoot) return null;
+  const btn = anchorRoot.querySelector("button");
+  if (!btn) return null;
+  const pad = 12;
+  const gap = 6;
+  const rect = btn.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const remPx = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const maxPreferredW = 48 * remPx;
+  const maxByViewport = vw - 2 * pad;
+  const maxByAlignRight = Math.max(0, rect.right - pad);
+  let width = Math.min(maxPreferredW, maxByViewport, maxByAlignRight);
+  let left = rect.right - width;
+  if (width < 1 || left < pad) {
+    width = Math.min(maxPreferredW, maxByViewport);
+    left = rect.right - width;
+    if (left < pad) {
+      left = pad;
+      width = maxByViewport;
+    }
+  }
+  const top = rect.bottom + gap;
+  const maxHeight = Math.max(160, vh - top - pad);
+  return {
+    position: "fixed",
+    left,
+    top,
+    width,
+    maxHeight,
+    zIndex: 300,
+  };
+}
+
 export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetailBodyProps) {
   const params = useParams();
   const requestId = typeof params?.id === "string" ? params.id : "";
@@ -104,6 +140,42 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [overpaymentWarningOpen, setOverpaymentWarningOpen] = useState(false);
   const [auditRefresh, setAuditRefresh] = useState(0);
   const bumpAudit = useCallback(() => setAuditRefresh((n) => n + 1), []);
+  const [paymentHistoryMenuOpen, setPaymentHistoryMenuOpen] = useState(false);
+  const [paymentHistoryPanelStyle, setPaymentHistoryPanelStyle] = useState<CSSProperties | null>(null);
+  const paymentHistoryDropdownRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!paymentHistoryMenuOpen) {
+      setPaymentHistoryPanelStyle(null);
+      return;
+    }
+    const run = () => {
+      const next = computePaymentHistoryPanelStyle(paymentHistoryDropdownRef.current);
+      if (next) setPaymentHistoryPanelStyle(next);
+    };
+    run();
+    window.addEventListener("resize", run);
+    window.addEventListener("scroll", run);
+    const appScrollRoot = document.getElementById("app-scroll-root");
+    if (appScrollRoot) appScrollRoot.addEventListener("scroll", run, { passive: true });
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener("resize", run);
+      vv.addEventListener("scroll", run);
+    }
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(run) : null;
+    if (ro && paymentHistoryDropdownRef.current) ro.observe(paymentHistoryDropdownRef.current);
+    return () => {
+      window.removeEventListener("resize", run);
+      window.removeEventListener("scroll", run);
+      if (appScrollRoot) appScrollRoot.removeEventListener("scroll", run);
+      if (vv) {
+        vv.removeEventListener("resize", run);
+        vv.removeEventListener("scroll", run);
+      }
+      ro?.disconnect();
+    };
+  }, [paymentHistoryMenuOpen]);
 
   const [accountOptions, setAccountOptions] = useState<ThemedSelectOption[]>([]);
   const [entityBillContacts, setEntityBillContacts] = useState<EntityBillContact[]>([]);
@@ -267,9 +339,12 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     if (typeof window === "undefined" || loadingBill || loadError) return;
     const scrollToPaymentHistory = () => {
       if (window.location.hash !== "#payment-history") return;
-      document.getElementById("payment-history")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
+      setPaymentHistoryMenuOpen(true);
+      window.requestAnimationFrame(() => {
+        document.getElementById("payment-history")?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
       });
     };
     scrollToPaymentHistory();
@@ -282,9 +357,22 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   }, [loadingBill, loadError, requestId]);
 
   useEffect(() => {
+    if (!paymentHistoryMenuOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      const el = paymentHistoryDropdownRef.current;
+      if (!el || el.contains(e.target as Node)) return;
+      setPaymentHistoryMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [paymentHistoryMenuOpen]);
+
+  useEffect(() => {
     if (!isEditing) {
       setSelectedAttachmentIndices([]);
       setDeleteAttachmentConfirmOpen(false);
+    } else {
+      setPaymentHistoryMenuOpen(false);
     }
   }, [isEditing]);
 
@@ -848,6 +936,55 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
 
   const currencyLabel = formData ? currencyLabelForCode(formData.currencyCode) : "HK$";
 
+  const paymentHistoryRows = useMemo((): PaymentHistoryRow[] => {
+    if (!requestId) return [];
+    return payments.filter(shouldShowPaymentInHistory).map((p): PaymentHistoryRow => {
+      const amt = parseFloat(p.amount || "0");
+      const shortDate = p.payment_date
+        ? formatIsoDateForDisplay(p.payment_date.trim().slice(0, 10)) || "—"
+        : "—";
+      const forThisBill = p.bill_id === requestId;
+      let dateLabel: string;
+      if (p.payment_status === "pending") {
+        dateLabel = `Pending on ${shortDate}`;
+      } else if (forThisBill && amt > 0 && amt + 1e-9 < invoiceTotalMajor) {
+        dateLabel = `Partial Pay on ${shortDate}`;
+      } else {
+        dateLabel = `Paid on ${shortDate}`;
+      }
+      const ref =
+        (p.bill_reference && p.bill_reference.trim()) ||
+        (p.reference_no && p.reference_no.trim()) ||
+        p.bill_id.slice(0, 13).toUpperCase();
+      return {
+        id: p.id,
+        billId: p.bill_id,
+        billStatus: p.bill_status,
+        date: dateLabel,
+        amountLabel: `(${currencyLabel} ${parseFloat(p.amount || "0").toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
+        invoiceNo: ref,
+        invoiceHref: forThisBill ? "#" : `/payment-request/${p.bill_id}`,
+        isOtherBill: !forThisBill,
+      };
+    });
+  }, [payments, requestId, invoiceTotalMajor, currencyLabel]);
+
+  const handleDeletePaymentHistoryRow = useCallback(
+    async (row: PaymentHistoryRow) => {
+      try {
+        await apiDeletePayment(row.billId, row.id);
+        const data = await fetchPayments(requestId);
+        setPayments(data.payments);
+        await rollbackToPaymentRequestedIfNoPayments(data.payments);
+        await reloadBill();
+        bumpAudit();
+      } catch {
+        /* ignore */
+      }
+    },
+    [requestId, rollbackToPaymentRequestedIfNoPayments, reloadBill, bumpAudit],
+  );
+
   const billIsDraft = useMemo(
     () => (bill?.status ?? "").trim().toLowerCase().replace(/-/g, "_") === "draft",
     [bill?.status],
@@ -1112,6 +1249,44 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               onCancel={handleCancel}
               onSave={handleSave}
               editInCardHeader={false}
+              contactHeaderEnd={
+                !isEditing ? (
+                  <div id="payment-history" ref={paymentHistoryDropdownRef} className="relative shrink-0 scroll-mt-4">
+                    <button
+                      type="button"
+                      aria-expanded={paymentHistoryMenuOpen}
+                      aria-controls="payment-history-dropdown-panel"
+                      className="inline-flex h-9 max-w-full min-w-0 shrink-0 cursor-pointer items-center gap-1 rounded-lg border-0 bg-secondary/15 px-2.5 py-1.5 text-xs font-semibold text-secondary transition-colors hover:bg-secondary/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-10 sm:gap-1.5 sm:px-3 sm:text-sm"
+                      onClick={() => setPaymentHistoryMenuOpen((v) => !v)}
+                    >
+                      <span className="whitespace-nowrap">View Payment History</span>
+                      <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>
+                        {paymentHistoryMenuOpen ? "expand_less" : "expand_more"}
+                      </span>
+                    </button>
+                    {paymentHistoryMenuOpen && paymentHistoryPanelStyle ? (
+                      <div
+                        id="payment-history-dropdown-panel"
+                        role="dialog"
+                        aria-labelledby="payment-history-dropdown-heading"
+                        style={paymentHistoryPanelStyle}
+                        className="overflow-y-auto overscroll-y-contain rounded-lg border border-gray-200 bg-white shadow-lg"
+                      >
+                        <div className="border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-3.5">
+                          <h2 id="payment-history-dropdown-heading" className="text-base font-semibold text-primary sm:text-lg">
+                            Payment History
+                          </h2>
+                        </div>
+                        <PaymentHistoryListPanel
+                          rows={paymentHistoryRows}
+                          canDeletePayments={isElevated && bill?.status !== "voided"}
+                          onDeleteRow={handleDeletePaymentHistoryRow}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : undefined
+              }
             />
           ) : null}
 
@@ -1213,50 +1388,6 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               </div>
             )}
           </div>
-          <PaymentHistoryCard
-            canDeletePayments={isElevated && bill?.status !== "voided"}
-            rows={payments.filter(shouldShowPaymentInHistory).map((p): PaymentHistoryRow => {
-              const amt = parseFloat(p.amount || "0");
-              const shortDate = p.payment_date
-                ? formatIsoDateForDisplay(p.payment_date.trim().slice(0, 10)) || "—"
-                : "—";
-              const forThisBill = p.bill_id === requestId;
-              let dateLabel: string;
-              if (p.payment_status === "pending") {
-                dateLabel = `Pending on ${shortDate}`;
-              } else if (forThisBill && amt > 0 && amt + 1e-9 < invoiceTotalMajor) {
-                dateLabel = `Partial Pay on ${shortDate}`;
-              } else {
-                dateLabel = `Paid on ${shortDate}`;
-              }
-              const ref =
-                (p.bill_reference && p.bill_reference.trim()) ||
-                (p.reference_no && p.reference_no.trim()) ||
-                p.bill_id.slice(0, 13).toUpperCase();
-              return {
-                id: p.id,
-                billId: p.bill_id,
-                billStatus: p.bill_status,
-                date: dateLabel,
-                amountLabel: `(${currencyLabel} ${parseFloat(p.amount || "0").toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
-                invoiceNo: ref,
-                invoiceHref: forThisBill ? "#" : `/payment-request/${p.bill_id}`,
-                isOtherBill: !forThisBill,
-              };
-            })}
-            onDeleteRow={async (row) => {
-              try {
-                await apiDeletePayment(row.billId, row.id);
-                const data = await fetchPayments(requestId);
-                setPayments(data.payments);
-                await rollbackToPaymentRequestedIfNoPayments(data.payments);
-                await reloadBill();
-                bumpAudit();
-              } catch {
-                /* ignore */
-              }
-            }}
-          />
           <ActivityHistoryAccordion
             billId={requestId}
             billRef={bill?.reference ? `#${bill.reference}` : undefined}

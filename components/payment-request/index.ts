@@ -15,7 +15,7 @@ export {
   type PaymentRequestDetailedInfoData,
   type PaymentRequestDetailedInfoProps,
 } from "./PaymentRequestDetailedInfo";
-export { PaymentHistoryCard, type PaymentHistoryRow } from "./PaymentHistoryCard";
+export { PaymentHistoryCard, PaymentHistoryListPanel, type PaymentHistoryRow } from "./PaymentHistoryCard";
 export { ActivityHistoryAccordion } from "./ActivityHistoryAccordion";
 export {
   PaymentRequestToolbar,
