@@ -474,6 +474,7 @@ export function PaymentRequestDetailedInfo({
                 error={!!accountCodeError}
                 triggerClassName="!rounded-2xl"
                 plainChevron
+                searchable
               />
               {accountCodeError ? <p id={idAccountError} className="mt-1 text-xs text-red-600" role="alert">{accountCodeError}</p> : null}
             </>

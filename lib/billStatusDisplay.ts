@@ -27,7 +27,7 @@ export function statusDisplayBadgeClass(displayLabel: string): string {
     case "Returned":
       return `${base} bg-[#EA9713]/10 text-[#EA9713]`;
     case "Voided":
-      return `${base} bg-[#8587c5]/10 font-semibold text-[#8587c5]`;
+      return `${base} bg-[#ADB3BD] font-semibold text-white`;
     case "Draft":
       return `${base} bg-[#EDEDED] font-medium text-[#C0C0C0]`;
     default:

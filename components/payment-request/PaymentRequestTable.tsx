@@ -338,7 +338,7 @@ const statusTagReturnedClass =
   "inline-flex items-center rounded-lg bg-[#EA9713]/10 px-2.5 py-1 text-xs font-semibold text-[#EA9713] sm:text-sm";
 
 const statusTagVoidedClass =
-  "inline-flex items-center rounded-lg bg-[#8587c5]/10 px-2.5 py-1 text-xs font-semibold text-[#8587c5] sm:text-sm";
+  "inline-flex items-center rounded-lg bg-[#ADB3BD] px-2.5 py-1 text-xs font-semibold text-white sm:text-sm";
 
 const viewPaymentsButtonClass =
   "box-border inline-flex h-10 min-h-10 w-max max-w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-0 bg-secondary/15 px-3 text-xs font-medium text-secondary transition-colors hover:bg-secondary/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-[#F5F5F5] disabled:text-primary/40 disabled:hover:bg-[#F5F5F5] sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm";
@@ -356,8 +356,8 @@ function unpaidAmountTextClass(status: string): string {
   if (status === "Paid") return "text-secondary";
   if (status === "Partially paid") return "text-[#70ebba]";
   if (status === "Payment Requested") return "text-[#FF6B6B]";
-  if (status === "Voided") return "text-[#8587c5]";
-  if (status === "Draft") return "text-[#C0C0C0]";
+  if (status === "Voided") return "text-[#656565]";
+  if (status === "Draft") return "text-[#656565]";
   if (status === "Returned") return "text-[#EA9713]";
   return "text-[#C0C0C0]";
 }
@@ -747,7 +747,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                     : isReturned
                       ? statusTagReturnedClass
                       : statusTagClass;
-            const articleClassName = `rounded-xl border border-gray-200 p-4 shadow-sm transition-colors ${isVoided ? "bg-[#8587c5]/10" : isPaid ? "bg-[#54D3DA]/10" : isPartiallyPaid ? "bg-[#70ebba]/10" : isPaymentRequested ? "bg-[#FF6B6B]/10" : "bg-[#F5F5F5]"} ${isVoided ? "cursor-pointer opacity-90 active:bg-[#8587c5]/20" : isPaid ? "cursor-pointer active:bg-[#54D3DA]/20" : isPartiallyPaid ? "cursor-pointer active:bg-[#70ebba]/20" : isPaymentRequested ? "cursor-pointer active:bg-[#FF6B6B]/20" : "cursor-pointer active:bg-gray-200/60"}`;
+            const articleClassName = `rounded-xl border border-gray-200 p-4 shadow-sm transition-colors ${isVoided ? "bg-[#ADB3BD]/10" : isPaid ? "bg-[#54D3DA]/10" : isPartiallyPaid ? "bg-[#70ebba]/10" : isPaymentRequested ? "bg-[#FF6B6B]/10" : isReturned ? "bg-[#EA9713]/10" : "bg-[#F5F5F5]"} ${isVoided ? "cursor-pointer opacity-90 active:bg-[#ADB3BD]/20" : isPaid ? "cursor-pointer active:bg-[#54D3DA]/20" : isPartiallyPaid ? "cursor-pointer active:bg-[#70ebba]/20" : isPaymentRequested ? "cursor-pointer active:bg-[#FF6B6B]/20" : isReturned ? "cursor-pointer active:bg-[#EA9713]/20" : "cursor-pointer active:bg-gray-200/60"}`;
             return (
               <article key={row.id} role="listitem" className={articleClassName} onClick={() => { onRowClick?.(row.id); }}>
                 <div className="flex gap-3">
