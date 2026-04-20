@@ -1,7 +1,8 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useUserRole } from "@/lib/useUserRole";
 import {
   ApiError,
@@ -42,7 +43,7 @@ import { BillDraftSubmitButton } from "./BillDraftSubmitButton";
 import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { InvoiceAttachmentToolbar } from "./InvoiceAttachmentToolbar";
 import { OverpaymentWarningModal } from "./OverpaymentWarningModal";
-import { PaymentHistoryCard, type PaymentHistoryRow } from "./PaymentHistoryCard";
+import { PaymentHistoryListPanel, type PaymentHistoryRow } from "./PaymentHistoryCard";
 import { RecordPaymentModal } from "./RecordPaymentModal";
 import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
 import { AttachmentDeleteConfirmModal } from "./AttachmentDeleteConfirmModal";
@@ -76,6 +77,115 @@ function validateDetailRequiredForSubmit(d: PaymentRequestDetailedInfoData): Det
   return Object.keys(errors).length ? errors : null;
 }
 
+/** Mirrors `PaymentRequestDetailedInfo` layout (labels + Bill No → date grid → amount row → description → contact + action → account). */
+function PaymentRequestDetailCardSkeleton() {
+  return (
+    <section
+      className="rounded-xl border border-gray-200/90 bg-white p-4 sm:p-5 md:p-6"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading detailed information"
+    >
+      <div className="mb-4 sm:mb-5">
+        <div className="h-6 w-48 max-w-[85%] animate-pulse rounded-md bg-gray-200" aria-hidden />
+      </div>
+
+      <div className="flex flex-col gap-5">
+        <div>
+          <div className="mb-1.5 h-3 w-14 animate-pulse rounded bg-gray-200" aria-hidden />
+          <div className="h-11 min-h-[44px] w-full animate-pulse rounded-2xl bg-gray-100" aria-hidden />
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
+          <div>
+            <div className="mb-1.5 h-3 w-24 animate-pulse rounded bg-gray-200" aria-hidden />
+            <div className="h-11 min-h-[44px] w-full animate-pulse rounded-2xl bg-gray-100" aria-hidden />
+          </div>
+          <div>
+            <div className="mb-1.5 h-3 w-20 animate-pulse rounded bg-gray-200" aria-hidden />
+            <div className="h-11 min-h-[44px] w-full animate-pulse rounded-2xl bg-gray-100" aria-hidden />
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-1.5 h-3 w-16 animate-pulse rounded bg-gray-200" aria-hidden />
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-0">
+            <div
+              className="h-11 min-h-[44px] w-full shrink-0 animate-pulse rounded-2xl bg-gray-100 sm:w-24 sm:rounded-r-none"
+              aria-hidden
+            />
+            <div
+              className="h-11 min-h-[44px] w-full flex-1 animate-pulse rounded-2xl bg-gray-100 sm:rounded-l-none sm:rounded-r-2xl"
+              aria-hidden
+            />
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-1.5 h-3 w-24 animate-pulse rounded bg-gray-200" aria-hidden />
+          <div className="h-11 min-h-[44px] w-full animate-pulse rounded-2xl bg-gray-100" aria-hidden />
+        </div>
+
+        <div>
+          <div className="mb-1.5 h-3 w-16 animate-pulse rounded bg-gray-200" aria-hidden />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-11 min-h-[44px] min-w-0 flex-1 animate-pulse rounded-lg bg-gray-100" aria-hidden />
+            <div className="h-9 w-[8.5rem] shrink-0 animate-pulse rounded-lg bg-gray-200 sm:h-10 sm:w-[9.75rem]" aria-hidden />
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-1.5 h-3 w-28 animate-pulse rounded bg-gray-200" aria-hidden />
+          <div className="h-11 min-h-[44px] w-full animate-pulse rounded-2xl bg-gray-100" aria-hidden />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function serverBillAttachmentsFingerprint(rows: BillAttachment[]): string {
+  return [...rows]
+    .filter((ba) => ba.attachment?.download_url)
+    .map((ba) => `${ba.id}:${ba.attachment.download_url}`)
+    .sort()
+    .join("\0");
+}
+
+function computePaymentHistoryPanelStyle(anchorRoot: HTMLDivElement | null): CSSProperties | null {
+  if (typeof window === "undefined" || !anchorRoot) return null;
+  const btn = anchorRoot.querySelector("button");
+  if (!btn) return null;
+  const pad = 12;
+  const gap = 6;
+  const rect = btn.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const remPx = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const maxPreferredW = 48 * remPx;
+  const maxByViewport = vw - 2 * pad;
+  const maxByAlignRight = Math.max(0, rect.right - pad);
+  let width = Math.min(maxPreferredW, maxByViewport, maxByAlignRight);
+  let left = rect.right - width;
+  if (width < 1 || left < pad) {
+    width = Math.min(maxPreferredW, maxByViewport);
+    left = rect.right - width;
+    if (left < pad) {
+      left = pad;
+      width = maxByViewport;
+    }
+  }
+  const top = rect.bottom + gap;
+  const maxHeight = Math.max(160, vh - top - pad);
+  return {
+    position: "fixed",
+    left,
+    top,
+    width,
+    maxHeight,
+    zIndex: 300,
+  };
+}
+
 export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetailBodyProps) {
   const params = useParams();
   const requestId = typeof params?.id === "string" ? params.id : "";
@@ -104,6 +214,42 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [overpaymentWarningOpen, setOverpaymentWarningOpen] = useState(false);
   const [auditRefresh, setAuditRefresh] = useState(0);
   const bumpAudit = useCallback(() => setAuditRefresh((n) => n + 1), []);
+  const [paymentHistoryMenuOpen, setPaymentHistoryMenuOpen] = useState(false);
+  const [paymentHistoryPanelStyle, setPaymentHistoryPanelStyle] = useState<CSSProperties | null>(null);
+  const paymentHistoryDropdownRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!paymentHistoryMenuOpen) {
+      setPaymentHistoryPanelStyle(null);
+      return;
+    }
+    const run = () => {
+      const next = computePaymentHistoryPanelStyle(paymentHistoryDropdownRef.current);
+      if (next) setPaymentHistoryPanelStyle(next);
+    };
+    run();
+    window.addEventListener("resize", run);
+    window.addEventListener("scroll", run);
+    const appScrollRoot = document.getElementById("app-scroll-root");
+    if (appScrollRoot) appScrollRoot.addEventListener("scroll", run, { passive: true });
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener("resize", run);
+      vv.addEventListener("scroll", run);
+    }
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(run) : null;
+    if (ro && paymentHistoryDropdownRef.current) ro.observe(paymentHistoryDropdownRef.current);
+    return () => {
+      window.removeEventListener("resize", run);
+      window.removeEventListener("scroll", run);
+      if (appScrollRoot) appScrollRoot.removeEventListener("scroll", run);
+      if (vv) {
+        vv.removeEventListener("resize", run);
+        vv.removeEventListener("scroll", run);
+      }
+      ro?.disconnect();
+    };
+  }, [paymentHistoryMenuOpen]);
 
   const [accountOptions, setAccountOptions] = useState<ThemedSelectOption[]>([]);
   const [entityBillContacts, setEntityBillContacts] = useState<EntityBillContact[]>([]);
@@ -207,6 +353,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [deleteAttachmentConfirmOpen, setDeleteAttachmentConfirmOpen] = useState(false);
   const [minimumAttachmentModalOpen, setMinimumAttachmentModalOpen] = useState(false);
   const [deleteAttachmentPending, setDeleteAttachmentPending] = useState(false);
+  const lastSyncedServerAttachmentsKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     attachmentsRef.current = attachments;
@@ -217,9 +364,18 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       setBill(null);
       setLoadingBill(false);
       setLoadError(null);
+      attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+      attachmentUrlsRef.current = [];
+      setAttachments([]);
+      setAttachmentsReady(true);
       return;
     }
     let cancelled = false;
+    attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+    attachmentUrlsRef.current = [];
+    setAttachments([]);
+    setAttachmentsReady(false);
+    lastSyncedServerAttachmentsKeyRef.current = null;
     setLoadingBill(true);
     setLoadError(null);
     fetchBill(requestId)
@@ -230,6 +386,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         if (!cancelled) {
           setBill(null);
           setLoadError(e instanceof ApiError ? e.message : "Failed to load bill.");
+          attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+          attachmentUrlsRef.current = [];
+          setAttachments([]);
+          setAttachmentsReady(true);
         }
       })
       .finally(() => {
@@ -244,32 +404,16 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     setDeleteBillConfirmOpen(false);
   }, [requestId]);
 
-  // Auto-refresh: poll every 30 s + re-fetch when the tab becomes visible again.
-  // Only active while the bill is in a non-terminal status and the user is not
-  // currently editing (to avoid silently discarding in-progress changes).
-  useEffect(() => {
-    const TERMINAL = new Set(["paid", "voided", "cancelled"]);
-    if (!requestId || !bill || TERMINAL.has(bill.status ?? "") || isEditing) return;
-
-    const refresh = () => { void reloadBill(); };
-
-    const intervalId = window.setInterval(refresh, 30_000);
-    const onVisibility = () => { if (document.visibilityState === "visible") refresh(); };
-    document.addEventListener("visibilitychange", onVisibility);
-
-    return () => {
-      window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [requestId, bill?.status, isEditing, reloadBill]);
-
   useEffect(() => {
     if (typeof window === "undefined" || loadingBill || loadError) return;
     const scrollToPaymentHistory = () => {
       if (window.location.hash !== "#payment-history") return;
-      document.getElementById("payment-history")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
+      setPaymentHistoryMenuOpen(true);
+      window.requestAnimationFrame(() => {
+        document.getElementById("payment-history")?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
       });
     };
     scrollToPaymentHistory();
@@ -282,9 +426,23 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   }, [loadingBill, loadError, requestId]);
 
   useEffect(() => {
+    if (!paymentHistoryMenuOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      const el = paymentHistoryDropdownRef.current;
+      if (!el || el.contains(e.target as Node)) return;
+      setPaymentHistoryMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [paymentHistoryMenuOpen]);
+
+  useEffect(() => {
     if (!isEditing) {
       setSelectedAttachmentIndices([]);
       setDeleteAttachmentConfirmOpen(false);
+    } else {
+      setPaymentHistoryMenuOpen(false);
+      lastSyncedServerAttachmentsKeyRef.current = null;
     }
   }, [isEditing]);
 
@@ -299,16 +457,13 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         if (!abandoned?.()) setAttachmentsReady(true);
         return;
       }
-      if (!abandoned?.()) setAttachmentsReady(false);
       try {
         const blobs = await loadAttachmentBlobs(requestId);
         if (abandoned?.() || epochAtStart !== attachmentHydrationEpochRef.current) return;
         attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
         attachmentUrlsRef.current = [];
 
-        // IndexedDB is a legacy local-blob cache. If blobs exist, use them
-        // (backward-compat). Afterwards a separate effect will replace them
-        // with S3 presigned URLs once the bill loads (see below).
+        /** Local blob cache fallback (e.g. after save when server list is still empty). */
         const next: InvoiceAttachmentPreviewItem[] = blobs.map((b) => {
           const url = URL.createObjectURL(b.blob);
           attachmentUrlsRef.current.push(url);
@@ -360,23 +515,23 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       if (a.pendingUploadKey && a.url.startsWith("blob:")) URL.revokeObjectURL(a.url);
     });
     attachmentHydrationEpochRef.current += 1;
+    lastSyncedServerAttachmentsKeyRef.current = null;
   }, [requestId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void loadAttachmentsFromIndexedDb({ abandoned: () => cancelled });
-    return () => {
-      cancelled = true;
-      attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
-      attachmentUrlsRef.current = [];
-    };
-  }, [requestId, loadAttachmentsFromIndexedDb]);
 
   useEffect(() => {
     if (!bill) return;
     const serverAttachments = bill.attachments ?? [];
 
     if (!isEditing) {
+      const fp = serverBillAttachmentsFingerprint(serverAttachments);
+      if (
+        lastSyncedServerAttachmentsKeyRef.current !== null &&
+        fp === lastSyncedServerAttachmentsKeyRef.current
+      ) {
+        setAttachmentsReady(true);
+        return;
+      }
+      lastSyncedServerAttachmentsKeyRef.current = fp;
       attachmentHydrationEpochRef.current += 1;
       attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
       attachmentUrlsRef.current = [];
@@ -848,6 +1003,55 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
 
   const currencyLabel = formData ? currencyLabelForCode(formData.currencyCode) : "HK$";
 
+  const paymentHistoryRows = useMemo((): PaymentHistoryRow[] => {
+    if (!requestId) return [];
+    return payments.filter(shouldShowPaymentInHistory).map((p): PaymentHistoryRow => {
+      const amt = parseFloat(p.amount || "0");
+      const shortDate = p.payment_date
+        ? formatIsoDateForDisplay(p.payment_date.trim().slice(0, 10)) || "—"
+        : "—";
+      const forThisBill = p.bill_id === requestId;
+      let dateLabel: string;
+      if (p.payment_status === "pending") {
+        dateLabel = `Pending on ${shortDate}`;
+      } else if (forThisBill && amt > 0 && amt + 1e-9 < invoiceTotalMajor) {
+        dateLabel = `Partial Pay on ${shortDate}`;
+      } else {
+        dateLabel = `Paid on ${shortDate}`;
+      }
+      const ref =
+        (p.bill_reference && p.bill_reference.trim()) ||
+        (p.reference_no && p.reference_no.trim()) ||
+        p.bill_id.slice(0, 13).toUpperCase();
+      return {
+        id: p.id,
+        billId: p.bill_id,
+        billStatus: p.bill_status,
+        date: dateLabel,
+        amountLabel: `(${currencyLabel} ${parseFloat(p.amount || "0").toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
+        invoiceNo: ref,
+        invoiceHref: forThisBill ? "#" : `/payment-request/${p.bill_id}`,
+        isOtherBill: !forThisBill,
+      };
+    });
+  }, [payments, requestId, invoiceTotalMajor, currencyLabel]);
+
+  const handleDeletePaymentHistoryRow = useCallback(
+    async (row: PaymentHistoryRow) => {
+      try {
+        await apiDeletePayment(row.billId, row.id);
+        const data = await fetchPayments(requestId);
+        setPayments(data.payments);
+        await rollbackToPaymentRequestedIfNoPayments(data.payments);
+        await reloadBill();
+        bumpAudit();
+      } catch {
+        /* ignore */
+      }
+    },
+    [requestId, rollbackToPaymentRequestedIfNoPayments, reloadBill, bumpAudit],
+  );
+
   const billIsDraft = useMemo(
     () => (bill?.status ?? "").trim().toLowerCase().replace(/-/g, "_") === "draft",
     [bill?.status],
@@ -1073,7 +1277,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         <div className="flex h-full min-h-0 min-w-0 max-lg:order-3 flex-col lg:order-none lg:col-start-1 lg:row-start-2">
           <InvoiceAttachmentPreview
             attachments={attachments}
-            isLoadingAttachments={!attachmentsReady}
+            isLoadingAttachments={!loadError && (loadingBill || !attachmentsReady)}
             editMode={isEditing}
             selectedIndices={selectedAttachmentIndices}
             onSelectedIndicesChange={setSelectedAttachmentIndices}
@@ -1082,14 +1286,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         </div>
         <div className="flex min-w-0 max-lg:order-4 flex-col gap-4 sm:gap-5 lg:order-none lg:col-start-2 lg:row-start-2">
           {loadingBill ? (
-            <div className="animate-pulse rounded-xl border border-gray-200/90 bg-white p-6">
-              <div className="mb-4 h-6 w-48 rounded bg-gray-100" />
-              <div className="space-y-4">
-                <div className="h-4 w-full rounded bg-gray-100" />
-                <div className="h-4 w-3/4 rounded bg-gray-100" />
-                <div className="h-4 w-full rounded bg-gray-100" />
-              </div>
-            </div>
+            <PaymentRequestDetailCardSkeleton />
           ) : loadError ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">
               {loadError}
@@ -1116,6 +1313,44 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               onCancel={handleCancel}
               onSave={handleSave}
               editInCardHeader={false}
+              contactHeaderEnd={
+                !isEditing ? (
+                  <div id="payment-history" ref={paymentHistoryDropdownRef} className="relative shrink-0 scroll-mt-4">
+                    <button
+                      type="button"
+                      aria-expanded={paymentHistoryMenuOpen}
+                      aria-controls="payment-history-dropdown-panel"
+                      className="inline-flex h-9 max-w-full min-w-0 shrink-0 cursor-pointer items-center gap-1 rounded-lg border-0 bg-secondary/15 px-2.5 py-1.5 text-xs font-semibold text-secondary transition-colors hover:bg-secondary/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-10 sm:gap-1.5 sm:px-3 sm:text-sm"
+                      onClick={() => setPaymentHistoryMenuOpen((v) => !v)}
+                    >
+                      <span className="whitespace-nowrap">View Payment History</span>
+                      <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>
+                        {paymentHistoryMenuOpen ? "expand_less" : "expand_more"}
+                      </span>
+                    </button>
+                    {paymentHistoryMenuOpen && paymentHistoryPanelStyle ? (
+                      <div
+                        id="payment-history-dropdown-panel"
+                        role="dialog"
+                        aria-labelledby="payment-history-dropdown-heading"
+                        style={paymentHistoryPanelStyle}
+                        className="overflow-y-auto overscroll-y-contain rounded-lg border border-gray-200 bg-white shadow-lg"
+                      >
+                        <div className="border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-3.5">
+                          <h2 id="payment-history-dropdown-heading" className="text-base font-semibold text-primary sm:text-lg">
+                            Payment History
+                          </h2>
+                        </div>
+                        <PaymentHistoryListPanel
+                          rows={paymentHistoryRows}
+                          canDeletePayments={isElevated && bill?.status !== "voided"}
+                          onDeleteRow={handleDeletePaymentHistoryRow}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : undefined
+              }
             />
           ) : null}
 
