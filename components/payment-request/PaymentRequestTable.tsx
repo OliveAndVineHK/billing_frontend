@@ -322,6 +322,9 @@ const unpaidAmountCellClass = `${dataCellBase} align-middle tabular-nums min-w-[
 
 const actionBodyCellBg = "bg-secondary/8";
 
+const TABLE_SKELETON_ROW_COUNT = 6;
+const MOBILE_SKELETON_CARD_COUNT = 6;
+
 const statusTagClass =
   "inline-flex items-center rounded-lg bg-[#EDEDED] px-2.5 py-1 text-xs font-medium text-[#C0C0C0] sm:text-sm";
 
@@ -455,6 +458,49 @@ const SELECTOR_TITLE: Record<ColumnSelectorKey, PaymentRequestColumnTitle> = {
 };
 
 const NON_SELECTOR_TITLES: PaymentRequestColumnTitle[] = COLUMN_TITLES.filter((title) => !TITLE_SELECTOR_KEY[title]);
+
+function skeletonDesktopTdClass(title: PaymentRequestColumnTitle): string {
+  if (title === "Contact / Description") return contactCellClass;
+  if (title === "Invoice Date") return singleLineDateCellClass;
+  if (title === "Submitted Date") return invoiceDateCellClass;
+  if (title === "Status") return singleLineStatusCellClass;
+  if (title === "Unpaid Amount") return unpaidAmountCellClass;
+  if (title === "Payment") return `${dataCellBase} align-middle text-left ${actionBodyCellBg}`;
+  if (title === "Paid Date") return `${singleLineDateCellClass} ${actionBodyCellBg}`;
+  if (title === "Bankslip") return `${invoiceDateCellClass} ${actionBodyCellBg}`;
+  return `${dataCellBase} align-middle`;
+}
+
+function skeletonDesktopCellInner(title: PaymentRequestColumnTitle) {
+  switch (title) {
+    case "Contact / Description":
+      return (
+        <div className="space-y-2 py-0.5">
+          <div className="h-4 max-w-[14rem] animate-pulse rounded bg-gray-200" />
+          <div className="h-3 max-w-md animate-pulse rounded bg-gray-100" />
+        </div>
+      );
+    case "Invoice Date":
+    case "Submitted Date":
+      return <div className="h-4 w-[5.75rem] animate-pulse rounded bg-gray-200" />;
+    case "Status":
+      return <div className="h-7 w-[7rem] animate-pulse rounded-lg bg-gray-200" />;
+    case "Unpaid Amount":
+      return (
+        <div className="space-y-1.5">
+          <div className="h-4 w-28 animate-pulse rounded bg-gray-200" />
+          <div className="h-3 w-36 animate-pulse rounded bg-gray-100" />
+        </div>
+      );
+    case "Payment":
+    case "Bankslip":
+      return <div className="h-10 w-[7.5rem] max-w-full animate-pulse rounded-lg bg-gray-200" />;
+    case "Paid Date":
+      return <div className="h-4 w-[5.75rem] animate-pulse rounded bg-gray-200" />;
+    default:
+      return null;
+  }
+}
 
 function getBankSlipDetailsForRow(row: PaymentRequestRow): BankSlipDetails {
   if (row.bankSlipDetails) return row.bankSlipDetails;
@@ -719,11 +765,41 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
     <div className="w-full min-w-0 px-4 pb-6 sm:px-6">
       <div className="flex flex-col gap-3 sm:hidden" role="list" aria-label="Payment requests">
         {loading ? (
-          <div className="rounded-xl border border-gray-200 bg-[#F5F5F5] px-4 py-10 text-center text-sm text-primary/60">
-            <span className="inline-flex items-center gap-2">
-              <span className="material-symbols-outlined animate-spin text-secondary text-[22px]">progress_activity</span>
-              Loading bills…
-            </span>
+          <div className="flex flex-col gap-3" role="status" aria-busy="true" aria-label="Loading payment requests">
+            {Array.from({ length: MOBILE_SKELETON_CARD_COUNT }, (_, i) => (
+              <div
+                key={`sk-card-${i}`}
+                className="rounded-xl border border-gray-200 bg-[#F5F5F5] p-4 shadow-sm"
+                aria-hidden
+              >
+                <div className="flex gap-3">
+                  <div className="mt-0.5 h-4 w-4 shrink-0 animate-pulse rounded bg-gray-300" />
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="h-4 w-[min(100%,12rem)] animate-pulse rounded bg-gray-300" />
+                        <div className="h-3 w-full max-w-[18rem] animate-pulse rounded bg-gray-200" />
+                      </div>
+                      <div className="h-7 w-20 shrink-0 animate-pulse rounded-lg bg-gray-200" />
+                    </div>
+                    <div className="flex items-start justify-between gap-3 pt-1">
+                      <div className="space-y-1.5">
+                        <div className="h-2.5 w-16 animate-pulse rounded bg-gray-200" />
+                        <div className="h-4 w-24 animate-pulse rounded bg-gray-300" />
+                      </div>
+                      <div className="space-y-1 text-right">
+                        <div className="ml-auto h-5 w-28 animate-pulse rounded bg-gray-300" />
+                        <div className="ml-auto h-3 w-32 animate-pulse rounded bg-gray-200" />
+                      </div>
+                    </div>
+                    <div className="flex min-h-10 items-center gap-2 pt-1">
+                      <div className="h-10 w-[min(100%,11rem)] animate-pulse rounded-lg bg-gray-200" />
+                      <div className="ml-auto h-10 w-24 animate-pulse rounded-lg bg-gray-200" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : visibleRows.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-[#F5F5F5] px-4 py-8 text-center text-sm text-primary/70">No payment requests match this status.</div>
@@ -897,22 +973,39 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white">
+            <tbody className="bg-white" aria-busy={loading}>
               {loading ? (
-                <tr>
-                  <td colSpan={tableColCount} className="border-b border-gray-100 px-4 py-10 text-center text-sm text-primary/60 sm:px-5">
-                    <span className="inline-flex items-center gap-2">
-                      <span className="material-symbols-outlined animate-spin text-secondary text-[22px]">progress_activity</span>
-                      Loading bills…
-                    </span>
-                  </td>
-                </tr>
+                Array.from({ length: TABLE_SKELETON_ROW_COUNT }, (_, rowIdx) => (
+                  <tr key={`sk-row-${rowIdx}`} className="pointer-events-none" aria-hidden>
+                    <td className="border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3">
+                      <div className="mx-auto h-4 w-4 animate-pulse rounded bg-gray-200" />
+                    </td>
+                    {orderedTableTitles.map((title) => {
+                      const selectorKey = TITLE_SELECTOR_KEY[title];
+                      if (selectorKey && !columnVisibility[selectorKey]) return null;
+                      const inner = skeletonDesktopCellInner(title);
+                      if (inner == null) return null;
+                      return (
+                        <td key={`${title}-${rowIdx}`} className={skeletonDesktopTdClass(title)}>
+                          {inner}
+                        </td>
+                      );
+                    })}
+                    <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
+                      <div className="mx-auto h-10 w-10 animate-pulse rounded-md bg-gray-200" />
+                    </td>
+                    <td className={`border-b border-gray-100 px-2 py-3 text-center align-middle sm:px-3 ${actionBodyCellBg}`}>
+                      <div className="mx-auto h-9 w-9 animate-pulse rounded-full bg-gray-200" />
+                    </td>
+                  </tr>
+                ))
               ) : visibleRows.length === 0 ? (
                 <tr>
                   <td colSpan={tableColCount} className="border-b border-gray-100 px-4 py-8 text-center text-sm text-primary/70 sm:px-5">No payment requests match this status.</td>
                 </tr>
               ) : null}
-              {sortedVisibleRows.map((row) => {
+              {!loading &&
+                sortedVisibleRows.map((row) => {
                 const isPaid = row.status === "Paid";
                 const isPartiallyPaid = row.status === "Partially paid";
                 const isVoided = row.status === "Voided";

@@ -170,10 +170,16 @@ export function InvoiceAttachmentPreview({
     <div
       className="flex w-full shrink-0 flex-col gap-2 p-1.5 sm:p-2" style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}>
       {isLoadingAttachments ? (
-        <div className="flex w-full min-w-0 flex-col gap-3 rounded border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-          <div className="h-4 w-[75%] animate-pulse rounded bg-gray-200" />
-          <div className="aspect-[8.5/11] w-full max-h-[min(82vh,56rem)] animate-pulse rounded bg-gray-100" />
-        </div>
+        <figure
+          className="relative mx-auto w-full min-w-0 max-w-full overflow-hidden rounded border border-gray-200 bg-white shadow-sm"
+          role="status"
+          aria-busy="true"
+          aria-label="Loading invoice attachment"
+        >
+          <div className="flex aspect-[8.5/11] w-full max-h-[min(75vh,56rem)] min-h-[min(12rem,40dvh)] items-center justify-center bg-gray-50 sm:min-h-[min(16rem,45dvh)]">
+            <div className="mx-auto h-full w-[92%] max-w-full animate-pulse rounded-sm bg-gray-100" aria-hidden />
+          </div>
+        </figure>
       ) : (
         items.map((item, i) => (
           <Fragment key={item ? `${item.url}-${i}` : `placeholder-${i}`}>

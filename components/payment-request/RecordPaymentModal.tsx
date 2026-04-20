@@ -1,7 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import {
   fetchPayments,
@@ -114,6 +114,10 @@ export function RecordPaymentModal({
   const [payMode, setPayMode] = useState<PayMode>("partial");
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
+  const [paymentsFetchedBillId, setPaymentsFetchedBillId] = useState<string | null>(null);
+  const billIdRef = useRef(billId);
+  billIdRef.current = billId;
+  const paymentsLoadGenerationRef = useRef(0);
   const [draftDate, setDraftDate] = useState(todayISO);
   const [draftAmount, setDraftAmount] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -185,6 +189,9 @@ export function RecordPaymentModal({
     [pendingPayments],
   );
 
+  const paymentHistoryReadyForBill = !!(billId && paymentsFetchedBillId === billId);
+  const showPaymentHistoryPlaceholder = loadingPayments || (open && !!billId && !paymentHistoryReadyForBill);
+
   const syncSubmittedIfNoPaymentsLeft = useCallback(
     async (paymentsList: PaymentItem[]): Promise<boolean> => {
       if (!billId) return false;
@@ -200,12 +207,15 @@ export function RecordPaymentModal({
 
   const loadPayments = useCallback(async () => {
     if (!billId) return;
+    const requestBillId = billId;
+    const loadGen = ++paymentsLoadGenerationRef.current;
     setLoadingPayments(true);
     try {
-      const data = await fetchPayments(billId);
+      const data = await fetchPayments(requestBillId);
+      if (requestBillId !== billIdRef.current || loadGen !== paymentsLoadGenerationRef.current) return;
       setPayments(data.payments);
       try {
-        const built = await buildBankSlipDetailsFromPaymentList(billId, data.payments, bankSlipRowForEnrichment);
+        const built = await buildBankSlipDetailsFromPaymentList(requestBillId, data.payments, bankSlipRowForEnrichment);
         setBankSlipFileCount(built.count);
         setBankSlipDetails(built.bankSlipDetails ?? EMPTY_BANK_SLIP_DETAILS);
       } catch {
@@ -215,11 +225,17 @@ export function RecordPaymentModal({
       const rolled = await syncSubmittedIfNoPaymentsLeft(data.payments);
       if (rolled) onPaymentSaved?.();
     } catch {
+      if (requestBillId !== billIdRef.current || loadGen !== paymentsLoadGenerationRef.current) return;
       setPayments([]);
       setBankSlipFileCount(0);
       setBankSlipDetails(EMPTY_BANK_SLIP_DETAILS);
     } finally {
-      setLoadingPayments(false);
+      if (loadGen === paymentsLoadGenerationRef.current) {
+        setLoadingPayments(false);
+        if (requestBillId === billIdRef.current) {
+          setPaymentsFetchedBillId(requestBillId);
+        }
+      }
     }
   }, [billId, bankSlipRowForEnrichment, syncSubmittedIfNoPaymentsLeft, onPaymentSaved]);
 
@@ -232,7 +248,10 @@ export function RecordPaymentModal({
       setFormError(null);
     }
     if (!open) {
+      paymentsLoadGenerationRef.current += 1;
+      setLoadingPayments(false);
       setPayments([]);
+      setPaymentsFetchedBillId(null);
       setPaymentPendingDelete(null);
       setBankSlipPreviewOpen(false);
       setBankSlipFileCount(0);
@@ -467,11 +486,28 @@ export function RecordPaymentModal({
             <div className="h-px flex-1 bg-gray-200" aria-hidden />
           </div>
 
-          {loadingPayments ? (
-            <div className="flex items-center justify-center gap-2 py-6 text-sm text-primary/60">
-              <span className="material-symbols-outlined animate-spin text-secondary text-[20px]">progress_activity</span>
-              Loading payments…
-            </div>
+          {showPaymentHistoryPlaceholder ? (
+            <ul className="flex flex-col gap-2.5" role="status" aria-busy="true" aria-label="Loading payments">
+              {Array.from({ length: 2 }, (_, i) => (
+                <li key={`pay-sk-${i}`} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-3 sm:gap-3 sm:px-4" aria-hidden>
+                  <span
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary/15"
+                    aria-hidden
+                  >
+                    <span className="block h-[20px] w-[20px] animate-pulse rounded-sm bg-secondary/25" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="h-4 max-w-[min(100%,18rem)] animate-pulse rounded-sm bg-gray-200" />
+                  </div>
+                  <span className="inline-block h-5 w-[7.25rem] shrink-0 animate-pulse rounded-sm bg-gray-200 tabular-nums" aria-hidden />
+                  {!readOnly || canDeletePayments ? (
+                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md">
+                      <span className="block h-[22px] w-[22px] animate-pulse rounded bg-gray-200" aria-hidden />
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
           ) : paymentsForHistoryList.length === 0 ? (
             <p className="py-4 text-center text-sm text-primary/50">No payments recorded yet.</p>
           ) : (
@@ -564,9 +600,21 @@ export function RecordPaymentModal({
         {!readOnly ? (
           <div className="shrink-0 border-t border-gray-200 px-4 py-4 sm:px-6 sm:py-5">
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col items-end gap-1">
+              <div
+                className="flex flex-col items-end gap-1"
+                role={showPaymentHistoryPlaceholder ? "status" : undefined}
+                aria-busy={showPaymentHistoryPlaceholder ? true : undefined}
+                aria-label={showPaymentHistoryPlaceholder ? "Loading amount to be paid" : undefined}
+              >
                 <span className="text-sm font-medium text-primary">Amount to be Paid</span>
-                <span className="text-2xl font-bold text-secondary sm:text-3xl">{formatMoney(remaining, currencyLabel)}</span>
+                {showPaymentHistoryPlaceholder ? (
+                  <span
+                    className="inline-block h-6 w-[min(100%,9.5rem)] max-w-full animate-pulse rounded-md bg-gray-200 tabular-nums sm:h-7 sm:w-[10.5rem]"
+                    aria-hidden
+                  />
+                ) : (
+                  <span className="text-2xl font-bold text-secondary sm:text-3xl">{formatMoney(remaining, currencyLabel)}</span>
+                )}
               </div>
               {bankSlipRequiredForPending ? (
                 <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
@@ -574,10 +622,11 @@ export function RecordPaymentModal({
                 </p>
               ) : null}
               {finalizingPending ? (
-                <p className="flex items-center justify-center gap-2 text-sm text-primary/70" role="status">
-                  <span className="material-symbols-outlined animate-spin text-secondary text-[18px]">progress_activity</span>
-                  Updating payments…
-                </p>
+                <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-3" role="status" aria-live="polite">
+                  <span className="sr-only">Updating payments…</span>
+                  <div className="h-3 w-40 animate-pulse rounded bg-gray-200" aria-hidden />
+                  <div className="h-3 w-full max-w-[16rem] animate-pulse rounded bg-gray-100" aria-hidden />
+                </div>
               ) : null}
             </div>
           </div>

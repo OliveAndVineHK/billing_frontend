@@ -67,15 +67,49 @@ function auditToItem(audit: AuditItem, billRef: string): ActivityHistoryItem {
   };
 }
 
+function ActivityHistoryTimelineSkeleton() {
+  return (
+    <div className="min-h-0 max-h-[min(14rem,38dvh)] overflow-hidden pr-1 sm:max-h-[min(17.5rem,45vh)]">
+      <div className="relative pb-0.5">
+        <div className="absolute bottom-3 left-[7px] top-3 w-px bg-[#e0e0e0]" aria-hidden />
+        <ul className="relative flex flex-col gap-3">
+          {Array.from({ length: 3 }, (_, i) => (
+            <li key={`activity-sk-${i}`} className="relative flex gap-3" aria-hidden>
+              <div className="relative z-[1] flex w-4 shrink-0 justify-center pt-[18px]">
+                <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-gray-300 ring-[3px] ring-white" />
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col rounded-lg bg-[#f9f9f9] px-4 py-3.5 sm:px-5 sm:py-4">
+                <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
+                    <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-gray-200" />
+                    <div className="min-w-0 flex-1 pt-0.5">
+                      <div className="h-4 max-w-[min(100%,20rem)] animate-pulse rounded bg-gray-200" />
+                    </div>
+                  </div>
+                  <div className="h-3 w-[7.5rem] shrink-0 animate-pulse rounded bg-gray-100 pl-[3.25rem] sm:pl-0 sm:ml-0" />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 export function ActivityHistoryAccordion({ billId, billRef, refreshSignal = 0 }: ActivityHistoryAccordionProps) {
   const [open, setOpen] = useState(true);
   const [items, setItems] = useState<ActivityHistoryItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => Boolean(billId));
 
   const ref = billRef || `#${billId.slice(0, 8)}`;
 
   useEffect(() => {
-    if (!billId) { setItems([]); return; }
+    if (!billId) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     fetchAuditHistory(billId)
@@ -91,8 +125,26 @@ export function ActivityHistoryAccordion({ billId, billRef, refreshSignal = 0 }:
     return () => { cancelled = true; };
   }, [billId, ref, refreshSignal]);
 
+  /** Same outer shell as `PaymentRequestDetailedInfo` / `PaymentRequestDetailCardSkeleton` for a uniform detail page. */
+  if (loading) {
+    return (
+      <section
+        className="rounded-xl border border-gray-200/90 bg-white p-4 sm:p-5 md:p-6"
+        role="status"
+        aria-busy="true"
+        aria-label="Loading activity history"
+      >
+        <div className="mb-4 flex items-center justify-between gap-3 sm:mb-5">
+          <div className="h-6 w-48 max-w-[75%] animate-pulse rounded-md bg-gray-200" aria-hidden />
+          <div className="h-9 w-9 shrink-0 animate-pulse rounded-md bg-gray-100" aria-hidden />
+        </div>
+        <ActivityHistoryTimelineSkeleton />
+      </section>
+    );
+  }
+
   return (
-    <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
+    <section className="rounded-xl border border-gray-200/90 bg-white">
       <button type="button" className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-left sm:px-5 sm:py-4" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
         <h2 className="text-base font-semibold text-[#5c5c5c] sm:text-lg">Activity History</h2>
         <span className="material-symbols-outlined text-[#5c5c5c]/70" aria-hidden>
@@ -101,9 +153,7 @@ export function ActivityHistoryAccordion({ billId, billRef, refreshSignal = 0 }:
       </button>
       {open ? (
         <div className="px-4 pb-5 pt-3 sm:px-5">
-          {loading ? (
-            <div className="flex items-center justify-center py-6 text-sm text-gray-400">Loading…</div>
-          ) : items.length === 0 ? (
+          {items.length === 0 ? (
             <div className="flex items-center justify-center py-6 text-sm text-gray-400">No activity yet</div>
           ) : (
             <div
