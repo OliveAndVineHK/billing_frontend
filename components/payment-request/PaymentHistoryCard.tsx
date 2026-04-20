@@ -19,7 +19,7 @@ export type PaymentHistoryRow = {
   isOtherBill?: boolean;
 };
 
-type PaymentHistoryCardProps = {
+type PaymentHistorySharedProps = {
   rows?: PaymentHistoryRow[];
   onDeleteRow?: (row: PaymentHistoryRow) => void;
   /** Whether the current user is permitted to delete payments (elevated roles only). */
@@ -35,8 +35,11 @@ const defaultRows: PaymentHistoryRow[] = [
   { id: "6", billId: "demo-6", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", invoiceNo: "MBIDAN-115803031631" },
 ];
 
-export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow, canDeletePayments = false }: PaymentHistoryCardProps) {
-  const [open, setOpen] = useState(true);
+export function PaymentHistoryListPanel({
+  rows = defaultRows,
+  onDeleteRow,
+  canDeletePayments = false,
+}: PaymentHistorySharedProps) {
   const [confirmRow, setConfirmRow] = useState<PaymentHistoryRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -56,51 +59,63 @@ export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow, canDeleteP
   }, [confirmRow, onDeleteRow]);
 
   return (
-    <section id="payment-history" className="rounded-lg border border-gray-200 bg-white shadow-sm scroll-mt-4">
-      <button
-        type="button"
-        className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-left sm:px-5 sm:py-4"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <h2 className="text-base font-semibold text-primary sm:text-lg">Payment History</h2>
-        <span className="material-symbols-outlined text-primary/70" aria-hidden>
-          {open ? "expand_less" : "expand_more"}
-        </span>
-      </button>
-      {open ? (
-        <div className="px-4 pb-4 pt-1 sm:px-5 sm:pb-5">
-          <div className="mb-3 hidden grid-cols-[2rem_minmax(9rem,1fr)_minmax(8rem,10rem)_minmax(13rem,1fr)_2.25rem] gap-2 px-3 text-[11px] font-semibold uppercase tracking-wide text-primary/55 sm:grid sm:gap-4 sm:px-4">
-            <span aria-hidden />
-            <span className="block w-full text-left">Date</span>
-            <span className="block w-full text-left">Amount</span>
-            <span className="block w-full text-left">Invoice No.</span>
-            <span aria-hidden />
-          </div>
-          <div className="min-h-0 max-h-[min(14rem,38dvh)] overflow-y-auto overscroll-y-contain [-ms-overflow-style:auto] sm:max-h-[min(17.5rem,45vh)]" role="region" aria-label="Payment history list">
-            <ul className="flex flex-col gap-2 pb-0.5">
-              {rows.map((row) => {
-                const isDeleteDisabled = !canDeletePayments;
-                return (
-                  <li key={row.id} className="grid grid-cols-1 items-center gap-2 rounded-lg bg-gray-50 px-3 py-3 sm:grid-cols-[2rem_minmax(9rem,1fr)_minmax(8rem,10rem)_minmax(13rem,1fr)_2.25rem] sm:gap-4 sm:px-4">
-                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#54D3DA]/15 text-[#54D3DA]" aria-hidden>
-                      <span className="material-symbols-outlined text-[20px]">history</span>
-                    </span>
-                    <span className="text-sm font-medium text-primary sm:min-w-[7rem]">{row.date}</span>
-                    <span className="block w-full text-sm font-semibold text-primary text-left">{row.amountLabel}</span>
-                    <Link href={row.invoiceHref ?? "#"} className="block w-full min-w-0 truncate text-left text-sm font-medium text-[#54d3da] underline underline-offset-2 hover:text-[#54d3da]">
-                      {row.invoiceNo}
-                    </Link>
-                    <button type="button" className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors sm:justify-self-end ${isDeleteDisabled ? "cursor-not-allowed opacity-50 text-gray-400" : "text-rose-500 hover:bg-rose-100 hover:text-rose-600 disabled:opacity-50"}`} aria-label={isDeleteDisabled ? "You do not have permission to delete payments." : `Delete payment ${row.invoiceNo}`} title={isDeleteDisabled ? "You do not have permission to delete payments." : undefined} disabled={isDeleteDisabled || (deleting && confirmRow?.id === row.id)} onClick={() => { if (isDeleteDisabled || !onDeleteRow) return; setConfirmRow(row); }}>
-                      <span className="material-symbols-outlined text-[22px]">delete</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+    <>
+      <div className="px-4 pb-4 pt-3 sm:px-5 sm:pb-5 sm:pt-4">
+        <div className="mb-4 hidden grid-cols-[2rem_minmax(9rem,1fr)_minmax(8rem,10rem)_minmax(13rem,1fr)_minmax(2.75rem,3rem)] gap-2 px-3 text-[11px] font-semibold uppercase tracking-wide text-primary/55 sm:grid sm:gap-4 sm:px-4">
+          <span aria-hidden />
+          <span className="block w-full text-left">Date</span>
+          <span className="block w-full text-left">Amount</span>
+          <span className="block w-full text-left">Invoice No.</span>
+          <span aria-hidden />
         </div>
-      ) : null}
+        <div
+          className="min-h-0 max-h-[min(14rem,38dvh)] overflow-y-auto overscroll-y-contain [-ms-overflow-style:auto] sm:max-h-[min(17.5rem,45vh)]"
+          role="region"
+          aria-label="Payment history list"
+        >
+          <ul className="flex flex-col gap-2 pb-0.5">
+            {rows.map((row) => {
+              const isDeleteDisabled = !canDeletePayments;
+              return (
+                <li
+                  key={row.id}
+                  className="grid grid-cols-1 items-center gap-2 rounded-lg bg-gray-50 px-3 py-3 sm:grid-cols-[2rem_minmax(9rem,1fr)_minmax(8rem,10rem)_minmax(13rem,1fr)_minmax(2.75rem,3rem)] sm:gap-4 sm:px-4"
+                >
+                  <span
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#54D3DA]/15 text-[#54D3DA]"
+                    aria-hidden
+                  >
+                    <span className="material-symbols-outlined text-[20px]">history</span>
+                  </span>
+                  <span className="text-sm font-medium text-primary sm:min-w-[7rem]">{row.date}</span>
+                  <span className="block w-full text-left text-sm font-semibold text-primary">{row.amountLabel}</span>
+                  <Link
+                    href={row.invoiceHref ?? "#"}
+                    className="block w-full min-w-0 truncate text-left text-sm font-medium text-[#54d3da] underline underline-offset-2 hover:text-[#54d3da]"
+                  >
+                    {row.invoiceNo}
+                  </Link>
+                  <button
+                    type="button"
+                    className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors sm:justify-self-end ${isDeleteDisabled ? "cursor-not-allowed opacity-50 text-gray-400" : "cursor-pointer text-rose-500 hover:bg-rose-100 hover:text-rose-600 disabled:opacity-50"}`}
+                    aria-label={
+                      isDeleteDisabled ? "You do not have permission to delete payments." : `Delete payment ${row.invoiceNo}`
+                    }
+                    title={isDeleteDisabled ? "You do not have permission to delete payments." : undefined}
+                    disabled={isDeleteDisabled || (deleting && confirmRow?.id === row.id)}
+                    onClick={() => {
+                      if (isDeleteDisabled || !onDeleteRow) return;
+                      setConfirmRow(row);
+                    }}
+                  >
+                    <span className="material-symbols-outlined text-[22px]">delete</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
       {onDeleteRow ? (
         <PaymentDeleteConfirmModal
           open={confirmRow != null}
@@ -112,6 +127,29 @@ export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow, canDeleteP
           onConfirm={handleConfirmDelete}
         />
       ) : null}
+    </>
+  );
+}
+
+type PaymentHistoryCardProps = PaymentHistorySharedProps;
+
+export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow, canDeletePayments = false }: PaymentHistoryCardProps) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <section id="payment-history" className="scroll-mt-4 rounded-lg border border-gray-200 bg-white shadow-sm">
+      <button
+        type="button"
+        className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-left sm:px-5 sm:py-4"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <h2 className="text-base font-semibold text-primary sm:text-lg">Payment History</h2>
+        <span className="material-symbols-outlined text-primary/70" aria-hidden>
+          {open ? "expand_less" : "expand_more"}
+        </span>
+      </button>
+      {open ? <PaymentHistoryListPanel rows={rows} onDeleteRow={onDeleteRow} canDeletePayments={canDeletePayments} /> : null}
     </section>
   );
 }
