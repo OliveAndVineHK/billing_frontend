@@ -43,7 +43,7 @@ import { BillDraftSubmitButton } from "./BillDraftSubmitButton";
 import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { InvoiceAttachmentToolbar } from "./InvoiceAttachmentToolbar";
 import { OverpaymentWarningModal } from "./OverpaymentWarningModal";
-import { PaymentHistoryListPanel, type PaymentHistoryRow } from "./PaymentHistoryCard";
+import { PaymentHistoryCard, PaymentHistoryListPanel, type PaymentHistoryRow } from "./PaymentHistoryCard";
 import { RecordPaymentModal } from "./RecordPaymentModal";
 import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
 import { AttachmentDeleteConfirmModal } from "./AttachmentDeleteConfirmModal";
