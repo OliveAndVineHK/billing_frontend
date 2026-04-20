@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import {
+  paymentRequestDetailCancelButtonClass,
+  paymentRequestDetailSaveButtonClass,
+} from "@/components/payment-request/PaymentRequestDetailedInfo";
 import { ApiError, fetchAuthMe, updateProfile, type AuthMeUser } from "@/lib/api";
 import { getAuth } from "@/lib/auth";
 import { useUserRole } from "@/lib/useUserRole";
@@ -26,6 +30,7 @@ function displayName(me: AuthMeUser | null): string {
   return parts.length ? parts.join(" ") : "—";
 }
 
+/** Bill role from JWT, formatted for display (e.g. admin → Admin, super_admin → Super Admin). */
 function formatRoleForDisplay(role: string | null): string {
   if (!role?.trim()) return "—";
   return role
@@ -132,12 +137,7 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
           <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#FFE6B1] text-3xl font-semibold text-[#6B3A12] sm:h-28 sm:w-28 sm:text-[2rem]">
             {loading ? <span className="inline-block h-3 w-3 animate-pulse rounded-full bg-primary/30" aria-hidden /> : abbr}
           </div>
-          <button
-            type="button"
-            disabled
-            aria-label="Edit profile (not available yet)"
-            className="absolute -bottom-0.5 -right-0.5 flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full border-0 bg-secondary text-white shadow-md ring-2 ring-white disabled:pointer-events-none"
-          >
+          <button type="button" disabled aria-label="Edit profile (not available yet)" className="absolute -bottom-0.5 -right-0.5 flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full border-0 bg-secondary text-white shadow-md ring-2 ring-white disabled:pointer-events-none">
             <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
               mode_edit
             </span>
@@ -146,20 +146,23 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
         <h1 className="mt-5 text-xl font-bold text-black sm:text-2xl">{loading ? "…" : displayName(profile)}</h1>
       </div>
 
-      <section
-        className="mt-4 w-full rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm sm:p-5"
-        aria-label="Entity and role"
-      >
-        <div className="flex flex-col gap-5">
-          <div className="min-w-0 w-full">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/60">Entity</p>
-            <p className="mt-1 break-words text-base font-semibold text-black">{entityDisplay}</p>
-          </div>
-          <div className="border-t border-gray-100 pt-5">
-            <div className="min-w-0 w-full">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/60">Your role</p>
-              <p className="mt-1 text-base font-semibold text-black">{roleDisplay}</p>
+      <section className="mt-4 w-full rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm sm:p-5" aria-label="Entity and role">
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-start gap-2">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-[#54D3DA]" aria-hidden>
+              <span className="material-symbols-outlined text-[22px] leading-none [font-variation-settings:'FILL'_1,'wght'_400,'GRAD'_0,'opsz'_24]">
+                corporate_fare
+              </span>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/60">Entity</p>
+              <p className="mt-1 break-words text-base font-semibold text-black">{entityDisplay}</p>
             </div>
+          </div>
+          <div className="min-w-0 shrink-0 self-center sm:pl-1">
+            <span className="inline-flex items-center rounded-full bg-[#54D3DA]/10 px-2.5 py-1 text-xs font-semibold text-secondary sm:text-sm">
+              {roleDisplay}
+            </span>
           </div>
         </div>
       </section>
@@ -176,7 +179,7 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
         </div>
       ) : null}
 
-      <div className="mt-8 flex flex-col gap-4">
+      <div className="mt-4 flex flex-col gap-3">
         <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-3">
             <div className="flex w-full items-center gap-3">
@@ -202,32 +205,16 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
                 </span>
               </span>
               {!isEditing ? (
-                <button
-                  type="button"
-                  onClick={handleEditClick}
-                  disabled={loading}
-                  className="shrink-0 cursor-pointer select-none text-sm font-semibold text-secondary transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-                  title="Edit name"
-                >
+                <button type="button" onClick={handleEditClick} disabled={loading} className="shrink-0 cursor-pointer select-none text-sm font-semibold text-secondary transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50" title="Edit name">
                   Edit
                 </button>
               ) : (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCancelEdit}
-                    disabled={saving}
-                    className="shrink-0 cursor-pointer select-none text-sm font-semibold text-gray-600 transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={handleCancelEdit} disabled={saving} className={paymentRequestDetailCancelButtonClass}>
                     Cancel
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveProfile}
-                    disabled={saving}
-                    className="shrink-0 cursor-pointer select-none text-sm font-semibold text-secondary transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {saving ? "Saving..." : "Save"}
+                  <button type="button" onClick={handleSaveProfile} disabled={saving} className={paymentRequestDetailSaveButtonClass}>
+                    {saving ? "Saving…" : "Save"}
                   </button>
                 </div>
               )}
@@ -249,29 +236,13 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
                   <label htmlFor="firstName" className="text-[11px] font-semibold uppercase tracking-wide text-primary/55">
                     First name
                   </label>
-                  <input
-                    id="firstName"
-                    type="text"
-                    value={editFirstName}
-                    onChange={(e) => setEditFirstName(e.target.value)}
-                    disabled={saving}
-                    className="mt-0.5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/20 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-60"
-                    placeholder="First name"
-                  />
+                  <input id="firstName" type="text" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} disabled={saving} className="mt-0.5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/20 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-60" placeholder="First name" />
                 </div>
                 <div>
                   <label htmlFor="lastName" className="text-[11px] font-semibold uppercase tracking-wide text-primary/55">
                     Last name
                   </label>
-                  <input
-                    id="lastName"
-                    type="text"
-                    value={editLastName}
-                    onChange={(e) => setEditLastName(e.target.value)}
-                    disabled={saving}
-                    className="mt-0.5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/20 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-60"
-                    placeholder="Last name"
-                  />
+                  <input id="lastName" type="text" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} disabled={saving} className="mt-0.5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-black focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/20 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-60" placeholder="Last name" />
                 </div>
               </div>
             )}
@@ -279,12 +250,7 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
         </section>
 
         <p className="text-center text-sm text-primary/80">
-          <a
-            href="https://identity.xero.com/account"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="cursor-pointer font-semibold text-secondary underline underline-offset-2 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
-          >
+          <a href="https://identity.xero.com/account" target="_blank" rel="noopener noreferrer" className="cursor-pointer font-semibold text-secondary underline underline-offset-2 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
             Reset Password
           </a>
         </p>
@@ -297,22 +263,13 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
       ) : null}
 
       <div className="mt-8 flex flex-col gap-3">
-        <button
-          type="button"
-          className="box-border flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-[#FF6B6B] bg-white text-sm font-semibold text-[#FF6B6B] transition-colors hover:bg-[#FF6B6B]/10"
-          onClick={() => onLogOut()}
-        >
+        <button type="button" className="box-border flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-[#FF6B6B] bg-white text-sm font-semibold text-[#FF6B6B] transition-colors hover:bg-[#FF6B6B]/10" onClick={() => onLogOut()}>
           <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
             logout
           </span>
           Log out
         </button>
-        <button
-          type="button"
-          onClick={handleUpdateProfile}
-          disabled={loading}
-          className="box-border flex h-12 w-full cursor-pointer items-center justify-center rounded-lg border border-transparent bg-secondary text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
+        <button type="button" onClick={handleUpdateProfile} disabled={loading} className="box-border flex h-12 w-full cursor-pointer items-center justify-center rounded-lg border border-transparent bg-secondary text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
           Update profile
         </button>
       </div>
