@@ -743,6 +743,7 @@ export function PaymentRequestModal({
                 error={!!fieldErrors.accountCode}
                 triggerClassName="!rounded-2xl"
                 plainChevron
+                searchable
               />
               {fieldErrors.accountCode ? (
                 <p className="mt-1 text-xs text-red-600" role="alert">
