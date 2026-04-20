@@ -77,6 +77,72 @@ function validateDetailRequiredForSubmit(d: PaymentRequestDetailedInfoData): Det
   return Object.keys(errors).length ? errors : null;
 }
 
+/** Mirrors `PaymentRequestDetailedInfo` layout (labels + Bill No → date grid → amount row → description → contact + action → account). */
+function PaymentRequestDetailCardSkeleton() {
+  return (
+    <section
+      className="rounded-xl border border-gray-200/90 bg-white p-4 sm:p-5 md:p-6"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading detailed information"
+    >
+      <div className="mb-4 sm:mb-5">
+        <div className="h-6 w-48 max-w-[85%] animate-pulse rounded-md bg-gray-200" aria-hidden />
+      </div>
+
+      <div className="flex flex-col gap-5">
+        <div>
+          <div className="mb-1.5 h-3 w-14 animate-pulse rounded bg-gray-200" aria-hidden />
+          <div className="h-11 min-h-[44px] w-full animate-pulse rounded-2xl bg-gray-100" aria-hidden />
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
+          <div>
+            <div className="mb-1.5 h-3 w-24 animate-pulse rounded bg-gray-200" aria-hidden />
+            <div className="h-11 min-h-[44px] w-full animate-pulse rounded-2xl bg-gray-100" aria-hidden />
+          </div>
+          <div>
+            <div className="mb-1.5 h-3 w-20 animate-pulse rounded bg-gray-200" aria-hidden />
+            <div className="h-11 min-h-[44px] w-full animate-pulse rounded-2xl bg-gray-100" aria-hidden />
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-1.5 h-3 w-16 animate-pulse rounded bg-gray-200" aria-hidden />
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-0">
+            <div
+              className="h-11 min-h-[44px] w-full shrink-0 animate-pulse rounded-2xl bg-gray-100 sm:w-24 sm:rounded-r-none"
+              aria-hidden
+            />
+            <div
+              className="h-11 min-h-[44px] w-full flex-1 animate-pulse rounded-2xl bg-gray-100 sm:rounded-l-none sm:rounded-r-2xl"
+              aria-hidden
+            />
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-1.5 h-3 w-24 animate-pulse rounded bg-gray-200" aria-hidden />
+          <div className="h-11 min-h-[44px] w-full animate-pulse rounded-2xl bg-gray-100" aria-hidden />
+        </div>
+
+        <div>
+          <div className="mb-1.5 h-3 w-16 animate-pulse rounded bg-gray-200" aria-hidden />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-11 min-h-[44px] min-w-0 flex-1 animate-pulse rounded-lg bg-gray-100" aria-hidden />
+            <div className="h-9 w-[8.5rem] shrink-0 animate-pulse rounded-lg bg-gray-200 sm:h-10 sm:w-[9.75rem]" aria-hidden />
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-1.5 h-3 w-28 animate-pulse rounded bg-gray-200" aria-hidden />
+          <div className="h-11 min-h-[44px] w-full animate-pulse rounded-2xl bg-gray-100" aria-hidden />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function serverBillAttachmentsFingerprint(rows: BillAttachment[]): string {
   return [...rows]
     .filter((ba) => ba.attachment?.download_url)
@@ -1216,14 +1282,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         </div>
         <div className="flex min-w-0 max-lg:order-4 flex-col gap-4 sm:gap-5 lg:order-none lg:col-start-2 lg:row-start-2">
           {loadingBill ? (
-            <div className="animate-pulse rounded-xl border border-gray-200/90 bg-white p-6">
-              <div className="mb-4 h-6 w-48 rounded bg-gray-100" />
-              <div className="space-y-4">
-                <div className="h-4 w-full rounded bg-gray-100" />
-                <div className="h-4 w-3/4 rounded bg-gray-100" />
-                <div className="h-4 w-full rounded bg-gray-100" />
-              </div>
-            </div>
+            <PaymentRequestDetailCardSkeleton />
           ) : loadError ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">
               {loadError}
