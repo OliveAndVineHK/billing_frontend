@@ -77,6 +77,14 @@ function validateDetailRequiredForSubmit(d: PaymentRequestDetailedInfoData): Det
   return Object.keys(errors).length ? errors : null;
 }
 
+function serverBillAttachmentsFingerprint(rows: BillAttachment[]): string {
+  return [...rows]
+    .filter((ba) => ba.attachment?.download_url)
+    .map((ba) => `${ba.id}:${ba.attachment.download_url}`)
+    .sort()
+    .join("\0");
+}
+
 function computePaymentHistoryPanelStyle(anchorRoot: HTMLDivElement | null): CSSProperties | null {
   if (typeof window === "undefined" || !anchorRoot) return null;
   const btn = anchorRoot.querySelector("button");
@@ -279,6 +287,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const [deleteAttachmentConfirmOpen, setDeleteAttachmentConfirmOpen] = useState(false);
   const [minimumAttachmentModalOpen, setMinimumAttachmentModalOpen] = useState(false);
   const [deleteAttachmentPending, setDeleteAttachmentPending] = useState(false);
+  const lastSyncedServerAttachmentsKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     attachmentsRef.current = attachments;
@@ -289,9 +298,18 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       setBill(null);
       setLoadingBill(false);
       setLoadError(null);
+      attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+      attachmentUrlsRef.current = [];
+      setAttachments([]);
+      setAttachmentsReady(true);
       return;
     }
     let cancelled = false;
+    attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+    attachmentUrlsRef.current = [];
+    setAttachments([]);
+    setAttachmentsReady(false);
+    lastSyncedServerAttachmentsKeyRef.current = null;
     setLoadingBill(true);
     setLoadError(null);
     fetchBill(requestId)
@@ -302,6 +320,10 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         if (!cancelled) {
           setBill(null);
           setLoadError(e instanceof ApiError ? e.message : "Failed to load bill.");
+          attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+          attachmentUrlsRef.current = [];
+          setAttachments([]);
+          setAttachmentsReady(true);
         }
       })
       .finally(() => {
@@ -315,25 +337,6 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   useEffect(() => {
     setDeleteBillConfirmOpen(false);
   }, [requestId]);
-
-  // Auto-refresh: poll every 30 s + re-fetch when the tab becomes visible again.
-  // Only active while the bill is in a non-terminal status and the user is not
-  // currently editing (to avoid silently discarding in-progress changes).
-  useEffect(() => {
-    const TERMINAL = new Set(["paid", "voided", "cancelled"]);
-    if (!requestId || !bill || TERMINAL.has(bill.status ?? "") || isEditing) return;
-
-    const refresh = () => { void reloadBill(); };
-
-    const intervalId = window.setInterval(refresh, 30_000);
-    const onVisibility = () => { if (document.visibilityState === "visible") refresh(); };
-    document.addEventListener("visibilitychange", onVisibility);
-
-    return () => {
-      window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [requestId, bill?.status, isEditing, reloadBill]);
 
   useEffect(() => {
     if (typeof window === "undefined" || loadingBill || loadError) return;
@@ -373,6 +376,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       setDeleteAttachmentConfirmOpen(false);
     } else {
       setPaymentHistoryMenuOpen(false);
+      lastSyncedServerAttachmentsKeyRef.current = null;
     }
   }, [isEditing]);
 
@@ -387,16 +391,13 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         if (!abandoned?.()) setAttachmentsReady(true);
         return;
       }
-      if (!abandoned?.()) setAttachmentsReady(false);
       try {
         const blobs = await loadAttachmentBlobs(requestId);
         if (abandoned?.() || epochAtStart !== attachmentHydrationEpochRef.current) return;
         attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
         attachmentUrlsRef.current = [];
 
-        // IndexedDB is a legacy local-blob cache. If blobs exist, use them
-        // (backward-compat). Afterwards a separate effect will replace them
-        // with S3 presigned URLs once the bill loads (see below).
+        /** Local blob cache fallback (e.g. after save when server list is still empty). */
         const next: InvoiceAttachmentPreviewItem[] = blobs.map((b) => {
           const url = URL.createObjectURL(b.blob);
           attachmentUrlsRef.current.push(url);
@@ -448,23 +449,23 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       if (a.pendingUploadKey && a.url.startsWith("blob:")) URL.revokeObjectURL(a.url);
     });
     attachmentHydrationEpochRef.current += 1;
+    lastSyncedServerAttachmentsKeyRef.current = null;
   }, [requestId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void loadAttachmentsFromIndexedDb({ abandoned: () => cancelled });
-    return () => {
-      cancelled = true;
-      attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
-      attachmentUrlsRef.current = [];
-    };
-  }, [requestId, loadAttachmentsFromIndexedDb]);
 
   useEffect(() => {
     if (!bill) return;
     const serverAttachments = bill.attachments ?? [];
 
     if (!isEditing) {
+      const fp = serverBillAttachmentsFingerprint(serverAttachments);
+      if (
+        lastSyncedServerAttachmentsKeyRef.current !== null &&
+        fp === lastSyncedServerAttachmentsKeyRef.current
+      ) {
+        setAttachmentsReady(true);
+        return;
+      }
+      lastSyncedServerAttachmentsKeyRef.current = fp;
       attachmentHydrationEpochRef.current += 1;
       attachmentUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
       attachmentUrlsRef.current = [];
@@ -1206,7 +1207,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         <div className="flex h-full min-h-0 min-w-0 max-lg:order-3 flex-col lg:order-none lg:col-start-1 lg:row-start-2">
           <InvoiceAttachmentPreview
             attachments={attachments}
-            isLoadingAttachments={!attachmentsReady}
+            isLoadingAttachments={!loadError && (loadingBill || !attachmentsReady)}
             editMode={isEditing}
             selectedIndices={selectedAttachmentIndices}
             onSelectedIndicesChange={setSelectedAttachmentIndices}
