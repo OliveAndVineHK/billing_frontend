@@ -456,7 +456,7 @@ function skeletonDesktopCellInner(title: PaymentRequestColumnTitle) {
   }
 }
 
-function getBankSlipDetailsForRow(row: PaymentRequestRow): BankSlipDetails {
+export function getBankSlipDetailsForRow(row: PaymentRequestRow): BankSlipDetails {
   if (row.bankSlipDetails) return row.bankSlipDetails;
   const count = Math.max(0, row.bankslipFileCount ?? 0);
   const files = Array.from({ length: count }, (_, i) => ({

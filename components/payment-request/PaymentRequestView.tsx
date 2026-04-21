@@ -2,8 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BankSlipDetailsModal } from "./BankSlipDetailsModal";
 import { PaymentRequestEasyView } from "./PaymentRequestEasyView";
-import { PaymentRequestTable, type PaymentRequestRow, type PaymentRequestTableHandle } from "./PaymentRequestTable";
+import {
+  getBankSlipDetailsForRow,
+  PaymentRequestTable,
+  type PaymentRequestRow,
+  type PaymentRequestTableHandle,
+} from "./PaymentRequestTable";
 import { PaymentRequestToolbar, type PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { BulkDeleteConfirmModal } from "./BulkDeleteConfirmModal";
 import { RecordPaymentModal } from "./RecordPaymentModal";
@@ -107,7 +113,22 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
   const tableRef = useRef<PaymentRequestTableHandle>(null);
+  const [easyViewBankSlipRowId, setEasyViewBankSlipRowId] = useState<string | null>(null);
   const bulkActionsEnabled = selectedBillIds.length >= 2;
+
+  const easyViewBankSlipSourceRow = useMemo(() => {
+    if (!easyViewBankSlipRowId) return undefined;
+    return bills.find((x) => x.id === easyViewBankSlipRowId);
+  }, [easyViewBankSlipRowId, bills]);
+
+  const easyViewBankSlipPayload = useMemo(() => {
+    if (!easyViewBankSlipSourceRow) return null;
+    return getBankSlipDetailsForRow(easyViewBankSlipSourceRow);
+  }, [easyViewBankSlipSourceRow]);
+
+  const easyViewBankSlipReadOnly =
+    easyViewBankSlipSourceRow != null &&
+    (easyViewBankSlipSourceRow.status === "Voided" || easyViewBankSlipSourceRow.status === "Draft");
 
   const selectionContainsPaid = useMemo(() => {
     const selectedSet = new Set(selectedBillIds);
@@ -272,6 +293,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
                 activeStatus={statusFilter}
                 onRowClick={(rowId) => router.push(`/payment-request/${rowId}`)}
                 onRecordPayment={(rowId, readOnly) => setRecordPaymentTarget({ billId: rowId, readOnly: readOnly ?? false })}
+                onOpenBankSlipUpload={(rowId) => setEasyViewBankSlipRowId(rowId)}
                 isElevated={isElevated}
               />
             </div>
@@ -341,6 +363,24 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
         }
         onPaymentSaved={loadBills}
       />
+      {easyViewBankSlipRowId != null && easyViewBankSlipPayload ? (
+        <BankSlipDetailsModal
+          open
+          onClose={() => setEasyViewBankSlipRowId(null)}
+          details={easyViewBankSlipPayload}
+          allowRemoveFiles={!easyViewBankSlipReadOnly}
+          onBankSlipFileDeleted={loadBills}
+          inlineUploadBillContext={
+            !easyViewBankSlipReadOnly && easyViewBankSlipRowId
+              ? {
+                  billId: easyViewBankSlipRowId,
+                  currencyCode: easyViewBankSlipSourceRow?.currencyCode ?? "HKD",
+                }
+              : undefined
+          }
+          onInlineUploadSuccess={loadBills}
+        />
+      ) : null}
     </>
   );
 }
