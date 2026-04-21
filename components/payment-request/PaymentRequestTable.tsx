@@ -8,6 +8,7 @@ import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
 import { useUserRole } from "@/lib/useUserRole";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { recordPaymentButtonClass } from "./paymentRequestButtonClasses";
+import { compareNullableNumber, dateSortValue } from "@/lib/paymentRequestDateSort";
 
 const COLUMN_TITLES = [
   "Contact / Description",
@@ -85,65 +86,11 @@ function sortColumnDescription(key: SortKey): string {
   }
 }
 
-const SHORT_MONTH_TO_INDEX: Record<string, number> = {
-  jan: 0,
-  feb: 1,
-  mar: 2,
-  apr: 3,
-  may: 4,
-  jun: 5,
-  jul: 6,
-  aug: 7,
-  sep: 8,
-  oct: 9,
-  nov: 10,
-  dec: 11,
-};
-
-function dateSortValue(s: string): number | null {
-  const t = s.trim();
-  if (!t || t === "-" || t === "—") return null;
-  const parsed = Date.parse(t);
-  if (!Number.isNaN(parsed)) return parsed;
-  const slash = /^(\d{1,2})\/([A-Za-z]{3})\/(\d{4})$/.exec(t);
-  if (slash) {
-    const day = Number.parseInt(slash[1], 10);
-    const year = Number.parseInt(slash[3], 10);
-    const monKey = slash[2].slice(0, 3).toLowerCase();
-    const month = SHORT_MONTH_TO_INDEX[monKey];
-    if (Number.isFinite(day) && Number.isFinite(year) && month !== undefined) {
-      const utc = Date.UTC(year, month, day);
-      return Number.isNaN(utc) ? null : utc;
-    }
-  }
-  const m = /^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/.exec(t);
-  if (m) {
-    const day = Number.parseInt(m[1], 10);
-    const year = Number.parseInt(m[3], 10);
-    const monKey = m[2].slice(0, 3).toLowerCase();
-    const month = SHORT_MONTH_TO_INDEX[monKey];
-    if (Number.isFinite(day) && Number.isFinite(year) && month !== undefined) {
-      const utc = Date.UTC(year, month, day);
-      return Number.isNaN(utc) ? null : utc;
-    }
-  }
-  return null;
-}
-
 function unpaidSortValue(s: string): number | null {
   const t = s.trim();
   if (!t) return null;
   const n = Number.parseFloat(t.replace(/[^0-9.-]+/g, ""));
   return Number.isFinite(n) ? n : null;
-}
-
-function compareNullableNumber(a: number | null, b: number | null, dir: 1 | -1): number {
-  if (a == null && b == null) return 0;
-  if (a == null) return 1;
-  if (b == null) return -1;
-  if (a < b) return -dir;
-  if (a > b) return dir;
-  return 0;
 }
 
 const STATUS_TABLE_ORDER = ["Payment Requested", "Returned", "Paid", "Partially paid", "Draft", "Voided"] as const;
@@ -317,7 +264,11 @@ const dataCellBase = "border-b border-gray-100 px-4 py-3 text-sm text-primary sm
 const contactCellClass = `${dataCellBase} align-middle`;
 const invoiceDateCellClass = `${dataCellBase} align-middle`;
 const singleLineDateCellClass = `${dataCellBase} align-middle whitespace-nowrap tabular-nums min-w-[9rem]`;
-const singleLineStatusCellClass = `${dataCellBase} align-middle whitespace-nowrap min-w-[10rem]`;
+/** Compact on small screens; from `sm:` matches Record Payment height + Payment Requested min width. */
+const STATUS_TAG_UNIFORM =
+  "max-w-full items-center px-2.5 py-1 sm:box-border sm:min-w-[11rem] sm:h-[42px] sm:min-h-[42px] sm:justify-center sm:px-3 sm:py-0";
+
+const singleLineStatusCellClass = `${dataCellBase} align-middle whitespace-nowrap min-w-0 sm:min-w-[11rem]`;
 const unpaidAmountCellClass = `${dataCellBase} align-middle tabular-nums min-w-[13rem]`;
 
 const actionBodyCellBg = "bg-secondary/8";
@@ -326,22 +277,23 @@ const TABLE_SKELETON_ROW_COUNT = 6;
 const MOBILE_SKELETON_CARD_COUNT = 6;
 
 const statusTagClass =
-  "inline-flex items-center rounded-lg bg-[#EDEDED] px-2.5 py-1 text-xs font-medium text-[#C0C0C0] sm:text-sm";
+  `inline-flex rounded-lg bg-[#EDEDED] text-xs font-medium text-[#C0C0C0] sm:text-sm ${STATUS_TAG_UNIFORM}`;
 
+/** Paid: #656565 text, border-primary/25. Payment Requested: secondary text + tinted fill, no border. */
 const statusTagPaidClass =
-  "inline-flex items-center rounded-lg bg-secondary/10 px-2.5 py-1 text-xs font-semibold text-secondary sm:text-sm";
+  `inline-flex rounded-lg border border-primary/25 bg-transparent text-xs font-semibold text-[#656565] sm:text-sm ${STATUS_TAG_UNIFORM}`;
 
 const statusTagPartiallyPaidClass =
-  "inline-flex items-center rounded-lg bg-[#70ebba]/10 px-2.5 py-1 text-xs font-semibold text-[#70ebba] sm:text-sm";
+  `inline-flex rounded-lg bg-[#70ebba]/10 text-xs font-semibold text-[#70ebba] sm:text-sm ${STATUS_TAG_UNIFORM}`;
 
 const statusTagPaymentRequestedClass =
-  "inline-flex items-center rounded-lg bg-[#FF6B6B]/10 px-2.5 py-1 text-xs font-semibold text-[#FF6B6B] sm:text-sm";
+  `inline-flex rounded-lg bg-secondary/10 text-xs font-semibold text-secondary sm:text-sm ${STATUS_TAG_UNIFORM}`;
 
 const statusTagReturnedClass =
-  "inline-flex items-center rounded-lg bg-[#EA9713]/10 px-2.5 py-1 text-xs font-semibold text-[#EA9713] sm:text-sm";
+  `inline-flex rounded-lg bg-[#EA9713]/10 text-xs font-semibold text-[#EA9713] sm:text-sm ${STATUS_TAG_UNIFORM}`;
 
 const statusTagVoidedClass =
-  "inline-flex items-center rounded-lg bg-[#ADB3BD] px-2.5 py-1 text-xs font-semibold text-white sm:text-sm";
+  `inline-flex rounded-lg text-xs font-semibold text-[#FF6B6B] sm:text-sm ${STATUS_TAG_UNIFORM}`;
 
 const viewPaymentsButtonClass =
   "box-border inline-flex h-10 min-h-10 w-max max-w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-0 bg-secondary/15 px-3 text-xs font-medium text-secondary transition-colors hover:bg-secondary/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:bg-[#F5F5F5] disabled:text-primary/40 disabled:hover:bg-[#F5F5F5] sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm";
@@ -356,10 +308,10 @@ const rowMenuButtonClass =
   "box-border inline-flex h-9 min-h-9 w-9 min-w-9 cursor-pointer items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:text-primary/35 disabled:hover:bg-transparent sm:h-10 sm:min-h-10 sm:w-10 sm:min-w-10";
 
 function unpaidAmountTextClass(status: string): string {
-  if (status === "Paid") return "text-secondary";
+  if (status === "Paid") return "text-[#656565]";
+  if (status === "Payment Requested") return "text-secondary";
   if (status === "Partially paid") return "text-[#70ebba]";
-  if (status === "Payment Requested") return "text-[#FF6B6B]";
-  if (status === "Voided") return "text-[#656565]";
+  if (status === "Voided") return "text-[#FF6B6B]";
   if (status === "Draft") return "text-[#656565]";
   if (status === "Returned") return "text-[#EA9713]";
   return "text-[#C0C0C0]";
@@ -484,7 +436,9 @@ function skeletonDesktopCellInner(title: PaymentRequestColumnTitle) {
     case "Submitted Date":
       return <div className="h-4 w-[5.75rem] animate-pulse rounded bg-gray-200" />;
     case "Status":
-      return <div className="h-7 w-[7rem] animate-pulse rounded-lg bg-gray-200" />;
+      return (
+        <div className="h-7 w-[7rem] animate-pulse rounded-lg bg-gray-200 sm:h-[42px] sm:min-w-[11rem] sm:w-[11rem]" />
+      );
     case "Unpaid Amount":
       return (
         <div className="space-y-1.5">
@@ -502,7 +456,7 @@ function skeletonDesktopCellInner(title: PaymentRequestColumnTitle) {
   }
 }
 
-function getBankSlipDetailsForRow(row: PaymentRequestRow): BankSlipDetails {
+export function getBankSlipDetailsForRow(row: PaymentRequestRow): BankSlipDetails {
   if (row.bankSlipDetails) return row.bankSlipDetails;
   const count = Math.max(0, row.bankslipFileCount ?? 0);
   const files = Array.from({ length: count }, (_, i) => ({
@@ -793,7 +747,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                       </div>
                     </div>
                     <div className="flex min-h-10 items-center gap-2 pt-1">
-                      <div className="h-10 w-[min(100%,11rem)] animate-pulse rounded-lg bg-gray-200" />
+                      <div className="h-7 w-20 max-w-[50%] animate-pulse rounded-lg bg-gray-200 sm:h-[42px] sm:min-w-[11rem] sm:w-[min(100%,11rem)] sm:max-w-none" />
                       <div className="ml-auto h-10 w-24 animate-pulse rounded-lg bg-gray-200" />
                     </div>
                   </div>
@@ -823,7 +777,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                     : isReturned
                       ? statusTagReturnedClass
                       : statusTagClass;
-            const articleClassName = `rounded-xl border border-gray-200 p-4 shadow-sm transition-colors ${isVoided ? "bg-[#ADB3BD]/10" : isPaid ? "bg-[#54D3DA]/10" : isPartiallyPaid ? "bg-[#70ebba]/10" : isPaymentRequested ? "bg-[#FF6B6B]/10" : isReturned ? "bg-[#EA9713]/10" : "bg-[#F5F5F5]"} ${isVoided ? "cursor-pointer opacity-90 active:bg-[#ADB3BD]/20" : isPaid ? "cursor-pointer active:bg-[#54D3DA]/20" : isPartiallyPaid ? "cursor-pointer active:bg-[#70ebba]/20" : isPaymentRequested ? "cursor-pointer active:bg-[#FF6B6B]/20" : isReturned ? "cursor-pointer active:bg-[#EA9713]/20" : "cursor-pointer active:bg-gray-200/60"}`;
+            const articleClassName = `rounded-xl border border-gray-200 p-4 shadow-sm transition-colors ${isVoided ? "bg-[#F5F5F5]" : isPaid ? "bg-[#F5F5F5]" : isPaymentRequested ? "bg-secondary/10" : isPartiallyPaid ? "bg-[#70ebba]/10" : isReturned ? "bg-[#EA9713]/10" : "bg-[#F5F5F5]"} ${isVoided ? "cursor-pointer active:bg-gray-200/60" : isPaid ? "cursor-pointer active:bg-gray-200/60" : isPaymentRequested ? "cursor-pointer active:bg-secondary/20" : isPartiallyPaid ? "cursor-pointer active:bg-[#70ebba]/20" : isReturned ? "cursor-pointer active:bg-[#EA9713]/20" : "cursor-pointer active:bg-gray-200/60"}`;
             return (
               <article key={row.id} role="listitem" className={articleClassName} onClick={() => { onRowClick?.(row.id); }}>
                 <div className="flex gap-3">
@@ -936,7 +890,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                   if (selectorKey && !columnVisibility[selectorKey]) return null;
                   const sortKeyForCol = SORTABLE_TITLE[title];
                   const sortActive = sortKeyForCol != null && sort.key === sortKeyForCol;
-                  const thBase = `border-b border-gray-200 px-4 py-3 text-left text-xs sm:px-5 sm:py-3.5 sm:text-sm ${isActionColumnTitle(title) ? "bg-secondary text-white" : "bg-[#9CA3AF] text-white"} ${title === "Contact / Description" ? "min-w-[14rem]" : title === "Payment" || title === "Bankslip" ? "min-w-[11rem] whitespace-nowrap" : title === "Invoice Date" || title === "Paid Date" ? "min-w-[9rem] whitespace-nowrap" : title === "Status" ? "min-w-[10rem] whitespace-nowrap" : title === "Unpaid Amount" ? "min-w-[13rem] whitespace-nowrap" : "min-w-[7rem] whitespace-nowrap"}`;
+                  const thBase = `border-b border-gray-200 px-4 py-3 text-left text-xs sm:px-5 sm:py-3.5 sm:text-sm ${isActionColumnTitle(title) ? "bg-secondary text-white" : "bg-[#9CA3AF] text-white"} ${title === "Contact / Description" ? "min-w-[14rem]" : title === "Payment" || title === "Bankslip" ? "min-w-[11rem] whitespace-nowrap" : title === "Invoice Date" || title === "Paid Date" ? "min-w-[9rem] whitespace-nowrap" : title === "Status" ? "min-w-0 whitespace-nowrap sm:min-w-[11rem]" : title === "Unpaid Amount" ? "min-w-[13rem] whitespace-nowrap" : "min-w-[7rem] whitespace-nowrap"}`;
                   const hoverSort = title === "Paid Date" ? "hover:bg-white/15 focus-visible:outline-white/60" : "hover:bg-black/10 focus-visible:outline-white/60";
                   return (
                     <th key={title} scope="col" aria-sort={sortActive ? (sort.dir === "asc" ? "ascending" : "descending") : undefined} className={thBase}>

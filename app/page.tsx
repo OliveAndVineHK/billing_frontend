@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Header } from "@/components/layout";
+import { useCallback, useEffect, useState } from "react";
+import { EasyViewToggle, Header } from "@/components/layout";
 import { PaymentRequestView } from "@/components/payment-request";
 import { getAuth, clearAuth, type AuthInfo } from "@/lib/auth";
 import { fetchXeroStatus, fetchMe } from "@/lib/api";
@@ -9,9 +9,37 @@ import { fetchXeroStatus, fetchMe } from "@/lib/api";
 const MODULE1_URL =
   process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
 
+const EASY_VIEW_STORAGE_KEY = "payment-request-easy-view";
+
+function readStoredEasyView(): boolean | null {
+  try {
+    const raw = localStorage.getItem(EASY_VIEW_STORAGE_KEY);
+    if (raw === "0" || raw === "false") return false;
+    if (raw === "1" || raw === "true") return true;
+  } catch {
+    /* private mode / unavailable */
+  }
+  return null;
+}
+
 export default function Home() {
   const [auth, setAuthState] = useState<AuthInfo | null>(null);
   const [xeroConnected, setXeroConnected] = useState<boolean>(false);
+  const [easyView, setEasyViewState] = useState(true);
+
+  useEffect(() => {
+    const stored = readStoredEasyView();
+    if (stored !== null) setEasyViewState(stored);
+  }, []);
+
+  const setEasyView = useCallback((next: boolean) => {
+    setEasyViewState(next);
+    try {
+      localStorage.setItem(EASY_VIEW_STORAGE_KEY, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     const a = getAuth();
@@ -43,10 +71,15 @@ export default function Home() {
         showLogo={false}
         companyName={auth?.entityName || "Loading…"}
         companyAbbreviation={entityAbbr}
+        titleActions={
+          <div className="hidden shrink-0 items-center lg:flex">
+            <EasyViewToggle enabled={easyView} onChange={setEasyView} />
+          </div>
+        }
         onLogout={handleLogout}
         xeroConnected={xeroConnected}
       />
-      <PaymentRequestView />
+      <PaymentRequestView easyView={easyView} />
     </div>
   );
 }

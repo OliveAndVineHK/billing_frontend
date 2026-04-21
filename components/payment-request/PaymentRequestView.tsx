@@ -1,8 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { PaymentRequestTable, type PaymentRequestRow, type PaymentRequestTableHandle } from "./PaymentRequestTable";
+import { BankSlipDetailsModal } from "./BankSlipDetailsModal";
+import { PaymentRequestEasyView } from "./PaymentRequestEasyView";
+import {
+  getBankSlipDetailsForRow,
+  PaymentRequestTable,
+  type PaymentRequestRow,
+  type PaymentRequestTableHandle,
+} from "./PaymentRequestTable";
 import { PaymentRequestToolbar, type PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { BulkDeleteConfirmModal } from "./BulkDeleteConfirmModal";
 import { RecordPaymentModal } from "./RecordPaymentModal";
@@ -81,7 +88,11 @@ const DATE_TYPE_TO_FIELD: Record<string, string> = {
   "Submitted Date": "created_at",
 };
 
-export function PaymentRequestView() {
+export type PaymentRequestViewProps = {
+  easyView: boolean;
+};
+
+export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   const router = useRouter();
   const { isElevated } = useUserRole();
   const [statusFilter, setStatusFilter] =
@@ -98,11 +109,27 @@ export function PaymentRequestView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<{ billId: string; readOnly: boolean } | null>(null);
+  const [easyViewPayBillId, setEasyViewPayBillId] = useState<string | null>(null);
   const [selectedBillIds, setSelectedBillIds] = useState<string[]>([]);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
   const tableRef = useRef<PaymentRequestTableHandle>(null);
+  const [easyViewBankSlipRowId, setEasyViewBankSlipRowId] = useState<string | null>(null);
   const bulkActionsEnabled = selectedBillIds.length >= 2;
+
+  const easyViewBankSlipSourceRow = useMemo(() => {
+    if (!easyViewBankSlipRowId) return undefined;
+    return bills.find((x) => x.id === easyViewBankSlipRowId);
+  }, [easyViewBankSlipRowId, bills]);
+
+  const easyViewBankSlipPayload = useMemo(() => {
+    if (!easyViewBankSlipSourceRow) return null;
+    return getBankSlipDetailsForRow(easyViewBankSlipSourceRow);
+  }, [easyViewBankSlipSourceRow]);
+
+  const easyViewBankSlipReadOnly =
+    easyViewBankSlipSourceRow != null &&
+    (easyViewBankSlipSourceRow.status === "Voided" || easyViewBankSlipSourceRow.status === "Draft");
 
   const selectionContainsPaid = useMemo(() => {
     const selectedSet = new Set(selectedBillIds);
@@ -176,6 +203,37 @@ export function PaymentRequestView() {
     }
   }, [debouncedSearch, statusFilter, minAmount, maxAmount, dateType, startDate, endDate]);
 
+  const easyViewPaySource = useMemo(() => {
+    if (!easyViewPayBillId) return null;
+    return rawBills.find((b) => b.id === easyViewPayBillId) ?? null;
+  }, [easyViewPayBillId, rawBills]);
+
+  const easyViewPayPanel: ReactNode =
+    easyViewPayBillId && easyViewPaySource ? (
+      <RecordPaymentModal
+        key={easyViewPayBillId}
+        presentation="inline"
+        open
+        onClose={() => setEasyViewPayBillId(null)}
+        billId={easyViewPayBillId}
+        billStatus={easyViewPaySource.status}
+        contactTitle={easyViewPaySource.contact?.trim() ?? ""}
+        readOnly={false}
+        invoiceAmount={parseFloat(easyViewPaySource.amount ?? "0") || 0}
+        currencyCode={easyViewPaySource.currency_code?.trim() || "HKD"}
+        onPaymentSaved={loadBills}
+      />
+    ) : null;
+
+  useEffect(() => {
+    if (!easyViewPayBillId) return;
+    const filtered =
+      statusFilter === "All" ? bills : bills.filter((r) => r.status === statusFilter);
+    if (!filtered.some((r) => r.id === easyViewPayBillId)) {
+      setEasyViewPayBillId(null);
+    }
+  }, [statusFilter, bills, easyViewPayBillId]);
+
   useEffect(() => {
     loadBills();
   }, [loadBills]);
@@ -247,7 +305,10 @@ export function PaymentRequestView() {
         canVoidPaid={isElevated}
         canPublish={isElevated}
       />
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3">
+      <main
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3"
+        data-easy-view={easyView ? "true" : undefined}
+      >
         {error ? (
           <div className="px-4 py-8 text-center sm:px-6">
             <p className="text-sm text-red-600">{error}</p>
@@ -256,34 +317,65 @@ export function PaymentRequestView() {
             </button>
           </div>
         ) : (
-          <PaymentRequestTable
-            ref={tableRef}
-            rows={bills}
-            statusFilter={statusFilter}
-            loading={loading}
-            onSelectionChange={onTableSelectionChange}
-            onRecordPayment={(rowId, readOnly) => setRecordPaymentTarget({ billId: rowId, readOnly: readOnly ?? false })}
-            onRowClick={(rowId) => router.push(`/payment-request/${rowId}`)}
-            onRowDelete={async (rowId) => {
-              try {
-                await deleteBill(rowId);
-                // Deleting a bill voids it; reload the list so the row stays visible as "Voided".
-                await loadBills();
-              } catch (err) {
-                setError(err instanceof Error ? err.message : "Failed to delete bill");
-                throw err;
-              }
-            }}
-            onRowPublish={async (rowId) => {
-              try {
-                await publishBill(rowId);
-                await loadBills();
-              } catch (err) {
-                setError(err instanceof Error ? err.message : "Failed to publish bill");
-              }
-            }}
-            onBankSlipUploaded={loadBills}
-          />
+          <>
+            <div className={easyView ? "hidden min-h-0 flex-1 flex-col lg:flex" : "hidden"}>
+              <PaymentRequestEasyView
+                rows={bills}
+                loading={loading}
+                activeStatus={statusFilter}
+                payPanelBillId={easyViewPayBillId}
+                payPanel={easyViewPayPanel}
+                onRowClick={(rowId) => {
+                  const row = bills.find((r) => r.id === rowId);
+                  if (row?.status === "Payment Requested") {
+                    setRecordPaymentTarget(null);
+                    setEasyViewPayBillId((prev) => (prev === rowId ? null : rowId));
+                    return;
+                  }
+                  router.push(`/payment-request/${rowId}`);
+                }}
+                onPaymentRequestedPay={(rowId) => {
+                  setRecordPaymentTarget(null);
+                  setEasyViewPayBillId(rowId);
+                }}
+                onRecordPayment={(rowId, readOnly) => {
+                  setEasyViewPayBillId(null);
+                  setRecordPaymentTarget({ billId: rowId, readOnly: readOnly ?? false });
+                }}
+                onOpenBankSlipUpload={(rowId) => setEasyViewBankSlipRowId(rowId)}
+                isElevated={isElevated}
+              />
+            </div>
+            <div className={easyView ? "max-lg:block lg:hidden" : "block"}>
+              <PaymentRequestTable
+                ref={tableRef}
+                rows={bills}
+                statusFilter={statusFilter}
+                loading={loading}
+                onSelectionChange={onTableSelectionChange}
+                onRecordPayment={(rowId, readOnly) => setRecordPaymentTarget({ billId: rowId, readOnly: readOnly ?? false })}
+                onRowClick={(rowId) => router.push(`/payment-request/${rowId}`)}
+                onRowDelete={async (rowId) => {
+                  try {
+                    await deleteBill(rowId);
+                    await loadBills();
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Failed to delete bill");
+                    throw err;
+                  }
+                }}
+                onRowPublish={async (rowId) => {
+                  try {
+                    await publishBill(rowId);
+                    await loadBills();
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Failed to publish bill");
+                  }
+                }}
+                onBankSlipUploaded={loadBills}
+              />
+            </div>
+          </>
         )}
       </main>
       <BulkDeleteConfirmModal
@@ -320,6 +412,24 @@ export function PaymentRequestView() {
         }
         onPaymentSaved={loadBills}
       />
+      {easyViewBankSlipRowId != null && easyViewBankSlipPayload ? (
+        <BankSlipDetailsModal
+          open
+          onClose={() => setEasyViewBankSlipRowId(null)}
+          details={easyViewBankSlipPayload}
+          allowRemoveFiles={!easyViewBankSlipReadOnly}
+          onBankSlipFileDeleted={loadBills}
+          inlineUploadBillContext={
+            !easyViewBankSlipReadOnly && easyViewBankSlipRowId
+              ? {
+                  billId: easyViewBankSlipRowId,
+                  currencyCode: easyViewBankSlipSourceRow?.currencyCode ?? "HKD",
+                }
+              : undefined
+          }
+          onInlineUploadSuccess={loadBills}
+        />
+      ) : null}
     </>
   );
 }
