@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PaymentRequestEasyView } from "./PaymentRequestEasyView";
 import { PaymentRequestTable, type PaymentRequestRow, type PaymentRequestTableHandle } from "./PaymentRequestTable";
 import { PaymentRequestToolbar, type PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { BulkDeleteConfirmModal } from "./BulkDeleteConfirmModal";
@@ -81,7 +82,11 @@ const DATE_TYPE_TO_FIELD: Record<string, string> = {
   "Submitted Date": "created_at",
 };
 
-export function PaymentRequestView() {
+export type PaymentRequestViewProps = {
+  easyView: boolean;
+};
+
+export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   const router = useRouter();
   const { isElevated } = useUserRole();
   const [statusFilter, setStatusFilter] =
@@ -247,7 +252,10 @@ export function PaymentRequestView() {
         canVoidPaid={isElevated}
         canPublish={isElevated}
       />
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3">
+      <main
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3"
+        data-easy-view={easyView ? "true" : undefined}
+      >
         {error ? (
           <div className="px-4 py-8 text-center sm:px-6">
             <p className="text-sm text-red-600">{error}</p>
@@ -256,34 +264,47 @@ export function PaymentRequestView() {
             </button>
           </div>
         ) : (
-          <PaymentRequestTable
-            ref={tableRef}
-            rows={bills}
-            statusFilter={statusFilter}
-            loading={loading}
-            onSelectionChange={onTableSelectionChange}
-            onRecordPayment={(rowId, readOnly) => setRecordPaymentTarget({ billId: rowId, readOnly: readOnly ?? false })}
-            onRowClick={(rowId) => router.push(`/payment-request/${rowId}`)}
-            onRowDelete={async (rowId) => {
-              try {
-                await deleteBill(rowId);
-                // Deleting a bill voids it; reload the list so the row stays visible as "Voided".
-                await loadBills();
-              } catch (err) {
-                setError(err instanceof Error ? err.message : "Failed to delete bill");
-                throw err;
-              }
-            }}
-            onRowPublish={async (rowId) => {
-              try {
-                await publishBill(rowId);
-                await loadBills();
-              } catch (err) {
-                setError(err instanceof Error ? err.message : "Failed to publish bill");
-              }
-            }}
-            onBankSlipUploaded={loadBills}
-          />
+          <>
+            <div className={easyView ? "hidden min-h-0 flex-1 flex-col lg:flex" : "hidden"}>
+              <PaymentRequestEasyView
+                rows={bills}
+                loading={loading}
+                activeStatus={statusFilter}
+                onRowClick={(rowId) => router.push(`/payment-request/${rowId}`)}
+                onRecordPayment={(rowId, readOnly) => setRecordPaymentTarget({ billId: rowId, readOnly: readOnly ?? false })}
+                isElevated={isElevated}
+              />
+            </div>
+            <div className={easyView ? "max-lg:block lg:hidden" : "block"}>
+              <PaymentRequestTable
+                ref={tableRef}
+                rows={bills}
+                statusFilter={statusFilter}
+                loading={loading}
+                onSelectionChange={onTableSelectionChange}
+                onRecordPayment={(rowId, readOnly) => setRecordPaymentTarget({ billId: rowId, readOnly: readOnly ?? false })}
+                onRowClick={(rowId) => router.push(`/payment-request/${rowId}`)}
+                onRowDelete={async (rowId) => {
+                  try {
+                    await deleteBill(rowId);
+                    await loadBills();
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Failed to delete bill");
+                    throw err;
+                  }
+                }}
+                onRowPublish={async (rowId) => {
+                  try {
+                    await publishBill(rowId);
+                    await loadBills();
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Failed to publish bill");
+                  }
+                }}
+                onBankSlipUploaded={loadBills}
+              />
+            </div>
+          </>
         )}
       </main>
       <BulkDeleteConfirmModal

@@ -16,14 +16,15 @@ export function billStatusToDisplayLabel(status: string): string {
 
 /** Header badge styles aligned with table status tags. */
 export function statusDisplayBadgeClass(displayLabel: string): string {
-  const base = "rounded-md px-3 py-1 text-xs font-semibold sm:text-sm";
+  const base =
+    "inline-flex max-w-full items-center justify-center rounded-md px-3 py-1 text-center text-xs font-semibold sm:min-w-[11rem] sm:text-sm";
   switch (displayLabel) {
     case "Paid":
+      return `${base} border border-primary/25 bg-transparent text-[#656565]`;
+    case "Payment Requested":
       return `${base} bg-secondary/10 text-secondary`;
     case "Partially paid":
       return `${base} bg-[#70ebba]/10 text-[#70ebba]`;
-    case "Payment Requested":
-      return `${base} bg-[#FFF0F0] text-[#FF6B6B]`;
     case "Returned":
       return `${base} bg-[#EA9713]/10 text-[#EA9713]`;
     case "Voided":
