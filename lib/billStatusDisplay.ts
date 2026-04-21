@@ -14,21 +14,24 @@ export function billStatusToDisplayLabel(status: string): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-/** Header badge styles aligned with table status tags. */
+/**
+ * Header badge on payment request details — matches Easy View status chips
+ * (`PaymentRequestEasyView` / `EasyViewStatusCell`).
+ */
 export function statusDisplayBadgeClass(displayLabel: string): string {
   const base =
-    "inline-flex max-w-full items-center justify-center rounded-md px-3 py-1 text-center text-xs font-semibold sm:min-w-[11rem] sm:text-sm";
+    "inline-flex max-w-full items-center justify-center rounded-lg px-2.5 py-1 text-center text-sm font-semibold sm:min-w-[11rem] sm:px-3 sm:py-0 sm:text-sm lg:h-[42px] lg:min-h-[42px]";
   switch (displayLabel) {
     case "Paid":
-      return `${base} border border-primary/25 bg-transparent text-[#656565]`;
+      return `${base} border border-primary/25 bg-white text-[#656565] shadow-sm`;
     case "Payment Requested":
-      return `${base} bg-secondary/10 text-secondary`;
+      return `${base} border border-transparent bg-secondary text-white shadow-sm`;
     case "Partially paid":
-      return `${base} bg-[#70ebba]/10 text-[#70ebba]`;
+      return `${base} bg-[#70ebba]/10 font-semibold text-[#70ebba] shadow-sm`;
     case "Returned":
-      return `${base} bg-[#EA9713]/10 text-[#EA9713]`;
+      return `${base} bg-[#EA9713]/15 text-[#EA9713]`;
     case "Voided":
-      return `${base} bg-[#ADB3BD] font-semibold text-white`;
+      return `${base} text-[#FF6B6B]`;
     case "Draft":
       return `${base} bg-[#EDEDED] font-medium text-[#C0C0C0]`;
     default:

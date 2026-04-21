@@ -32,6 +32,8 @@ export type RecordPaymentModalProps = {
   contactTitle?: string;
   onPaymentSaved?: () => void;
   readOnly?: boolean;
+  /** Inline panel (e.g. Easy View) — no overlay, no body scroll lock. */
+  presentation?: "modal" | "inline";
 };
 
 type PayMode = "full" | "partial";
@@ -103,6 +105,7 @@ export function RecordPaymentModal({
   contactTitle,
   onPaymentSaved,
   readOnly = false,
+  presentation = "modal",
 }: RecordPaymentModalProps) {
   const iso = (currencyCode || "HKD").trim() || "HKD";
   const currencyLabel = currencyLabelForCode(iso);
@@ -260,18 +263,18 @@ export function RecordPaymentModal({
   }, [open, billId, loadPayments]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || presentation !== "modal") return;
     return pushAppScrollLock();
-  }, [open]);
+  }, [open, presentation]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || presentation !== "modal") return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, presentation]);
 
   useEffect(() => {
     if (!open || payMode !== "full") return;
@@ -401,12 +404,21 @@ export function RecordPaymentModal({
   const paymentDateCalendarBtnClass =
     "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-2xl border-l border-gray-300 bg-gray-300 text-primary transition-colors hover:bg-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
 
-  return (
-    <>
-      {createPortal(
-    <div className="fixed inset-0 z-[300] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6" role="presentation">
-      <button type="button" aria-label="Close dialog" className="absolute inset-0 cursor-pointer bg-black/35 backdrop-blur-[1px]" onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full min-w-0 max-w-[480px] flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,880px)] sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+  const dialogShellClassName =
+    presentation === "modal"
+      ? "relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full min-w-0 max-w-[480px] flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,880px)] sm:rounded-2xl"
+      : "relative flex max-h-[min(72vh,880px)] w-full min-w-0 max-w-[480px] flex-col rounded-2xl bg-white shadow-lg ring-1 ring-secondary/25 sm:max-h-[min(80vh,880px)]";
+
+  const paymentDialog = (
+      <div
+        role="dialog"
+        aria-modal={presentation === "modal"}
+        aria-labelledby={titleId}
+        className={dialogShellClassName}
+        onClick={(e) => {
+          if (presentation === "modal") e.stopPropagation();
+        }}
+      >
         <div className="shrink-0">
           <div className="px-4 pt-4 sm:px-6 sm:pt-6">
             <div className="flex items-start justify-between gap-3">
@@ -632,9 +644,27 @@ export function RecordPaymentModal({
           </div>
         ) : null}
       </div>
-    </div>,
-    document.body,
-      )}
+  );
+
+  return (
+    <>
+      {presentation === "modal"
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[300] flex items-center justify-center overflow-x-hidden overscroll-x-none p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:p-4 md:p-6"
+              role="presentation"
+            >
+              <button
+                type="button"
+                aria-label="Close dialog"
+                className="absolute inset-0 cursor-pointer bg-black/35 backdrop-blur-[1px]"
+                onClick={onClose}
+              />
+              {paymentDialog}
+            </div>,
+            document.body,
+          )
+        : paymentDialog}
       <BankSlipDetailsModal
         open={bankSlipPreviewOpen}
         onClose={() => setBankSlipPreviewOpen(false)}

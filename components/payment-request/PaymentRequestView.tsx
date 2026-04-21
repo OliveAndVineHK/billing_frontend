@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { BankSlipDetailsModal } from "./BankSlipDetailsModal";
 import { PaymentRequestEasyView } from "./PaymentRequestEasyView";
@@ -109,6 +109,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<{ billId: string; readOnly: boolean } | null>(null);
+  const [easyViewPayBillId, setEasyViewPayBillId] = useState<string | null>(null);
   const [selectedBillIds, setSelectedBillIds] = useState<string[]>([]);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
@@ -202,6 +203,37 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
     }
   }, [debouncedSearch, statusFilter, minAmount, maxAmount, dateType, startDate, endDate]);
 
+  const easyViewPaySource = useMemo(() => {
+    if (!easyViewPayBillId) return null;
+    return rawBills.find((b) => b.id === easyViewPayBillId) ?? null;
+  }, [easyViewPayBillId, rawBills]);
+
+  const easyViewPayPanel: ReactNode =
+    easyViewPayBillId && easyViewPaySource ? (
+      <RecordPaymentModal
+        key={easyViewPayBillId}
+        presentation="inline"
+        open
+        onClose={() => setEasyViewPayBillId(null)}
+        billId={easyViewPayBillId}
+        billStatus={easyViewPaySource.status}
+        contactTitle={easyViewPaySource.contact?.trim() ?? ""}
+        readOnly={false}
+        invoiceAmount={parseFloat(easyViewPaySource.amount ?? "0") || 0}
+        currencyCode={easyViewPaySource.currency_code?.trim() || "HKD"}
+        onPaymentSaved={loadBills}
+      />
+    ) : null;
+
+  useEffect(() => {
+    if (!easyViewPayBillId) return;
+    const filtered =
+      statusFilter === "All" ? bills : bills.filter((r) => r.status === statusFilter);
+    if (!filtered.some((r) => r.id === easyViewPayBillId)) {
+      setEasyViewPayBillId(null);
+    }
+  }, [statusFilter, bills, easyViewPayBillId]);
+
   useEffect(() => {
     loadBills();
   }, [loadBills]);
@@ -291,8 +323,25 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
                 rows={bills}
                 loading={loading}
                 activeStatus={statusFilter}
-                onRowClick={(rowId) => router.push(`/payment-request/${rowId}`)}
-                onRecordPayment={(rowId, readOnly) => setRecordPaymentTarget({ billId: rowId, readOnly: readOnly ?? false })}
+                payPanelBillId={easyViewPayBillId}
+                payPanel={easyViewPayPanel}
+                onRowClick={(rowId) => {
+                  const row = bills.find((r) => r.id === rowId);
+                  if (row?.status === "Payment Requested") {
+                    setRecordPaymentTarget(null);
+                    setEasyViewPayBillId((prev) => (prev === rowId ? null : rowId));
+                    return;
+                  }
+                  router.push(`/payment-request/${rowId}`);
+                }}
+                onPaymentRequestedPay={(rowId) => {
+                  setRecordPaymentTarget(null);
+                  setEasyViewPayBillId(rowId);
+                }}
+                onRecordPayment={(rowId, readOnly) => {
+                  setEasyViewPayBillId(null);
+                  setRecordPaymentTarget({ billId: rowId, readOnly: readOnly ?? false });
+                }}
                 onOpenBankSlipUpload={(rowId) => setEasyViewBankSlipRowId(rowId)}
                 isElevated={isElevated}
               />

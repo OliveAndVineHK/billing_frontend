@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState, type MouseEvent } from "react";
+import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { compareBySubmittedDate } from "@/lib/paymentRequestDateSort";
 import type { PaymentRequestRow } from "./PaymentRequestTable";
@@ -93,7 +93,11 @@ export type PaymentRequestEasyViewProps = {
   rows: PaymentRequestRow[];
   loading: boolean;
   activeStatus: PaymentRequestStatusFilter;
+  payPanelBillId: string | null;
+  payPanel: ReactNode;
   onRowClick: (rowId: string) => void;
+  /** Opens the inline pay panel (Payment Requested) instead of the floating record-payment modal. */
+  onPaymentRequestedPay: (rowId: string) => void;
   onRecordPayment: (rowId: string, readOnly?: boolean) => void;
   onOpenBankSlipUpload: (rowId: string) => void;
   isElevated: boolean;
@@ -103,10 +107,12 @@ function EasyViewStatusCell({
   row,
   isElevated,
   onRecordPayment,
+  onPaymentRequestedPay,
 }: {
   row: PaymentRequestRow;
   isElevated: boolean;
   onRecordPayment: (rowId: string, readOnly?: boolean) => void;
+  onPaymentRequestedPay: (rowId: string) => void;
 }) {
   const stop = (e: MouseEvent) => e.stopPropagation();
 
@@ -173,11 +179,11 @@ function EasyViewStatusCell({
     return (
       <button
         type="button"
-        className={`${EASY_VIEW_STATUS_CELL} cursor-pointer border border-transparent bg-secondary text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`${EASY_VIEW_STATUS_CELL} cursor-pointer border border-transparent bg-secondary text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50`}
         onClick={(e) => {
           stop(e);
           if (!isElevated) return;
-          onRecordPayment(row.id, false);
+          onPaymentRequestedPay(row.id);
         }}
         disabled={!isElevated}
       >
@@ -200,7 +206,10 @@ export function PaymentRequestEasyView({
   rows,
   loading,
   activeStatus,
+  payPanelBillId,
+  payPanel,
   onRowClick,
+  onPaymentRequestedPay,
   onRecordPayment,
   onOpenBankSlipUpload,
   isElevated,
@@ -310,62 +319,98 @@ export function PaymentRequestEasyView({
             </div>
           ) : (
             <ul className="flex flex-col gap-3">
-              {visibleRows.map((row) => (
-                <li
-                  key={row.id}
-                  className={`${EASY_VIEW_ROW_GRID} cursor-pointer rounded-lg border border-gray-200 bg-white shadow-sm transition-colors hover:border-primary/20 hover:bg-gray-50/80`}
-                  onClick={() => onRowClick(row.id)}
-                >
-                  <div className={easyViewContactTd}>
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>
-                      {row.contactCaption ? (
-                        <span className="text-xs text-primary/65 sm:text-sm">{row.contactCaption}</span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className={easyViewSubmittedTd}>{row.submittedDate}</div>
-                  <div className={easyViewAttachmentTd} onClick={(e) => e.stopPropagation()}>
-                    <div className="flex w-full min-w-0 max-w-full flex-row flex-nowrap items-center gap-1.5 sm:gap-2">
-                      <div className={EASY_VIEW_BANKSLIP_SLOT}>
-                        <EasyViewBankSlipControl row={row} onOpen={onOpenBankSlipUpload} />
+              {visibleRows.map((row) => {
+                const isPayPanelOpen = payPanelBillId === row.id && payPanel != null;
+                return (
+                  <li
+                    key={row.id}
+                    className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-colors"
+                  >
+                    <div
+                      className={`${EASY_VIEW_ROW_GRID} cursor-pointer transition-colors hover:border-primary/20 hover:bg-gray-50/80`}
+                      onClick={() => onRowClick(row.id)}
+                    >
+                      <div className={easyViewContactTd}>
+                        <div className="flex min-w-0 flex-col gap-0.5">
+                          <span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>
+                          {row.contactCaption ? (
+                            <span className="text-xs text-primary/65 sm:text-sm">{row.contactCaption}</span>
+                          ) : null}
+                        </div>
                       </div>
-                      {row.status === "Partially paid" ? (
-                        <Image
-                          src="/partial.png"
-                          alt=""
-                          width={18}
-                          height={18}
-                          className="h-[18px] w-[18px] shrink-0 object-contain"
-                          sizes="18px"
-                          aria-hidden
+                      <div className={easyViewSubmittedTd}>{row.submittedDate}</div>
+                      <div className={easyViewAttachmentTd} onClick={(e) => e.stopPropagation()}>
+                        <div className="flex w-full min-w-0 max-w-full flex-row flex-nowrap items-center gap-1.5 sm:gap-2">
+                          <div className={EASY_VIEW_BANKSLIP_SLOT}>
+                            <EasyViewBankSlipControl row={row} onOpen={onOpenBankSlipUpload} />
+                          </div>
+                          {row.status === "Partially paid" ? (
+                            <Image
+                              src="/partial.png"
+                              alt=""
+                              width={18}
+                              height={18}
+                              className="h-[18px] w-[18px] shrink-0 object-contain"
+                              sizes="18px"
+                              aria-hidden
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className={easyViewUnpaidTd}>
+                        {row.unpaidAmount || row.invoiceTotal ? (
+                          <div className="flex min-w-0 flex-col gap-0.5">
+                            {row.unpaidAmount ? (
+                              <span
+                                className={`whitespace-nowrap text-sm font-semibold sm:text-base ${unpaidAmountClass(row.status)}`}
+                              >
+                                {row.unpaidAmount}
+                              </span>
+                            ) : null}
+                            {row.invoiceTotal ? (
+                              <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">
+                                (Inv total {currencyLabelForCode(row.currencyCode ?? "HKD")} {row.invoiceTotal})
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className={easyViewStatusTd} onClick={(e) => e.stopPropagation()}>
+                        <EasyViewStatusCell
+                          row={row}
+                          isElevated={isElevated}
+                          onRecordPayment={onRecordPayment}
+                          onPaymentRequestedPay={onPaymentRequestedPay}
                         />
-                      ) : null}
+                      </div>
                     </div>
-                  </div>
-                  <div className={easyViewUnpaidTd}>
-                    {row.unpaidAmount || row.invoiceTotal ? (
-                      <div className="flex min-w-0 flex-col gap-0.5">
-                        {row.unpaidAmount ? (
-                          <span
-                            className={`whitespace-nowrap text-sm font-semibold sm:text-base ${unpaidAmountClass(row.status)}`}
-                          >
-                            {row.unpaidAmount}
-                          </span>
-                        ) : null}
-                        {row.invoiceTotal ? (
-                          <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">
-                            (Inv total {currencyLabelForCode(row.currencyCode ?? "HKD")} {row.invoiceTotal})
-                          </span>
-                        ) : null}
+                    {isPayPanelOpen ? (
+                      <div
+                        className="border-t border-gray-200 bg-gray-50/50 p-4 sm:p-5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex w-full min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:gap-6 sm:justify-between">
+                          <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
+                            <div className="relative aspect-square w-full max-w-[min(100%,22rem)] shrink-0 sm:max-w-[24rem] md:max-w-[26rem] lg:max-w-[30rem]">
+                              <Image
+                                src="/paid.png"
+                                alt=""
+                                fill
+                                className="object-contain object-center"
+                                sizes="(min-width: 1024px) 30rem, (min-width: 768px) 26rem, (min-width: 640px) 24rem, min(100vw, 22rem)"
+                                priority
+                              />
+                            </div>
+                          </div>
+                          <div className="flex w-full min-w-0 max-w-[min(100%,480px)] shrink-0 justify-end self-end sm:self-center sm:ml-auto">
+                            {payPanel}
+                          </div>
+                        </div>
                       </div>
                     ) : null}
-                  </div>
-                  <div className={easyViewStatusTd} onClick={(e) => e.stopPropagation()}>
-                    <EasyViewStatusCell row={row} isElevated={isElevated} onRecordPayment={onRecordPayment} />
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
