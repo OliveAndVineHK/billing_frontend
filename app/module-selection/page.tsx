@@ -11,6 +11,22 @@ const MODULE1_URL =
   process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
 const MIN_LOADING_MS = 800;
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    let base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = base64.length % 4;
+    if (pad) base64 += "=".repeat(4 - pad);
+    const json = atob(base64);
+    const payload = JSON.parse(json) as unknown;
+    if (payload == null || typeof payload !== "object" || Array.isArray(payload)) return null;
+    return payload as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 function ModuleSelectionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -21,6 +37,20 @@ function ModuleSelectionContent() {
   const tokenRef = useRef(searchParams.get("token") ?? "");
   const entityIdRef = useRef(searchParams.get("entity_id") ?? "");
   const entityNameRef = useRef(searchParams.get("entity_name") ?? "");
+
+  // Decode JWT to check if billing is enabled
+  const [billingEnabled, setBillingEnabled] = useState(true); // Default to true for backward compatibility
+
+  useEffect(() => {
+    const token = tokenRef.current;
+    if (token) {
+      const payload = decodeJwtPayload(token);
+      if (payload && typeof payload.billing_enabled === "boolean") {
+        setBillingEnabled(payload.billing_enabled);
+        console.log("Module selection: billing_enabled =", payload.billing_enabled);
+      }
+    }
+  }, []);
 
   const module1Href =
     entityIdRef.current && tokenRef.current
@@ -131,7 +161,9 @@ function ModuleSelectionContent() {
         </h1>
         <div className="module-buttons-group mx-auto flex w-full max-w-[260px] flex-col items-center justify-center gap-4 sm:max-w-[400px] sm:flex-row sm:flex-nowrap sm:gap-6 md:max-w-[820px]">
           <ModuleButton iconSrc="/pettycash-icon.webp" iconAlt="Petty cash" imageScale={0.8} hoverBackImage="/minty-l.webp" onClick={handleClick} onTouchEnd={handleTouchEnd} />
-          <ModuleButton iconSrc="/payment-icon.webp" iconAlt="Payment request" imageScale={1.0} hoverBackImage="/minty-r.webp" hoverBackImagePosition="top-right" onClick={handlePaymentClick} onTouchEnd={handlePaymentTouchEnd} />
+          {billingEnabled && (
+            <ModuleButton iconSrc="/payment-icon.webp" iconAlt="Payment request" imageScale={1.0} hoverBackImage="/minty-r.webp" hoverBackImagePosition="top-right" onClick={handlePaymentClick} onTouchEnd={handlePaymentTouchEnd} />
+          )}
         </div>
       </main>
 
