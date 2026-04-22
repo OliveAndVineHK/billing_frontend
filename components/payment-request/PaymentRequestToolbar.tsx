@@ -20,8 +20,9 @@ const textInputClass =
 
 const filterDateTextClass =
   "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
+/** Same calendar control styling as payment history (`RecordPaymentModal`). */
 const filterDateCalendarBtnClass =
-  "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-2xl border-l border-gray-300 bg-gray-300 text-primary transition-colors hover:bg-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
+  "absolute right-0 top-0 z-[3] box-border flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-2xl border border-gray-300 bg-gray-100 text-primary transition-colors hover:bg-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
 
 export const PAYMENT_REQUEST_STATUS_FILTERS = ["All", "Draft", "Payment Requested", "Returned", "Paid", "Partially paid", "Voided"] as const;
 export type PaymentRequestStatusFilter = (typeof PAYMENT_REQUEST_STATUS_FILTERS)[number];

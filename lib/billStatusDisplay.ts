@@ -15,8 +15,8 @@ export function billStatusToDisplayLabel(status: string): string {
 }
 
 /**
- * Header badge on payment request details — matches Easy View status chips
- * (`PaymentRequestEasyView` / `EasyViewStatusCell`).
+ * Header badge on payment request details — aligned with list/table status tags
+ * (`PaymentRequestTable` / `statusTagPaymentRequestedClass`, etc.).
  */
 export function statusDisplayBadgeClass(displayLabel: string): string {
   const base =
@@ -25,9 +25,9 @@ export function statusDisplayBadgeClass(displayLabel: string): string {
     case "Paid":
       return `${base} border border-primary/25 bg-white text-[#656565] shadow-sm`;
     case "Payment Requested":
-      return `${base} border border-transparent bg-secondary text-white shadow-sm`;
+      return `${base} bg-secondary/10 text-secondary`;
     case "Partially paid":
-      return `${base} bg-[#70ebba]/10 font-semibold text-[#70ebba] shadow-sm`;
+      return `${base} bg-[#70ebba]/10 font-semibold text-[#70ebba]`;
     case "Returned":
       return `${base} bg-[#EA9713]/15 text-[#EA9713]`;
     case "Voided":

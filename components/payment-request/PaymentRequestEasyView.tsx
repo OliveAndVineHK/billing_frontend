@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { compareBySubmittedDate } from "@/lib/paymentRequestDateSort";
 import type { PaymentRequestRow } from "./PaymentRequestTable";
@@ -89,12 +90,38 @@ function unpaidAmountClass(status: string): string {
   return "text-[#C0C0C0]";
 }
 
+/** Main easy-view shell: short status tint at top (stops ~15%), then white (toolbar filter or row status labels). */
+function easyViewMainBackgroundClass(status: string): string {
+  switch (status) {
+    case "Payment Requested":
+      return "bg-gradient-to-b from-secondary/10 from-[0%] to-white to-[15%]";
+    case "Partially paid":
+      return "bg-gradient-to-b from-[#70ebba]/10 from-[0%] to-white to-[15%]";
+    case "Returned":
+      return "bg-gradient-to-b from-[#EA9713]/10 from-[0%] to-white to-[15%]";
+    case "Paid":
+      return "bg-gradient-to-b from-[#656565]/10 from-[0%] to-white to-[15%]";
+    case "Voided":
+      return "bg-gradient-to-b from-[#FF6B6B]/10 from-[0%] to-white to-[15%]";
+    case "Draft":
+      return "bg-gradient-to-b from-gray-300/10 from-[0%] to-white to-[15%]";
+    case "All":
+      return "bg-gradient-to-b from-gray-200/10 from-[0%] to-white to-[15%]";
+    default:
+      return "bg-gradient-to-b from-gray-200/10 from-[0%] to-white to-[15%]";
+  }
+}
+
 export type PaymentRequestEasyViewProps = {
   rows: PaymentRequestRow[];
   loading: boolean;
   activeStatus: PaymentRequestStatusFilter;
   payPanelBillId: string | null;
   payPanel: ReactNode;
+  /** When set, the right column shows invoice attachments for this bill (same preview as details page). */
+  selectedBillId: string | null;
+  invoiceAttachments: InvoiceAttachmentPreviewItem[];
+  invoiceAttachmentsLoading: boolean;
   onRowClick: (rowId: string) => void;
   /** Opens the inline pay panel (Payment Requested) instead of the floating record-payment modal. */
   onPaymentRequestedPay: (rowId: string) => void;
@@ -147,7 +174,7 @@ function EasyViewStatusCell({
     return (
       <button
         type="button"
-        className={`${EASY_VIEW_STATUS_CELL} cursor-pointer border border-primary/25 bg-white text-[#656565] shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed`}
+        className={`${EASY_VIEW_STATUS_CELL} cursor-pointer border border-primary/25 bg-white text-[#656565] transition-colors hover:bg-gray-50 disabled:cursor-not-allowed`}
         onClick={(e) => {
           stop(e);
           if (!isElevated) return;
@@ -163,11 +190,11 @@ function EasyViewStatusCell({
     return (
       <button
         type="button"
-        className={`${EASY_VIEW_STATUS_CELL} cursor-pointer bg-[#70ebba]/10 font-semibold text-[#70ebba] shadow-sm transition-colors hover:bg-[#70ebba]/20 disabled:cursor-not-allowed`}
+        className={`${EASY_VIEW_STATUS_CELL} cursor-pointer bg-[#70ebba]/10 font-semibold text-[#70ebba] transition-colors hover:bg-[#70ebba]/20 disabled:cursor-not-allowed`}
         onClick={(e) => {
           stop(e);
           if (!isElevated) return;
-          onRecordPayment(row.id, true);
+          onPaymentRequestedPay(row.id);
         }}
         disabled={!isElevated}
       >
@@ -179,7 +206,7 @@ function EasyViewStatusCell({
     return (
       <button
         type="button"
-        className={`${EASY_VIEW_STATUS_CELL} cursor-pointer border border-transparent bg-secondary text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`${EASY_VIEW_STATUS_CELL} cursor-pointer border border-transparent bg-secondary text-white disabled:cursor-not-allowed disabled:opacity-50`}
         onClick={(e) => {
           stop(e);
           if (!isElevated) return;
@@ -208,6 +235,9 @@ export function PaymentRequestEasyView({
   activeStatus,
   payPanelBillId,
   payPanel,
+  selectedBillId,
+  invoiceAttachments,
+  invoiceAttachmentsLoading,
   onRowClick,
   onPaymentRequestedPay,
   onRecordPayment,
@@ -224,11 +254,26 @@ export function PaymentRequestEasyView({
     return copy;
   }, [rows, activeStatus, submittedDateSort]);
 
+  /** Prefer selected / pay-panel row so "All" + Pay row still gets the teal gradient. */
+  const mainBackgroundClass = useMemo(() => {
+    if (selectedBillId) {
+      const row = rows.find((r) => r.id === selectedBillId);
+      if (row?.status) return easyViewMainBackgroundClass(row.status);
+    }
+    if (payPanelBillId) {
+      const row = rows.find((r) => r.id === payPanelBillId);
+      if (row?.status) return easyViewMainBackgroundClass(row.status);
+    }
+    return easyViewMainBackgroundClass(activeStatus);
+  }, [selectedBillId, payPanelBillId, rows, activeStatus]);
+
   const easyViewAsideImageSrc =
     activeStatus === "Payment Requested" ? "/unpaid.png" : "/all-cat.png";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 pb-4 pt-1 sm:px-6 lg:flex-row lg:items-stretch lg:gap-6 lg:pt-2">
+    <div
+      className={`flex min-h-0 flex-1 flex-col gap-4 px-4 pb-4 pt-1 sm:px-6 lg:flex-row lg:items-stretch lg:gap-6 lg:pt-2 ${mainBackgroundClass}`}
+    >
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="mb-3 flex w-full min-w-0 flex-wrap items-center justify-between gap-2">
           <span className="min-w-0 truncate text-[18px] font-semibold text-black" title={activeStatus}>
@@ -281,10 +326,10 @@ export function PaymentRequestEasyView({
 
           {loading ? (
             <ul className="flex flex-col gap-3" aria-hidden>
-              {Array.from({ length: 6 }, (_, i) => (
+              {Array.from({ length: 1 }, (_, i) => (
                 <li
                   key={`sk-${i}`}
-                  className={`${EASY_VIEW_ROW_GRID} rounded-lg border border-gray-200 bg-white shadow-sm`}
+                  className={`${EASY_VIEW_ROW_GRID} rounded-lg border border-gray-200 bg-white`}
                 >
                   <div className={`${easyViewContactTd} space-y-2 py-0.5`}>
                     <div className="h-4 max-w-[14rem] animate-pulse rounded bg-gray-200" />
@@ -321,10 +366,13 @@ export function PaymentRequestEasyView({
             <ul className="flex flex-col gap-3">
               {visibleRows.map((row) => {
                 const isPayPanelOpen = payPanelBillId === row.id && payPanel != null;
+                const isRowSelected = selectedBillId === row.id;
                 return (
                   <li
                     key={row.id}
-                    className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-colors"
+                    className={`flex flex-col overflow-hidden rounded-lg border bg-white transition-colors ${
+                      isRowSelected ? "border-secondary/50" : "border-gray-200"
+                    }`}
                   >
                     <div
                       className={`${EASY_VIEW_ROW_GRID} cursor-pointer transition-colors hover:border-primary/20 hover:bg-gray-50/80`}
@@ -402,7 +450,7 @@ export function PaymentRequestEasyView({
                               />
                             </div>
                           </div>
-                          <div className="flex w-full min-w-0 max-w-[min(100%,480px)] shrink-0 justify-end self-end sm:self-center sm:ml-auto">
+                          <div className="flex w-full min-w-0 max-w-[min(100%,720px)] shrink-0 justify-end self-end sm:self-center sm:ml-auto">
                             {payPanel}
                           </div>
                         </div>
@@ -421,18 +469,37 @@ export function PaymentRequestEasyView({
         aria-hidden
       />
 
-      <aside className="relative mx-auto hidden w-full max-w-2xl shrink-0 overflow-hidden rounded-2xl lg:flex lg:w-[min(55%,42rem)] lg:items-center lg:justify-center lg:self-center">
-        <div className="relative aspect-square w-full">
-          <Image
-            key={easyViewAsideImageSrc}
-            src={easyViewAsideImageSrc}
-            alt=""
-            fill
-            className="object-contain object-center"
-            sizes="(min-width: 1024px) min(55vw, 42rem), 0px"
-            priority
-          />
-        </div>
+      <aside className="relative mx-auto hidden h-full min-h-0 w-full min-w-0 shrink-0 flex-col overflow-hidden lg:flex lg:max-w-[min(100%,28rem)] lg:flex-1 lg:self-stretch xl:max-w-[min(100%,32rem)]">
+        {selectedBillId ? (
+          <div className="flex h-full min-h-0 w-full flex-1 flex-col">
+            <div className="mb-3 flex w-full min-w-0 shrink-0">
+              <span className="min-w-0 truncate text-[18px] font-semibold text-black" title="Invoice">
+                Invoice
+              </span>
+            </div>
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              <InvoiceAttachmentPreview
+                attachments={invoiceAttachments}
+                isLoadingAttachments={invoiceAttachmentsLoading}
+                fillColumn
+                showViewFullButton
+                className="min-h-0 flex-1"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="relative mx-auto flex aspect-square w-full max-w-2xl flex-1 items-center justify-center overflow-hidden rounded-2xl lg:max-h-[min(88vh,42rem)]">
+            <Image
+              key={easyViewAsideImageSrc}
+              src={easyViewAsideImageSrc}
+              alt=""
+              fill
+              className="object-contain object-center"
+              sizes="(min-width: 1024px) min(55vw, 42rem), 0px"
+              priority
+            />
+          </div>
+        )}
       </aside>
     </div>
   );

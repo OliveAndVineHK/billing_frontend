@@ -27,7 +27,7 @@ import {
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
-import { billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
+import { billHasRemainingCountablePayments, billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
 import { enrichAccountCodeWithOptions } from "@/lib/billFormSelectOptions";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
 import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
@@ -305,8 +305,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const rollbackToPaymentRequestedIfNoPayments = useCallback(
     async (nextPayments: PaymentItem[]): Promise<boolean> => {
       if (!requestId) return false;
-      const hasAnyForThisBill = nextPayments.some((p) => p.bill_id === requestId);
-      if (hasAnyForThisBill) return false;
+      if (billHasRemainingCountablePayments(requestId, nextPayments)) return false;
 
       const b = await fetchBill(requestId);
       if (!billStatusShouldRollbackWhenNoPayments(b.status ?? "")) return false;
@@ -1041,8 +1040,9 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       try {
         await apiDeletePayment(row.billId, row.id);
         const data = await fetchPayments(requestId);
-        setPayments(data.payments);
-        await rollbackToPaymentRequestedIfNoPayments(data.payments);
+        const pruned = data.payments.filter((x) => x.id !== row.id);
+        setPayments(pruned);
+        await rollbackToPaymentRequestedIfNoPayments(pruned);
         await reloadBill();
         bumpAudit();
       } catch {
@@ -1281,6 +1281,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
             editMode={isEditing}
             selectedIndices={selectedAttachmentIndices}
             onSelectedIndicesChange={setSelectedAttachmentIndices}
+            showViewFullButton
             className="h-full min-h-[min(45dvh,22rem)] sm:min-h-[min(55dvh,30rem)] lg:min-h-[min(70vh,40rem)]"
           />
         </div>
@@ -1491,8 +1492,9 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               try {
                 await apiDeletePayment(row.billId, row.id);
                 const data = await fetchPayments(requestId);
-                setPayments(data.payments);
-                await rollbackToPaymentRequestedIfNoPayments(data.payments);
+                const pruned = data.payments.filter((x) => x.id !== row.id);
+                setPayments(pruned);
+                await rollbackToPaymentRequestedIfNoPayments(pruned);
                 await reloadBill();
                 bumpAudit();
               } catch {
