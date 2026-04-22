@@ -12,7 +12,11 @@ import {
   updateBill,
   type PaymentItem,
 } from "@/lib/api";
-import { billStatusShouldRollbackWhenNoPayments, normalizeBillStatusKey } from "@/lib/billStatusRollback";
+import {
+  billHasRemainingCountablePayments,
+  billStatusShouldRollbackWhenNoPayments,
+  normalizeBillStatusKey,
+} from "@/lib/billStatusRollback";
 import { DateTextField } from "@/components/DateTextField";
 import { useUserRole } from "@/lib/useUserRole";
 import { PaymentDeleteConfirmModal } from "./PaymentDeleteConfirmModal";
@@ -32,8 +36,8 @@ export type RecordPaymentModalProps = {
   contactTitle?: string;
   onPaymentSaved?: () => void;
   readOnly?: boolean;
-  /** Inline panel (e.g. Easy View) — no overlay, no body scroll lock. */
-  presentation?: "modal" | "inline";
+  /** Inline panel (e.g. Easy View) — no overlay, no body scroll lock. `easyInline` uses the easy-view-specific layout; behavior is the same. */
+  presentation?: "modal" | "inline" | "easyInline";
 };
 
 type PayMode = "full" | "partial";
@@ -198,8 +202,7 @@ export function RecordPaymentModal({
   const syncSubmittedIfNoPaymentsLeft = useCallback(
     async (paymentsList: PaymentItem[]): Promise<boolean> => {
       if (!billId) return false;
-      const hasAny = paymentsList.some((x) => x.bill_id === billId);
-      if (hasAny) return false;
+      if (billHasRemainingCountablePayments(billId, paymentsList)) return false;
       const b = await fetchBill(billId);
       if (!billStatusShouldRollbackWhenNoPayments(b.status ?? "")) return false;
       await updateBill(billId, { status: "submitted" });
@@ -386,8 +389,17 @@ export function RecordPaymentModal({
     try {
       await deletePayment(p.bill_id, p.id);
       const data = await fetchPayments(billId);
-      setPayments(data.payments);
-      await syncSubmittedIfNoPaymentsLeft(data.payments);
+      const pruned = data.payments.filter((x) => x.id !== p.id);
+      setPayments(pruned);
+      try {
+        const built = await buildBankSlipDetailsFromPaymentList(billId, pruned, bankSlipRowForEnrichment);
+        setBankSlipFileCount(built.count);
+        setBankSlipDetails(built.bankSlipDetails ?? EMPTY_BANK_SLIP_DETAILS);
+      } catch {
+        setBankSlipFileCount(0);
+        setBankSlipDetails(EMPTY_BANK_SLIP_DETAILS);
+      }
+      await syncSubmittedIfNoPaymentsLeft(pruned);
 
       onPaymentSaved?.();
     } catch (err) {
@@ -399,15 +411,28 @@ export function RecordPaymentModal({
 
   if (!open) return null;
 
+  const isEasyInline = presentation === "easyInline";
+
   const paymentDateTextClass =
     "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white py-0 pl-3 pr-11 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
+  /** Light grey fill, full `border-gray-300`, primary icon — shared by modal, inline, and easy-inline. */
   const paymentDateCalendarBtnClass =
-    "absolute right-0 top-0 z-[3] flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-2xl border-l border-gray-300 bg-gray-300 text-primary transition-colors hover:bg-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
+    "absolute right-0 top-0 z-[3] box-border flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-2xl border border-gray-300 bg-gray-100 text-primary transition-colors hover:bg-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
+
+  const addPaymentButtonClass =
+    "inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#00C896]/10 px-4 py-2.5 text-sm font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00C896] disabled:cursor-not-allowed disabled:opacity-50";
 
   const dialogShellClassName =
     presentation === "modal"
       ? "relative z-[1] flex max-h-[min(100dvh-1rem,880px)] w-full min-w-0 max-w-[480px] flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 sm:max-h-[min(92dvh,880px)] sm:rounded-2xl"
-      : "relative flex max-h-[min(72vh,880px)] w-full min-w-0 max-w-[480px] flex-col rounded-2xl bg-white shadow-lg ring-1 ring-secondary/25 sm:max-h-[min(80vh,880px)]";
+      : presentation === "easyInline"
+        ? "relative flex max-h-[min(72vh,880px)] w-full min-w-0 max-w-[min(100%,720px)] flex-col overflow-hidden rounded-lg border border-secondary/50 bg-white sm:max-h-[min(80vh,880px)]"
+        : "relative flex max-h-[min(72vh,880px)] w-full min-w-0 max-w-[480px] flex-col rounded-2xl bg-white shadow-lg ring-1 ring-secondary/25 sm:max-h-[min(80vh,880px)]";
+
+  const bankSlipOpenLabel =
+    bankSlipFileCount > 0
+      ? `Payment attachments — ${bankSlipFileCount} file${bankSlipFileCount === 1 ? "" : "s"}; open to view or add bank slips`
+      : "Payment attachments — open to view or add bank slips";
 
   const paymentDialog = (
       <div
@@ -420,48 +445,62 @@ export function RecordPaymentModal({
         }}
       >
         <div className="shrink-0">
-          <div className="px-4 pt-4 sm:px-6 sm:pt-6">
-            <div className="flex items-start justify-between gap-3">
-              <h2 id={titleId} className="text-sm font-semibold uppercase tracking-[0.12em] text-secondary sm:text-base">
-                {readOnly ? "View payments" : "Payment history"}
-              </h2>
-              <button type="button" onClick={onClose} className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary" aria-label="Close">
-                <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>close</span>
-              </button>
-            </div>
-          </div>
-          <div className="mt-3 w-full border-b border-dotted border-gray-300" aria-hidden />
+          {isEasyInline ? (
+            <h2 id={titleId} className="sr-only">
+              {readOnly ? "View payments" : "Payment history"}
+            </h2>
+          ) : (
+            <>
+              <div className="px-4 pt-4 sm:px-6 sm:pt-6">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 id={titleId} className="text-sm font-semibold uppercase tracking-[0.12em] text-secondary sm:text-base">
+                    {readOnly ? "View payments" : "Payment history"}
+                  </h2>
+                  <button type="button" onClick={onClose} className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary" aria-label="Close">
+                    <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>close</span>
+                  </button>
+                </div>
+              </div>
+              <div className="mt-3 w-full border-b border-dotted border-gray-300" aria-hidden />
+            </>
+          )}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
+        <div
+          className={
+            isEasyInline
+              ? "min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-4 sm:px-5 sm:pb-5 sm:pt-5"
+              : "min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-5 sm:px-6 sm:pb-6 sm:pt-6"
+          }
+        >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-primary">INVOICE AMOUNT</p>
-              <p className="mt-1 text-xl font-bold text-primary sm:text-2xl">{formatMoney(invoiceAmount, currencyLabel)}</p>
+              <p className={`text-sm font-medium ${isEasyInline ? "text-primary/65" : "text-primary"}`}>
+                {isEasyInline ? "Invoice Amount" : "INVOICE AMOUNT"}
+              </p>
+              <p className={`mt-1 font-bold text-primary ${isEasyInline ? "text-lg sm:text-xl" : "text-xl sm:text-2xl"}`}>{formatMoney(invoiceAmount, currencyLabel)}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setBankSlipPreviewOpen(true)}
-              className="relative -mr-1 -mt-0.5 box-border flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-primary/25 text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
-              aria-label={
-                bankSlipFileCount > 0
-                  ? `Payment attachments — ${bankSlipFileCount} file${bankSlipFileCount === 1 ? "" : "s"}; open to view or add bank slips`
-                  : "Payment attachments — open to view or add bank slips"
-              }
-            >
-              <span className="material-symbols-outlined text-[24px] leading-none" aria-hidden>
-                attach_file
-              </span>
-              {bankSlipFileCount > 0 ? (
-                <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-white">
-                  {bankSlipFileCount > 99 ? "99+" : bankSlipFileCount}
+            {!isEasyInline ? (
+              <button
+                type="button"
+                onClick={() => setBankSlipPreviewOpen(true)}
+                className="relative -mr-1 -mt-0.5 box-border flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-primary/25 text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+                aria-label={bankSlipOpenLabel}
+              >
+                <span className="material-symbols-outlined text-[24px] leading-none" aria-hidden>
+                  attach_file
                 </span>
-              ) : null}
-            </button>
+                {bankSlipFileCount > 0 ? (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-white">
+                    {bankSlipFileCount > 99 ? "99+" : bankSlipFileCount}
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
           </div>
 
           {!readOnly ? (
-            <div className="mt-5 flex gap-2">
+            <div className="mt-4 flex gap-2 sm:mt-5">
               <button
                 type="button"
                 disabled={fullPayLocked}
@@ -488,19 +527,31 @@ export function RecordPaymentModal({
               >
                 Full Pay
               </button>
-              <button type="button" onClick={() => { setFormError(null); setPayMode("partial"); setDraftAmount(""); }} className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "partial" ? "bg-secondary text-white shadow-sm" : "border-2 border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}>Partial Pay</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFormError(null);
+                  setPayMode("partial");
+                  setDraftAmount("");
+                }}
+                className={`flex-1 cursor-pointer rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:py-2 ${payMode === "partial" ? "bg-secondary text-white shadow-sm" : "border-2 border-secondary/40 bg-white text-secondary hover:bg-secondary/5"}`}
+              >
+                Partial Pay
+              </button>
             </div>
           ) : null}
 
-          <div className={`relative flex items-center gap-3 ${readOnly ? "mt-2" : "my-6"}`}>
+          <div className={`relative flex items-center gap-3 ${readOnly ? "mt-2" : isEasyInline ? "my-5" : "my-6"}`}>
             <div className="h-px flex-1 bg-gray-200" aria-hidden />
-            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-primary/50">Less : payments</span>
+            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-primary/50">
+              {isEasyInline ? "LESS : PAYMENTS" : "Less : payments"}
+            </span>
             <div className="h-px flex-1 bg-gray-200" aria-hidden />
           </div>
 
           {showPaymentHistoryPlaceholder ? (
             <ul className="flex flex-col gap-2.5" role="status" aria-busy="true" aria-label="Loading payments">
-              {Array.from({ length: 2 }, (_, i) => (
+              {Array.from({ length: 1 }, (_, i) => (
                 <li key={`pay-sk-${i}`} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-3 sm:gap-3 sm:px-4" aria-hidden>
                   <span
                     className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary/15"
@@ -574,72 +625,206 @@ export function RecordPaymentModal({
           )}
 
           {!readOnly ? (
-            <>
-              <div className={`mt-5 grid grid-cols-1 gap-3 sm:gap-3 ${payMode === "partial" ? "sm:grid-cols-2" : ""}`}>
-                <div className="relative w-full min-w-0">
-                  <label htmlFor={dateFieldId} className="sr-only">
-                    Payment date
-                  </label>
-                  <DateTextField
-                    id={dateFieldId}
-                    value={draftDate ?? ""}
-                    onChange={setDraftDate}
-                    calendarAriaLabel="Open calendar for payment date"
-                    textInputClassName={paymentDateTextClass}
-                    calendarButtonClassName={paymentDateCalendarBtnClass}
-                  />
-                </div>
-                {payMode === "partial" ? (
-                  <div className="min-w-0">
-                    <label htmlFor={amountFieldId} className="sr-only">Payment amount</label>
-                    <input id={amountFieldId} type="text" inputMode="decimal" placeholder="0.0" value={draftAmount ?? ""} onChange={(e) => setDraftAmount(e.target.value)} className="box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm" />
+            isEasyInline ? (
+              <>
+                <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
+                  <div className="relative w-full min-w-0">
+                    <label htmlFor={dateFieldId} className="sr-only">
+                      Payment date
+                    </label>
+                    <DateTextField
+                      id={dateFieldId}
+                      value={draftDate ?? ""}
+                      onChange={setDraftDate}
+                      calendarAriaLabel="Open calendar for payment date"
+                      textInputClassName={paymentDateTextClass}
+                      calendarButtonClassName={paymentDateCalendarBtnClass}
+                    />
                   </div>
-                ) : null}
-              </div>
+                  <div className="min-w-0">
+                    <label htmlFor={amountFieldId} className="sr-only">
+                      Payment amount
+                    </label>
+                    <div
+                      className={
+                        payMode === "full"
+                          ? "flex min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 shadow-[inset_0_1px_3px_rgba(0,0,0,0.06)] focus-within:border-gray-300 focus-within:ring-1 focus-within:ring-gray-300/50"
+                          : "flex min-w-0 overflow-hidden rounded-2xl border border-gray-300 bg-white focus-within:border-secondary focus-within:ring-2 focus-within:ring-secondary/25"
+                      }
+                    >
+                      <span
+                        className={
+                          payMode === "full"
+                            ? "flex shrink-0 items-center border-r border-gray-200 bg-gray-200/70 px-3 text-sm font-medium text-gray-600"
+                            : "flex shrink-0 items-center border-r border-gray-300 bg-gray-100 px-3 text-sm font-medium text-primary"
+                        }
+                      >
+                        {currencyLabel}
+                      </span>
+                      <input
+                        id={amountFieldId}
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        value={draftAmount ?? ""}
+                        onChange={(e) => setDraftAmount(e.target.value)}
+                        readOnly={payMode === "full"}
+                        className="box-border min-h-[44px] min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-base text-black placeholder:text-gray-700 read-only:cursor-default read-only:text-gray-700 read-only:placeholder:text-gray-500 focus:outline-none focus:ring-0 sm:min-h-11 sm:text-sm"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBankSlipPreviewOpen(true)}
+                    className="relative flex h-11 min-h-[44px] w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-white px-3 text-left text-sm text-primary/55 transition-colors hover:border-secondary/35 hover:bg-gray-50/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
+                    aria-label={bankSlipOpenLabel}
+                  >
+                    <span className="truncate">Upload Bank Slip.</span>
+                    <span className="material-symbols-outlined shrink-0 text-[22px] text-gray-400" aria-hidden>
+                      upload_file
+                    </span>
+                    {bankSlipFileCount > 0 ? (
+                      <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-white">
+                        {bankSlipFileCount > 99 ? "99+" : bankSlipFileCount}
+                      </span>
+                    ) : null}
+                  </button>
+                </div>
 
-              {formError ? <p className="mt-2 text-sm text-red-600" role="alert">{formError}</p> : null}
+                {formError ? <p className="mt-2 text-sm text-red-600" role="alert">{formError}</p> : null}
+              </>
+            ) : (
+              <>
+                <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3">
+                  <div className="relative w-full min-w-0">
+                    <label htmlFor={dateFieldId} className="sr-only">
+                      Payment date
+                    </label>
+                    <DateTextField
+                      id={dateFieldId}
+                      value={draftDate ?? ""}
+                      onChange={setDraftDate}
+                      calendarAriaLabel="Open calendar for payment date"
+                      textInputClassName={paymentDateTextClass}
+                      calendarButtonClassName={paymentDateCalendarBtnClass}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <label htmlFor={amountFieldId} className="sr-only">
+                      Payment amount
+                    </label>
+                    <input
+                      id={amountFieldId}
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0.0"
+                      value={draftAmount ?? ""}
+                      onChange={(e) => setDraftAmount(e.target.value)}
+                      readOnly={payMode === "full"}
+                      className="box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm read-only:cursor-default read-only:border-gray-200 read-only:bg-gray-100 read-only:text-gray-700 read-only:shadow-[inset_0_1px_3px_rgba(0,0,0,0.06)] read-only:placeholder:text-gray-500 read-only:focus:border-gray-300 read-only:focus:ring-1 read-only:focus:ring-gray-300/50"
+                    />
+                  </div>
+                </div>
 
-              <div className="mt-4 flex justify-end">
-                <button type="button" onClick={handleAddPayment} disabled={remaining <= 0 || adding} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#00C896]/10 px-4 py-2.5 text-sm font-semibold text-[#00C896] transition-colors hover:bg-[#00C896]/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00C896] disabled:cursor-not-allowed disabled:opacity-50">
-                  {adding ? "Adding…" : "Add Payment"}
-                  <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>{adding ? "progress_activity" : "add"}</span>
-                </button>
-              </div>
-            </>
+                {formError ? <p className="mt-2 text-sm text-red-600" role="alert">{formError}</p> : null}
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleAddPayment}
+                    disabled={remaining <= 0 || adding}
+                    className={addPaymentButtonClass}
+                  >
+                    {adding ? "Adding…" : "Add Payment"}
+                    <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>
+                      {adding ? "progress_activity" : "add"}
+                    </span>
+                  </button>
+                </div>
+              </>
+            )
           ) : null}
         </div>
 
         {!readOnly ? (
           <div className="shrink-0 border-t border-gray-200 px-4 py-4 sm:px-6 sm:py-5">
             <div className="flex flex-col gap-4">
-              <div
-                className="flex flex-col items-end gap-1"
-                role={showPaymentHistoryPlaceholder ? "status" : undefined}
-                aria-busy={showPaymentHistoryPlaceholder ? true : undefined}
-                aria-label={showPaymentHistoryPlaceholder ? "Loading amount to be paid" : undefined}
-              >
-                <span className="text-sm font-medium text-primary">Amount to be Paid</span>
-                {showPaymentHistoryPlaceholder ? (
-                  <span
-                    className="inline-block h-6 w-[min(100%,9.5rem)] max-w-full animate-pulse rounded-md bg-gray-200 tabular-nums sm:h-7 sm:w-[10.5rem]"
-                    aria-hidden
-                  />
-                ) : (
-                  <span className="text-2xl font-bold text-secondary sm:text-3xl">{formatMoney(remaining, currencyLabel)}</span>
-                )}
-              </div>
-              {bankSlipRequiredForPending ? (
-                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
-                  Add at least one bank slip attachment to finalize pending payments. Draft bills do not require this.
-                </p>
-              ) : null}
-              {finalizingPending ? (
-                <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-3" role="status" aria-live="polite">
-                  <span className="sr-only">Updating payments…</span>
-                  <div className="h-3 w-40 animate-pulse rounded bg-gray-200" aria-hidden />
-                  <div className="h-3 w-full max-w-[16rem] animate-pulse rounded bg-gray-100" aria-hidden />
-                </div>
-              ) : null}
+              {isEasyInline ? (
+                <>
+                  <div
+                    className="flex items-center justify-between gap-3"
+                    role={showPaymentHistoryPlaceholder ? "status" : undefined}
+                    aria-busy={showPaymentHistoryPlaceholder ? true : undefined}
+                    aria-label={showPaymentHistoryPlaceholder ? "Loading amount to be paid" : undefined}
+                  >
+                    <span className="text-sm font-medium text-primary/75">Amount to be Paid</span>
+                    {showPaymentHistoryPlaceholder ? (
+                      <span
+                        className="inline-block h-7 w-[min(100%,9.5rem)] max-w-full animate-pulse rounded-md bg-gray-200 tabular-nums"
+                        aria-hidden
+                      />
+                    ) : (
+                      <span className="text-xl font-bold text-secondary sm:text-2xl">{formatMoney(remaining, currencyLabel)}</span>
+                    )}
+                  </div>
+                  {bankSlipRequiredForPending ? (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+                      Add at least one bank slip attachment to finalize pending payments. Draft bills do not require this.
+                    </p>
+                  ) : null}
+                  {finalizingPending ? (
+                    <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-3" role="status" aria-live="polite">
+                      <span className="sr-only">Updating payments…</span>
+                      <div className="h-3 w-40 animate-pulse rounded bg-gray-200" aria-hidden />
+                      <div className="h-3 w-full max-w-[16rem] animate-pulse rounded bg-gray-100" aria-hidden />
+                    </div>
+                  ) : null}
+                  <div className="flex flex-wrap justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleAddPayment}
+                      disabled={remaining <= 0 || adding}
+                      className={addPaymentButtonClass}
+                    >
+                      {adding ? "Adding…" : "Add Payment"}
+                      <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>
+                        {adding ? "progress_activity" : "add"}
+                      </span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div
+                    className="flex flex-col items-end gap-1"
+                    role={showPaymentHistoryPlaceholder ? "status" : undefined}
+                    aria-busy={showPaymentHistoryPlaceholder ? true : undefined}
+                    aria-label={showPaymentHistoryPlaceholder ? "Loading amount to be paid" : undefined}
+                  >
+                    <span className="text-sm font-medium text-primary">Amount to be Paid</span>
+                    {showPaymentHistoryPlaceholder ? (
+                      <span
+                        className="inline-block h-6 w-[min(100%,9.5rem)] max-w-full animate-pulse rounded-md bg-gray-200 tabular-nums sm:h-7 sm:w-[10.5rem]"
+                        aria-hidden
+                      />
+                    ) : (
+                      <span className="text-2xl font-bold text-secondary sm:text-3xl">{formatMoney(remaining, currencyLabel)}</span>
+                    )}
+                  </div>
+                  {bankSlipRequiredForPending ? (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+                      Add at least one bank slip attachment to finalize pending payments. Draft bills do not require this.
+                    </p>
+                  ) : null}
+                  {finalizingPending ? (
+                    <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-3" role="status" aria-live="polite">
+                      <span className="sr-only">Updating payments…</span>
+                      <div className="h-3 w-40 animate-pulse rounded bg-gray-200" aria-hidden />
+                      <div className="h-3 w-full max-w-[16rem] animate-pulse rounded bg-gray-100" aria-hidden />
+                    </div>
+                  ) : null}
+                </>
+              )}
             </div>
           </div>
         ) : null}

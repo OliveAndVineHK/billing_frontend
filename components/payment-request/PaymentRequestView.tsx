@@ -14,7 +14,8 @@ import { PaymentRequestToolbar, type PaymentRequestStatusFilter } from "./Paymen
 import { BulkDeleteConfirmModal } from "./BulkDeleteConfirmModal";
 import { RecordPaymentModal } from "./RecordPaymentModal";
 import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
-import { deleteBill, fetchBills, publishBill, type BillListItem } from "@/lib/api";
+import { deleteBill, fetchBill, fetchBills, publishBill, type BillAttachment, type BillListItem } from "@/lib/api";
+import type { InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { fetchBillBankSlipEnrichment } from "@/lib/bankSlipEnrichment";
 import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
@@ -88,6 +89,25 @@ const DATE_TYPE_TO_FIELD: Record<string, string> = {
   "Submitted Date": "created_at",
 };
 
+/** Same mapping as `PaymentRequestDetailBody.mapServerAttachmentsToPreviewItems`. */
+function mapBillAttachmentsToPreviewItems(
+  billId: string,
+  serverAttachments: BillAttachment[],
+): InvoiceAttachmentPreviewItem[] {
+  return serverAttachments
+    .filter((ba) => ba.attachment?.download_url)
+    .map((ba) => ({
+      url: ba.attachment.download_url,
+      name: ba.attachment.original_name,
+      mime: ba.attachment.mime_type || "application/octet-stream",
+      previewApiPath:
+        (ba.attachment.mime_type || "").toLowerCase() === "application/pdf"
+          ? `/api/v1/bills/${billId}/attachments/${ba.id}/preview/`
+          : undefined,
+      billAttachmentId: ba.id,
+    }));
+}
+
 export type PaymentRequestViewProps = {
   easyView: boolean;
 };
@@ -110,6 +130,9 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<{ billId: string; readOnly: boolean } | null>(null);
   const [easyViewPayBillId, setEasyViewPayBillId] = useState<string | null>(null);
+  const [easyViewSelectedBillId, setEasyViewSelectedBillId] = useState<string | null>(null);
+  const [easyViewInvoiceAttachments, setEasyViewInvoiceAttachments] = useState<InvoiceAttachmentPreviewItem[]>([]);
+  const [easyViewInvoiceLoading, setEasyViewInvoiceLoading] = useState(false);
   const [selectedBillIds, setSelectedBillIds] = useState<string[]>([]);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
@@ -212,7 +235,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
     easyViewPayBillId && easyViewPaySource ? (
       <RecordPaymentModal
         key={easyViewPayBillId}
-        presentation="inline"
+        presentation="easyInline"
         open
         onClose={() => setEasyViewPayBillId(null)}
         billId={easyViewPayBillId}
@@ -233,6 +256,39 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
       setEasyViewPayBillId(null);
     }
   }, [statusFilter, bills, easyViewPayBillId]);
+
+  useEffect(() => {
+    if (!easyViewSelectedBillId) {
+      setEasyViewInvoiceAttachments([]);
+      setEasyViewInvoiceLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setEasyViewInvoiceLoading(true);
+    fetchBill(easyViewSelectedBillId)
+      .then((detail) => {
+        if (cancelled) return;
+        setEasyViewInvoiceAttachments(mapBillAttachmentsToPreviewItems(detail.id, detail.attachments ?? []));
+      })
+      .catch(() => {
+        if (!cancelled) setEasyViewInvoiceAttachments([]);
+      })
+      .finally(() => {
+        if (!cancelled) setEasyViewInvoiceLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [easyViewSelectedBillId]);
+
+  useEffect(() => {
+    if (!easyViewSelectedBillId) return;
+    const filtered =
+      statusFilter === "All" ? bills : bills.filter((r) => r.status === statusFilter);
+    if (!filtered.some((r) => r.id === easyViewSelectedBillId)) {
+      setEasyViewSelectedBillId(null);
+    }
+  }, [statusFilter, bills, easyViewSelectedBillId]);
 
   useEffect(() => {
     loadBills();
@@ -325,9 +381,13 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
                 activeStatus={statusFilter}
                 payPanelBillId={easyViewPayBillId}
                 payPanel={easyViewPayPanel}
+                selectedBillId={easyViewSelectedBillId}
+                invoiceAttachments={easyViewInvoiceAttachments}
+                invoiceAttachmentsLoading={easyViewInvoiceLoading}
                 onRowClick={(rowId) => {
+                  setEasyViewSelectedBillId(rowId);
                   const row = bills.find((r) => r.id === rowId);
-                  if (row?.status === "Payment Requested") {
+                  if (row?.status === "Payment Requested" || row?.status === "Partially paid") {
                     setRecordPaymentTarget(null);
                     setEasyViewPayBillId((prev) => (prev === rowId ? null : rowId));
                     return;
@@ -335,10 +395,12 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
                   router.push(`/payment-request/${rowId}`);
                 }}
                 onPaymentRequestedPay={(rowId) => {
+                  setEasyViewSelectedBillId(rowId);
                   setRecordPaymentTarget(null);
                   setEasyViewPayBillId(rowId);
                 }}
                 onRecordPayment={(rowId, readOnly) => {
+                  setEasyViewSelectedBillId(rowId);
                   setEasyViewPayBillId(null);
                   setRecordPaymentTarget({ billId: rowId, readOnly: readOnly ?? false });
                 }}
