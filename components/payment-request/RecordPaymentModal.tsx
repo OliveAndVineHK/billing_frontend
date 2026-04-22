@@ -475,8 +475,8 @@ export function RecordPaymentModal({
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className={`text-sm font-medium ${isEasyInline ? "text-primary/65" : "text-primary"}`}>
-                {isEasyInline ? "Invoice Amount" : "INVOICE AMOUNT"}
+              <p className="text-sm font-medium text-primary">
+                INVOICE AMOUNT
               </p>
               <p className={`mt-1 font-bold text-primary ${isEasyInline ? "text-lg sm:text-xl" : "text-xl sm:text-2xl"}`}>{formatMoney(invoiceAmount, currencyLabel)}</p>
             </div>

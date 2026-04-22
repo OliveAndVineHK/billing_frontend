@@ -11,8 +11,8 @@ import {
 import { createPortal } from "react-dom";
 import { ApiError, createEntityBillContact, type EntityBillContact } from "@/lib/api";
 
-const inputClass =
-  "box-border h-11 min-h-[44px] w-full rounded-2xl border bg-white px-3 text-base text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 sm:min-h-11 sm:text-sm ";
+const inputClassBase =
+  "box-border h-11 min-h-[44px] w-full border bg-white px-3 text-base text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 sm:min-h-11 sm:text-sm ";
 
 export type BillContactPickerProps = {
   id: string;
@@ -24,6 +24,8 @@ export type BillContactPickerProps = {
   refetchContacts: (ensureMerged?: EntityBillContact) => Promise<void>;
   disabled?: boolean;
   error?: boolean;
+  /** Corner radius on the text field (default matches bill modal). */
+  controlRoundedClassName?: string;
 };
 
 export function BillContactPicker({
@@ -35,6 +37,7 @@ export function BillContactPicker({
   refetchContacts,
   disabled = false,
   error = false,
+  controlRoundedClassName = "rounded-2xl",
 }: BillContactPickerProps) {
   const listboxId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -213,7 +216,7 @@ export function BillContactPicker({
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
-          className={inputClass + borderTone}
+          className={`${inputClassBase} ${controlRoundedClassName} ${borderTone}`}
         />
       </div>
       {createError ? (

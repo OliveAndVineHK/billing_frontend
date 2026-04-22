@@ -59,15 +59,22 @@ export type PaymentRequestDetailedInfoProps = {
   contactHeaderEnd?: ReactNode;
 };
 
-const fieldLabelClass =
+/** Shared with easy-view draft detailed card so labels match the detail page. */
+export const paymentRequestDetailFieldLabelClass =
   "mb-1.5 block text-[11px] font-semibold tracking-wide text-gray-700 sm:text-xs";
 
-/** Same as modal text inputs (Bill No., Description, etc.). */
-const modalTextInputClass =
+/** Same as modal text inputs (Bill No., Description, etc.) — shared with easy-view draft inline edit. */
+export const paymentRequestDetailModalTextInputClass =
   "box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm";
 
-const amountValueInputClass =
+export const paymentRequestDetailAmountValueInputClass =
   "box-border h-11 min-h-[44px] min-w-0 w-full rounded-2xl border border-gray-300 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-2xl sm:border-l-0 sm:text-sm focus:border-secondary focus:ring-secondary/25";
+
+export const paymentRequestDetailDateTextInputClass =
+  "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white py-0 pl-3 pr-3 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
+
+export const paymentRequestDetailDateTextInputClassError =
+  "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-2xl border border-red-500 bg-white py-0 pl-3 pr-3 text-base text-black placeholder:text-gray-700 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200/50 [color-scheme:light] sm:min-h-11 sm:text-sm";
 
 const cancelButtonClass =
   "box-border h-11 min-h-[44px] shrink-0 cursor-pointer rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[44px] sm:px-5";
@@ -79,10 +86,10 @@ const saveButtonClass =
 export { cancelButtonClass as paymentRequestDetailCancelButtonClass, saveButtonClass as paymentRequestDetailSaveButtonClass };
 
 /** Header actions row: same min-height in view (Edit) and edit (Cancel + Save) to avoid vertical jump. */
-const headerActionsClass =
+export const paymentRequestDetailHeaderActionsClass =
   "flex min-h-[44px] w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end";
 
-const editToggleButtonClass =
+export const paymentRequestDetailEditToggleButtonClass =
   "inline-flex h-11 min-h-[44px] shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition-[filter] hover:brightness-95 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50";
 
 function FieldLabel({
@@ -96,22 +103,22 @@ function FieldLabel({
 }) {
   if (editing && htmlFor) {
     return (
-      <label htmlFor={htmlFor} className={fieldLabelClass}>
+      <label htmlFor={htmlFor} className={paymentRequestDetailFieldLabelClass}>
         {children}
       </label>
     );
   }
-  return <div className={fieldLabelClass}>{children}</div>;
+  return <div className={paymentRequestDetailFieldLabelClass}>{children}</div>;
 }
 
-function formatLongDate(iso: string): string {
+export function formatPaymentRequestDetailLongDate(iso: string): string {
   if (!iso) return "—";
   const formatted = formatIsoDateForDisplay(iso);
   return formatted || iso;
 }
 
 /** Read-only text row: same outer box as modal `<input>`. */
-function ReadOnlyTextBox({
+export function PaymentRequestReadOnlyTextBox({
   children,
   emphasis = "normal",
   highlightError = false,
@@ -130,7 +137,13 @@ function ReadOnlyTextBox({
 }
 
 /** Matches ThemedSelect split trigger (contact / account) — non-interactive. */
-function ReadOnlySelectShell({ value, highlightError = false }: { value?: string | null; highlightError?: boolean }) {
+export function PaymentRequestReadOnlySelectShell({
+  value,
+  highlightError = false,
+}: {
+  value?: string | null;
+  highlightError?: boolean;
+}) {
   const display = (value ?? "").trim() || "—";
   return (
     <div
@@ -145,7 +158,7 @@ function ReadOnlySelectShell({ value, highlightError = false }: { value?: string
 }
 
 /** Same layout as amount row in modal: gray #EDEDED currency cell + white amount cell. */
-function ReadOnlyAmountRow({
+export function PaymentRequestReadOnlyAmountRow({
   currencyDisplayLabel,
   amount,
   highlightError = false,
@@ -169,7 +182,13 @@ function ReadOnlyAmountRow({
   );
 }
 
-function ReadOnlyDateRow({ display, highlightError = false }: { display: string; highlightError?: boolean }) {
+export function PaymentRequestReadOnlyDateRow({
+  display,
+  highlightError = false,
+}: {
+  display: string;
+  highlightError?: boolean;
+}) {
   return (
     <div
       className={`flex h-11 min-h-[44px] w-full items-center rounded-lg bg-transparent px-3 text-base font-semibold text-black sm:min-h-11 sm:text-sm ${highlightError ? "ring-2 ring-inset ring-red-500" : ""}`}
@@ -232,17 +251,6 @@ export function PaymentRequestDetailedInfo({
   const idAmountError = `detail-amount-err-${uid}`;
   const idContactError = `detail-contact-err-${uid}`;
 
-  const dateTextInputClass =
-    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white py-0 pl-3 pr-3 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
-  const dateCalendarBtnClass =
-    "hidden";
-
-  const dateTextInputClassError =
-    "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-2xl border border-red-500 bg-white py-0 pl-3 pr-3 text-base text-black placeholder:text-gray-700 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200/50 [color-scheme:light] sm:min-h-11 sm:text-sm";
-
-  const dateCalendarBtnClassError =
-    "hidden";
-
   const accountOptions = mergeSelectOption(accountOptionsProp ?? [], accountCode);
   const currencyOptions = currencyOptionsForEditing(currencyCode);
   const currencyModalValue = isoCodeToModalCurrency(currencyCode);
@@ -257,7 +265,7 @@ export function PaymentRequestDetailedInfo({
           Detailed Information
         </h2>
         {editInCardHeader ? (
-          <div className={headerActionsClass}>
+          <div className={paymentRequestDetailHeaderActionsClass}>
             {isEditing ? (
               <>
                 <button type="button" onClick={onCancel} className={cancelButtonClass} disabled={disabled || isSaving}>
@@ -268,7 +276,7 @@ export function PaymentRequestDetailedInfo({
                 </button>
               </>
             ) : (
-              <button type="button" onClick={onEdit} className={editToggleButtonClass} disabled={disabled}>
+              <button type="button" onClick={onEdit} className={paymentRequestDetailEditToggleButtonClass} disabled={disabled}>
                 Edit
                 <span className="material-symbols-outlined text-[18px] leading-none" aria-hidden>
                   edit_document
@@ -295,8 +303,8 @@ export function PaymentRequestDetailedInfo({
                 aria-describedby={billNoError ? idBillNoError : undefined}
                 className={
                   billNoError
-                    ? "box-border h-11 min-h-[44px] w-full rounded-lg border border-red-500 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200/50 sm:min-h-11 sm:text-sm"
-                    : modalTextInputClass
+                    ? "box-border h-11 min-h-[44px] w-full rounded-2xl border border-red-500 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200/50 sm:min-h-11 sm:text-sm"
+                    : paymentRequestDetailModalTextInputClass
                 }
                 placeholder="MBIOVI-115803031626"
                 disabled={disabled}
@@ -308,7 +316,7 @@ export function PaymentRequestDetailedInfo({
               ) : null}
             </>
           ) : (
-            <ReadOnlyTextBox>{billNo}</ReadOnlyTextBox>
+            <PaymentRequestReadOnlyTextBox>{billNo}</PaymentRequestReadOnlyTextBox>
           )}
         </div>
 
@@ -326,8 +334,12 @@ export function PaymentRequestDetailedInfo({
                   disabled={disabled}
                   invalid={!!invoiceDateError}
                   calendarAriaLabel="Open calendar for invoice date"
-                  textInputClassName={invoiceDateError ? dateTextInputClassError : dateTextInputClass}
-                  calendarButtonClassName={invoiceDateError ? dateCalendarBtnClassError : dateCalendarBtnClass}
+                  textInputClassName={
+                    invoiceDateError
+                      ? paymentRequestDetailDateTextInputClassError
+                      : paymentRequestDetailDateTextInputClass
+                  }
+                  calendarButtonClassName="hidden"
                 />
                 {invoiceDateError ? (
                   <p id={idInvoiceDateError} className="mt-1 text-xs text-red-600" role="alert">
@@ -336,7 +348,7 @@ export function PaymentRequestDetailedInfo({
                 ) : null}
               </>
             ) : (
-              <ReadOnlyDateRow display={formatLongDate(invoiceDate)} highlightError={!!invoiceDateError} />
+              <PaymentRequestReadOnlyDateRow display={formatPaymentRequestDetailLongDate(invoiceDate)} highlightError={!!invoiceDateError} />
             )}
           </div>
           <div>
@@ -352,8 +364,10 @@ export function PaymentRequestDetailedInfo({
                   disabled={disabled}
                   invalid={!!dueDateError}
                   calendarAriaLabel="Open calendar for due date"
-                  textInputClassName={dueDateError ? dateTextInputClassError : dateTextInputClass}
-                  calendarButtonClassName={dueDateError ? dateCalendarBtnClassError : dateCalendarBtnClass}
+                  textInputClassName={
+                    dueDateError ? paymentRequestDetailDateTextInputClassError : paymentRequestDetailDateTextInputClass
+                  }
+                  calendarButtonClassName="hidden"
                 />
                 {dueDateError ? (
                   <p id={idDueDateError} className="mt-1 text-xs text-red-600" role="alert">
@@ -362,7 +376,7 @@ export function PaymentRequestDetailedInfo({
                 ) : null}
               </>
             ) : (
-              <ReadOnlyDateRow display={formatLongDate(dueDate)} highlightError={!!dueDateError} />
+              <PaymentRequestReadOnlyDateRow display={formatPaymentRequestDetailLongDate(dueDate)} highlightError={!!dueDateError} />
             )}
           </div>
         </div>
@@ -383,7 +397,12 @@ export function PaymentRequestDetailedInfo({
                   className="w-full shrink-0 sm:w-24"
                   fullWidth
                   uniformFill
-                  triggerClassName="w-full px-2 sm:px-3 rounded-2xl sm:rounded-l-2xl sm:rounded-r-none sm:border-r-0 bg-white text-black hover:bg-white"
+                  error={!!amountError}
+                  triggerClassName={
+                    amountError
+                      ? "w-full px-2 sm:px-3 rounded-2xl sm:rounded-l-2xl sm:rounded-r-none sm:border-r-0 border-red-500 bg-white text-black hover:bg-white focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200/50"
+                      : "w-full px-2 sm:px-3 rounded-2xl sm:rounded-l-2xl sm:rounded-r-none sm:border-r-0 bg-white text-black hover:bg-white"
+                  }
                   disabled={disabled}
                 />
                 <input
@@ -396,8 +415,8 @@ export function PaymentRequestDetailedInfo({
                   aria-describedby={amountError ? idAmountError : undefined}
                   className={
                     amountError
-                      ? `${amountValueInputClass} border-red-500 focus:border-red-500 focus:ring-red-200/50`
-                      : amountValueInputClass
+                      ? `${paymentRequestDetailAmountValueInputClass} border-red-500 focus:border-red-500 focus:ring-red-200/50`
+                      : paymentRequestDetailAmountValueInputClass
                   }
                   disabled={disabled}
                 />
@@ -409,7 +428,7 @@ export function PaymentRequestDetailedInfo({
               ) : null}
             </>
           ) : (
-            <ReadOnlyAmountRow currencyDisplayLabel={currencyDisplayLabel} amount={amount} highlightError={!!amountError} />
+            <PaymentRequestReadOnlyAmountRow currencyDisplayLabel={currencyDisplayLabel} amount={amount} highlightError={!!amountError} />
           )}
         </div>
 
@@ -424,11 +443,11 @@ export function PaymentRequestDetailedInfo({
               value={description ?? ""}
               onChange={(e) => patch({ description: e.target.value })}
               placeholder="Description (Optional)"
-              className={modalTextInputClass}
+              className={paymentRequestDetailModalTextInputClass}
               disabled={disabled}
             />
           ) : (
-            <ReadOnlyTextBox>{description}</ReadOnlyTextBox>
+            <PaymentRequestReadOnlyTextBox>{description}</PaymentRequestReadOnlyTextBox>
           )}
         </div>
 
@@ -459,7 +478,7 @@ export function PaymentRequestDetailedInfo({
                   ) : null}
                 </>
               ) : (
-                <ReadOnlySelectShell value={contact} highlightError={!!contactError} />
+                <PaymentRequestReadOnlySelectShell value={contact} highlightError={!!contactError} />
               )}
             </div>
             {contactHeaderEnd ? <div className="shrink-0">{contactHeaderEnd}</div> : null}
@@ -487,7 +506,7 @@ export function PaymentRequestDetailedInfo({
               {accountCodeError ? <p id={idAccountError} className="mt-1 text-xs text-red-600" role="alert">{accountCodeError}</p> : null}
             </>
           ) : (
-            <ReadOnlySelectShell value={accountCode} />
+            <PaymentRequestReadOnlySelectShell value={accountCode} />
           )}
         </div>
       </div>

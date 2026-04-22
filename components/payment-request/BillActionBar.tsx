@@ -31,6 +31,8 @@ type BillActionBarProps = {
   overflowMenuTriggerDisabled?: boolean;
   overflowVoidDisabled?: boolean;
   isDraftBill?: boolean;
+  /** When true with void/delete shown: same easy-view row as draft — actions `justify-end`, void then publish (publish on the right). */
+  voidButtonTrailing?: boolean;
 };
 
 export function BillActionBar({
@@ -49,6 +51,7 @@ export function BillActionBar({
   overflowMenuTriggerDisabled = false,
   overflowVoidDisabled = false,
   isDraftBill = false,
+  voidButtonTrailing = false,
 }: BillActionBarProps) {
   const removeMenuLabel = isDraftBill ? "Delete" : "Void";
   const removePrimaryLabel = isDraftBill ? "Delete Bill" : "Void Bill";
@@ -151,91 +154,107 @@ export function BillActionBar({
         )
       : null;
 
+  const voidBillButton =
+    showVoidBill !== false ? (
+      <button
+        type="button"
+        onClick={onDeleteBill}
+        disabled={deleteDisabled}
+        className="inline-flex h-10 min-h-[44px] w-auto shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md bg-rose-50 px-3 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+      >
+        {removePrimaryLabel}
+        <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
+          block
+        </span>
+      </button>
+    ) : null;
+
+  const centerActions = (
+    <>
+      {endRowPrefix}
+      {draftSubmit?.show ? (
+        <BillDraftSubmitButton onClick={draftSubmit.onClick} disabled={draftSubmit.disabled} pending={draftSubmit.pending} />
+      ) : null}
+      {useActionsOverflowMenu ? (
+        <>
+          <button
+            ref={btnRef}
+            type="button"
+            data-bill-action-menu-trigger
+            disabled={overflowMenuTriggerDisabled || publishPending}
+            className={rowMenuButtonClass}
+            aria-label="More bill actions"
+            aria-expanded={menuOpen ? "true" : "false"}
+            aria-haspopup="menu"
+            aria-controls={menuOpen ? menuId : undefined}
+            onClick={(e) => {
+              e.preventDefault();
+              toggleMenu();
+            }}
+          >
+            <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
+              more_vert
+            </span>
+          </button>
+          {overflowMenu}
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={isPublished || publishDisabled ? undefined : onPublishToXero}
+          disabled={isPublished || publishPending || publishDisabled}
+          title={publishDisabled ? "Cannot publish a voided bill" : undefined}
+          className={
+            "inline-flex h-10 min-h-[44px] w-auto max-w-full shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:gap-2 sm:px-4 " +
+            (isPublished
+              ? "border-2 border-emerald-500 bg-emerald-50 text-emerald-700 cursor-default"
+              : publishDisabled
+                ? "border border-primary/20 bg-[#F5F5F5] text-primary/40 cursor-not-allowed"
+                : publishPending
+                  ? "border border-primary/25 bg-white text-primary/50 cursor-wait"
+                  : "border border-primary/25 bg-white text-primary cursor-pointer hover:bg-primary/5 focus-visible:outline-secondary")
+          }
+        >
+          {isPublished ? (
+            <>
+              <span className="material-symbols-outlined text-[20px] leading-none text-emerald-500" aria-hidden>
+                check_circle
+              </span>
+              Published to Xero
+            </>
+          ) : publishPending ? (
+            "Publishing…"
+          ) : (
+            "Publish to Xero"
+          )}
+          <img
+            src="/xero-active.png"
+            alt=""
+            width={40}
+            height={40}
+            className={"h-10 w-10 shrink-0 object-contain" + (publishDisabled ? " grayscale opacity-40" : "")}
+            aria-hidden
+          />
+        </button>
+      )}
+    </>
+  );
+
+  if (voidButtonTrailing && voidBillButton) {
+    return (
+      <div className="flex w-full min-w-0 flex-row flex-wrap items-center justify-end gap-2 sm:gap-3">
+        {voidBillButton}
+        {centerActions}
+      </div>
+    );
+  }
+
   return (
     <div
       className={`flex w-full min-w-0 flex-row items-center gap-2 sm:gap-3 ${showVoidBill === false ? "justify-end" : "justify-between"}`}
     >
-      {showVoidBill !== false ? (
-        <button
-          type="button"
-          onClick={onDeleteBill}
-          disabled={deleteDisabled}
-          className="inline-flex h-10 min-h-[44px] w-auto shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md bg-rose-50 px-3 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
-        >
-          {removePrimaryLabel}
-          <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-            block
-          </span>
-        </button>
-      ) : null}
-      <div className="flex min-w-0 flex-1 flex-row flex-wrap items-center justify-end gap-2 sm:gap-3">
-        {endRowPrefix}
-        {draftSubmit?.show ? (
-          <BillDraftSubmitButton onClick={draftSubmit.onClick} disabled={draftSubmit.disabled} pending={draftSubmit.pending} />
-        ) : null}
-        {useActionsOverflowMenu ? (
-          <>
-            <button
-              ref={btnRef}
-              type="button"
-              data-bill-action-menu-trigger
-              disabled={overflowMenuTriggerDisabled || publishPending}
-              className={rowMenuButtonClass}
-              aria-label="More bill actions"
-              aria-expanded={menuOpen ? "true" : "false"}
-              aria-haspopup="menu"
-              aria-controls={menuOpen ? menuId : undefined}
-              onClick={(e) => {
-                e.preventDefault();
-                toggleMenu();
-              }}
-            >
-              <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>
-                more_vert
-              </span>
-            </button>
-            {overflowMenu}
-          </>
-        ) : (
-          <button
-            type="button"
-            onClick={isPublished || publishDisabled ? undefined : onPublishToXero}
-            disabled={isPublished || publishPending || publishDisabled}
-            title={publishDisabled ? "Cannot publish a voided bill" : undefined}
-            className={
-              "inline-flex h-10 min-h-[44px] w-auto max-w-full shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:gap-2 sm:px-4 " +
-              (isPublished
-                ? "border-2 border-emerald-500 bg-emerald-50 text-emerald-700 cursor-default"
-                : publishDisabled
-                  ? "border border-primary/20 bg-[#F5F5F5] text-primary/40 cursor-not-allowed"
-                  : publishPending
-                    ? "border border-primary/25 bg-white text-primary/50 cursor-wait"
-                    : "border border-primary/25 bg-white text-primary cursor-pointer hover:bg-primary/5 focus-visible:outline-secondary")
-            }
-          >
-            {isPublished ? (
-              <>
-                <span className="material-symbols-outlined text-[20px] leading-none text-emerald-500" aria-hidden>
-                  check_circle
-                </span>
-                Published to Xero
-              </>
-            ) : publishPending ? (
-              "Publishing…"
-            ) : (
-              "Publish to Xero"
-            )}
-            <img
-              src="/xero-active.png"
-              alt=""
-              width={40}
-              height={40}
-              className={"h-10 w-10 shrink-0 object-contain" + (publishDisabled ? " grayscale opacity-40" : "")}
-              aria-hidden
-            />
-          </button>
-        )}
-      </div>
+      {voidBillButton}
+      <div className="flex min-w-0 flex-1 flex-row flex-wrap items-center justify-end gap-2 sm:gap-3">{centerActions}</div>
     </div>
   );
 }

@@ -1,9 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { useMemo, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
+import { type EasyViewDraftDetailActions } from "./EasyViewDraftDetailedInformation";
+import { EasyViewDraftDetailBody, EasyViewReadonlyBillDetailBody } from "./EasyViewDraftDetailBody";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import { statusDisplayBadgeClass } from "@/lib/billStatusDisplay";
 import { compareBySubmittedDate } from "@/lib/paymentRequestDateSort";
 import type { PaymentRequestRow } from "./PaymentRequestTable";
 import type { PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
@@ -100,11 +103,11 @@ function easyViewMainBackgroundClass(status: string): string {
     case "Returned":
       return "bg-gradient-to-b from-[#EA9713]/10 from-[0%] to-white to-[15%]";
     case "Paid":
-      return "bg-gradient-to-b from-[#656565]/10 from-[0%] to-white to-[15%]";
+      return "bg-gradient-to-b from-gray-300/10 from-[0%] to-white to-[15%]";
     case "Voided":
       return "bg-gradient-to-b from-[#FF6B6B]/10 from-[0%] to-white to-[15%]";
     case "Draft":
-      return "bg-gradient-to-b from-gray-300/10 from-[0%] to-white to-[15%]";
+      return "bg-gradient-to-b from-[#656565]/10 from-[0%] to-white to-[15%]";
     case "All":
       return "bg-gradient-to-b from-gray-200/10 from-[0%] to-white to-[15%]";
     default:
@@ -125,62 +128,87 @@ export type PaymentRequestEasyViewProps = {
   onRowClick: (rowId: string) => void;
   /** Opens the inline pay panel (Payment Requested) instead of the floating record-payment modal. */
   onPaymentRequestedPay: (rowId: string) => void;
-  onRecordPayment: (rowId: string, readOnly?: boolean) => void;
   onOpenBankSlipUpload: (rowId: string) => void;
+  /** Inline draft row: same expand pattern as pay panel, but only detailed information. */
+  draftDetailBillId: string | null;
+  onDraftBillOpen: (rowId: string) => void;
+  draftDetailActions: EasyViewDraftDetailActions;
   isElevated: boolean;
+  isViewOnly: boolean;
+  /** After inline draft save, refresh list row data. */
+  onDraftBillSaved?: () => void;
+  /** True while delete/void from easy view is executing (disables void on paid/returned panel). */
+  easyViewBillMutatePending?: boolean;
 };
 
 function EasyViewStatusCell({
   row,
   isElevated,
-  onRecordPayment,
   onPaymentRequestedPay,
+  onDraftBillOpen,
 }: {
   row: PaymentRequestRow;
   isElevated: boolean;
-  onRecordPayment: (rowId: string, readOnly?: boolean) => void;
   onPaymentRequestedPay: (rowId: string) => void;
+  onDraftBillOpen: (rowId: string) => void;
 }) {
-  const stop = (e: MouseEvent) => e.stopPropagation();
+  const stop = (e: ReactMouseEvent) => e.stopPropagation();
 
   if (row.status === "Voided") {
     return (
-      <span className={`${EASY_VIEW_STATUS_CELL} text-[#FF6B6B]`} onClick={stop}>
+      <button
+        type="button"
+        className={`${statusDisplayBadgeClass("Voided")} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
+        onClick={(e) => {
+          stop(e);
+          onDraftBillOpen(row.id);
+        }}
+        aria-label="Voided — show bill details"
+      >
         Voided
-      </span>
+      </button>
     );
   }
   if (row.status === "Returned") {
     return (
-      <span
-        className={`${EASY_VIEW_STATUS_CELL} bg-[#EA9713]/15 text-[#EA9713]`}
-        onClick={stop}
+      <button
+        type="button"
+        className={`${statusDisplayBadgeClass("Returned")} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
+        onClick={(e) => {
+          stop(e);
+          onDraftBillOpen(row.id);
+        }}
+        aria-label="Returned — show bill details"
       >
         Returned
-      </span>
+      </button>
     );
   }
   if (row.status === "Draft") {
     return (
-      <span
-        className={`${EASY_VIEW_STATUS_CELL} bg-[#EDEDED] font-medium text-[#C0C0C0]`}
-        onClick={stop}
+      <button
+        type="button"
+        className={`${statusDisplayBadgeClass("Draft")} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
+        onClick={(e) => {
+          stop(e);
+          onDraftBillOpen(row.id);
+        }}
+        aria-label="Draft — show bill details"
       >
         Draft
-      </span>
+      </button>
     );
   }
   if (row.status === "Paid") {
     return (
       <button
         type="button"
-        className={`${EASY_VIEW_STATUS_CELL} cursor-pointer border border-primary/25 bg-white text-[#656565] transition-colors hover:bg-gray-50 disabled:cursor-not-allowed`}
+        className={`${statusDisplayBadgeClass("Paid")} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center transition-colors hover:bg-gray-50/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
         onClick={(e) => {
           stop(e);
-          if (!isElevated) return;
-          onRecordPayment(row.id, true);
+          onDraftBillOpen(row.id);
         }}
-        disabled={!isElevated}
+        aria-label="Paid — show bill details"
       >
         Paid
       </button>
@@ -240,9 +268,14 @@ export function PaymentRequestEasyView({
   invoiceAttachmentsLoading,
   onRowClick,
   onPaymentRequestedPay,
-  onRecordPayment,
   onOpenBankSlipUpload,
+  draftDetailBillId,
+  onDraftBillOpen,
+  draftDetailActions,
   isElevated,
+  isViewOnly,
+  onDraftBillSaved,
+  easyViewBillMutatePending = false,
 }: PaymentRequestEasyViewProps) {
   const [submittedDateSort, setSubmittedDateSort] = useState<"asc" | "desc">("desc");
 
@@ -254,6 +287,10 @@ export function PaymentRequestEasyView({
     return copy;
   }, [rows, activeStatus, submittedDateSort]);
 
+  /** When set and still visible, non-matching rows use reduced opacity so the focused bill stands out. */
+  const focusBillId =
+    selectedBillId != null && visibleRows.some((r) => r.id === selectedBillId) ? selectedBillId : null;
+
   /** Prefer selected / pay-panel row so "All" + Pay row still gets the teal gradient. */
   const mainBackgroundClass = useMemo(() => {
     if (selectedBillId) {
@@ -264,8 +301,12 @@ export function PaymentRequestEasyView({
       const row = rows.find((r) => r.id === payPanelBillId);
       if (row?.status) return easyViewMainBackgroundClass(row.status);
     }
+    if (draftDetailBillId) {
+      const row = rows.find((r) => r.id === draftDetailBillId);
+      if (row?.status) return easyViewMainBackgroundClass(row.status);
+    }
     return easyViewMainBackgroundClass(activeStatus);
-  }, [selectedBillId, payPanelBillId, rows, activeStatus]);
+  }, [selectedBillId, payPanelBillId, draftDetailBillId, rows, activeStatus]);
 
   const easyViewAsideImageSrc =
     activeStatus === "Payment Requested" ? "/unpaid.png" : "/all-cat.png";
@@ -366,13 +407,16 @@ export function PaymentRequestEasyView({
             <ul className="flex flex-col gap-3">
               {visibleRows.map((row) => {
                 const isPayPanelOpen = payPanelBillId === row.id && payPanel != null;
+                const isDraftDetailOpen = draftDetailBillId === row.id;
                 const isRowSelected = selectedBillId === row.id;
+                const isFocusBill = focusBillId != null && row.id === focusBillId;
+                const dimRow = focusBillId != null && !isFocusBill;
                 return (
                   <li
                     key={row.id}
-                    className={`flex flex-col overflow-hidden rounded-lg border bg-white transition-colors ${
+                    className={`flex flex-col overflow-hidden rounded-lg border bg-white transition-[opacity,colors] duration-200 ${
                       isRowSelected ? "border-secondary/50" : "border-gray-200"
-                    }`}
+                    } ${dimRow ? "opacity-20" : "opacity-100"}`}
                   >
                     <div
                       className={`${EASY_VIEW_ROW_GRID} cursor-pointer transition-colors hover:border-primary/20 hover:bg-gray-50/80`}
@@ -427,8 +471,8 @@ export function PaymentRequestEasyView({
                         <EasyViewStatusCell
                           row={row}
                           isElevated={isElevated}
-                          onRecordPayment={onRecordPayment}
                           onPaymentRequestedPay={onPaymentRequestedPay}
+                          onDraftBillOpen={onDraftBillOpen}
                         />
                       </div>
                     </div>
@@ -453,6 +497,33 @@ export function PaymentRequestEasyView({
                           <div className="flex w-full min-w-0 max-w-[min(100%,720px)] shrink-0 justify-end self-end sm:self-center sm:ml-auto">
                             {payPanel}
                           </div>
+                        </div>
+                      </div>
+                    ) : isDraftDetailOpen ? (
+                      <div
+                        className="border-t border-gray-200 bg-gray-50/50 p-4 sm:p-5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="w-full min-w-0 max-w-full">
+                          {row.status === "Draft" ? (
+                            <EasyViewDraftDetailBody
+                              billId={row.id}
+                              actions={draftDetailActions}
+                              isElevated={isElevated}
+                              isViewOnly={isViewOnly}
+                              onBillSaved={onDraftBillSaved}
+                            />
+                          ) : (
+                            <EasyViewReadonlyBillDetailBody
+                              billId={row.id}
+                              listStatus={row.status}
+                              isElevated={isElevated}
+                              isViewOnly={isViewOnly}
+                              voidBillPending={easyViewBillMutatePending}
+                              onRequestVoidBill={draftDetailActions.onRequestDelete}
+                              onBillUpdated={onDraftBillSaved}
+                            />
+                          )}
                         </div>
                       </div>
                     ) : null}

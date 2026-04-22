@@ -13,8 +13,18 @@ import {
 import { PaymentRequestToolbar, type PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 import { BulkDeleteConfirmModal } from "./BulkDeleteConfirmModal";
 import { RecordPaymentModal } from "./RecordPaymentModal";
+import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
+import type { EasyViewDraftDetailActions } from "./EasyViewDraftDetailedInformation";
 import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
-import { deleteBill, fetchBill, fetchBills, publishBill, type BillAttachment, type BillListItem } from "@/lib/api";
+import {
+  deleteBill,
+  fetchBill,
+  fetchBills,
+  publishBill,
+  returnBill,
+  type BillAttachment,
+  type BillListItem,
+} from "@/lib/api";
 import type { InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { fetchBillBankSlipEnrichment } from "@/lib/bankSlipEnrichment";
@@ -130,6 +140,9 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<{ billId: string; readOnly: boolean } | null>(null);
   const [easyViewPayBillId, setEasyViewPayBillId] = useState<string | null>(null);
+  const [easyViewDraftBillId, setEasyViewDraftBillId] = useState<string | null>(null);
+  const [easyViewDraftDeleteOpen, setEasyViewDraftDeleteOpen] = useState(false);
+  const [easyViewDraftDeletePending, setEasyViewDraftDeletePending] = useState(false);
   const [easyViewSelectedBillId, setEasyViewSelectedBillId] = useState<string | null>(null);
   const [easyViewInvoiceAttachments, setEasyViewInvoiceAttachments] = useState<InvoiceAttachmentPreviewItem[]>([]);
   const [easyViewInvoiceLoading, setEasyViewInvoiceLoading] = useState(false);
@@ -256,6 +269,27 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
       setEasyViewPayBillId(null);
     }
   }, [statusFilter, bills, easyViewPayBillId]);
+
+  useEffect(() => {
+    if (!easyViewDraftBillId) return;
+    const filtered =
+      statusFilter === "All" ? bills : bills.filter((r) => r.status === statusFilter);
+    if (!filtered.some((r) => r.id === easyViewDraftBillId)) {
+      setEasyViewDraftBillId(null);
+    }
+  }, [statusFilter, bills, easyViewDraftBillId]);
+
+  useEffect(() => {
+    if (!easyViewDraftBillId) setEasyViewDraftDeleteOpen(false);
+  }, [easyViewDraftBillId]);
+
+  const easyViewDraftDetailActions = useMemo<EasyViewDraftDetailActions>(
+    () => ({
+      onRequestDelete: () => setEasyViewDraftDeleteOpen(true),
+      deleteDisabled: loading || isViewOnly || !isElevated || easyViewDraftDeletePending,
+    }),
+    [easyViewDraftDeletePending, loading, isViewOnly, isElevated],
+  );
 
   useEffect(() => {
     if (!easyViewSelectedBillId) {
@@ -389,7 +423,27 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
                   const row = bills.find((r) => r.id === rowId);
                   if (row?.status === "Payment Requested" || row?.status === "Partially paid") {
                     setRecordPaymentTarget(null);
+                    setEasyViewDraftDeleteOpen(false);
+                    setEasyViewDraftBillId(null);
                     setEasyViewPayBillId((prev) => (prev === rowId ? null : rowId));
+                    return;
+                  }
+                  if (row?.status === "Draft") {
+                    setRecordPaymentTarget(null);
+                    setEasyViewDraftDeleteOpen(false);
+                    setEasyViewPayBillId(null);
+                    setEasyViewDraftBillId((prev) => (prev === rowId ? null : rowId));
+                    return;
+                  }
+                  if (
+                    row?.status === "Voided" ||
+                    row?.status === "Paid" ||
+                    row?.status === "Returned"
+                  ) {
+                    setRecordPaymentTarget(null);
+                    setEasyViewDraftDeleteOpen(false);
+                    setEasyViewPayBillId(null);
+                    setEasyViewDraftBillId((prev) => (prev === rowId ? null : rowId));
                     return;
                   }
                   router.push(`/payment-request/${rowId}`);
@@ -397,15 +451,24 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
                 onPaymentRequestedPay={(rowId) => {
                   setEasyViewSelectedBillId(rowId);
                   setRecordPaymentTarget(null);
+                  setEasyViewDraftDeleteOpen(false);
+                  setEasyViewDraftBillId(null);
                   setEasyViewPayBillId(rowId);
                 }}
-                onRecordPayment={(rowId, readOnly) => {
-                  setEasyViewSelectedBillId(rowId);
-                  setEasyViewPayBillId(null);
-                  setRecordPaymentTarget({ billId: rowId, readOnly: readOnly ?? false });
-                }}
                 onOpenBankSlipUpload={(rowId) => setEasyViewBankSlipRowId(rowId)}
+                draftDetailBillId={easyViewDraftBillId}
+                onDraftBillOpen={(rowId) => {
+                  setEasyViewSelectedBillId(rowId);
+                  setRecordPaymentTarget(null);
+                  setEasyViewDraftDeleteOpen(false);
+                  setEasyViewPayBillId(null);
+                  setEasyViewDraftBillId((prev) => (prev === rowId ? null : rowId));
+                }}
+                draftDetailActions={easyViewDraftDetailActions}
                 isElevated={isElevated}
+                isViewOnly={isViewOnly}
+                onDraftBillSaved={loadBills}
+                easyViewBillMutatePending={easyViewDraftDeletePending}
               />
             </div>
             <div className={easyView ? "max-lg:block lg:hidden" : "block"}>
@@ -473,6 +536,37 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
             : "HKD"
         }
         onPaymentSaved={loadBills}
+      />
+      <RowDeleteConfirmModal
+        open={easyViewDraftDeleteOpen}
+        contactTitle={bills.find((r) => r.id === easyViewDraftBillId)?.contactTitle ?? ""}
+        isDraft={bills.find((r) => r.id === easyViewDraftBillId)?.status === "Draft"}
+        pending={easyViewDraftDeletePending}
+        onClose={() => {
+          if (!easyViewDraftDeletePending) setEasyViewDraftDeleteOpen(false);
+        }}
+        onConfirm={async () => {
+          if (!easyViewDraftBillId) return;
+          const row = bills.find((r) => r.id === easyViewDraftBillId);
+          setError(null);
+          setEasyViewDraftDeletePending(true);
+          try {
+            if (row?.status === "Draft") {
+              await deleteBill(easyViewDraftBillId);
+            } else if (row?.status === "Returned") {
+              await returnBill(easyViewDraftBillId, "void");
+            } else {
+              await deleteBill(easyViewDraftBillId);
+            }
+            setEasyViewDraftDeleteOpen(false);
+            setEasyViewDraftBillId(null);
+            await loadBills();
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Could not complete this action");
+          } finally {
+            setEasyViewDraftDeletePending(false);
+          }
+        }}
       />
       {easyViewBankSlipRowId != null && easyViewBankSlipPayload ? (
         <BankSlipDetailsModal
