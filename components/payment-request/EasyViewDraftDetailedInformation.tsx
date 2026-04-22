@@ -39,6 +39,103 @@ export type EasyViewDraftDetailActions = {
 const easyViewDetailedInformationShellClass =
   "w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-secondary/50 bg-white";
 
+const easyViewDetailSkeletonField = "h-11 min-h-[44px] w-full animate-pulse rounded-lg bg-gray-100";
+
+function EasyViewDetailSkeletonLabel() {
+  return (
+    <div className={paymentRequestDetailFieldLabelClass}>
+      <span
+        className="inline-block h-2.5 w-16 max-w-full rounded bg-gray-200/90 animate-pulse"
+        aria-hidden
+      />
+    </div>
+  );
+}
+
+/**
+ * Loading placeholder matching {@link EasyViewDraftDetailedInformation} grids, padding, and shell
+ * (read-only vs draft card header + optional paid/returned action row).
+ */
+export function EasyViewDetailedInformationSkeleton({
+  mode = "readOnly",
+  showFooterActionsSkeleton = false,
+}: {
+  mode?: "readOnly" | "draftCard";
+  /** Paid / returned: stub row where Void + Publish load. */
+  showFooterActionsSkeleton?: boolean;
+}) {
+  const header =
+    mode === "draftCard" ? (
+      <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="h-6 w-[min(100%,12rem)] max-w-full animate-pulse rounded-md bg-gray-200 sm:h-7" />
+        <div className={paymentRequestDetailHeaderActionsClass}>
+          <div className="h-11 min-h-[44px] w-[7.5rem] max-w-full shrink-0 animate-pulse rounded-lg bg-gray-100" />
+        </div>
+      </div>
+    ) : (
+      <div className="mb-4 sm:mb-5">
+        <div className="h-6 w-[min(100%,12rem)] max-w-full animate-pulse rounded-md bg-gray-200 sm:h-7" />
+      </div>
+    );
+
+  return (
+    <div className={easyViewDetailedInformationShellClass} aria-hidden>
+      <section className="w-full min-w-0 max-w-full border-0 bg-transparent p-4 sm:p-5 md:p-6 lg:p-7">
+        {header}
+
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-y-4">
+          <div className="min-w-0">
+            <EasyViewDetailSkeletonLabel />
+            <div className={easyViewDetailSkeletonField} />
+          </div>
+          <div className="min-w-0">
+            <EasyViewDetailSkeletonLabel />
+            <div className={easyViewDetailSkeletonField} />
+          </div>
+          <div className="min-w-0">
+            <EasyViewDetailSkeletonLabel />
+            <div className={easyViewDetailSkeletonField} />
+          </div>
+          <div className="min-w-0">
+            <EasyViewDetailSkeletonLabel />
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-0">
+              <div className="h-11 min-h-[44px] w-full shrink-0 animate-pulse rounded-lg bg-gray-100 sm:w-24 sm:rounded-l-lg sm:rounded-r-none" />
+              <div className="h-11 min-h-[44px] w-full flex-1 animate-pulse rounded-lg bg-gray-100 sm:rounded-l-none sm:rounded-r-lg" />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-y-4">
+          <div className="min-w-0 lg:col-span-1">
+            <EasyViewDetailSkeletonLabel />
+            <div className={easyViewDetailSkeletonField} />
+          </div>
+          <div className="min-w-0 lg:col-span-1">
+            <EasyViewDetailSkeletonLabel />
+            <div className={easyViewDetailSkeletonField} />
+          </div>
+          <div className="min-w-0 sm:col-span-2 lg:col-span-1">
+            <EasyViewDetailSkeletonLabel />
+            <div className={easyViewDetailSkeletonField} />
+          </div>
+        </div>
+
+        {mode === "draftCard" ? (
+          <div className="mt-8 flex w-full min-w-0 flex-row flex-wrap items-center justify-end gap-2 sm:gap-3">
+            <div className="h-10 min-h-[44px] w-[8.5rem] max-w-full shrink-0 animate-pulse rounded-md bg-gray-100" />
+          </div>
+        ) : null}
+        {showFooterActionsSkeleton ? (
+          <div className="mt-8 flex w-full min-w-0 flex-row flex-wrap items-center justify-end gap-2 sm:gap-3">
+            <div className="h-10 min-h-[44px] w-[6.5rem] shrink-0 animate-pulse rounded-md bg-gray-100" />
+            <div className="h-10 min-h-[44px] w-[10rem] max-w-full shrink-0 animate-pulse rounded-full bg-gray-100" />
+          </div>
+        ) : null}
+      </section>
+    </div>
+  );
+}
+
 /** Delete row for easy-view draft detail (paid/returned use BillActionBar in EasyViewReadonlyBillDetailBody). */
 export function EasyViewDraftBillActionsRow({
   actions,

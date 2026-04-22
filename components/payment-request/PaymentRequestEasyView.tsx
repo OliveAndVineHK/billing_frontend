@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { type EasyViewDraftDetailActions } from "./EasyViewDraftDetailedInformation";
 import { EasyViewDraftDetailBody, EasyViewReadonlyBillDetailBody } from "./EasyViewDraftDetailBody";
@@ -203,7 +203,7 @@ function EasyViewStatusCell({
     return (
       <button
         type="button"
-        className={`${statusDisplayBadgeClass("Paid")} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center transition-colors hover:bg-gray-50/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
+        className={`${statusDisplayBadgeClass("Paid")} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
         onClick={(e) => {
           stop(e);
           onDraftBillOpen(row.id);
@@ -218,7 +218,7 @@ function EasyViewStatusCell({
     return (
       <button
         type="button"
-        className={`${EASY_VIEW_STATUS_CELL} cursor-pointer bg-[#70ebba]/10 font-semibold text-[#70ebba] transition-colors hover:bg-[#70ebba]/20 disabled:cursor-not-allowed`}
+        className={`${statusDisplayBadgeClass("Partially paid")} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed`}
         onClick={(e) => {
           stop(e);
           if (!isElevated) return;
@@ -287,9 +287,35 @@ export function PaymentRequestEasyView({
     return copy;
   }, [rows, activeStatus, submittedDateSort]);
 
-  /** When set and still visible, non-matching rows use reduced opacity so the focused bill stands out. */
-  const focusBillId =
-    selectedBillId != null && visibleRows.some((r) => r.id === selectedBillId) ? selectedBillId : null;
+  /** Dim other rows only while inline pay or detailed information is expanded (not when only the invoice aside is focused). */
+  const opacityFocusBillId = useMemo(() => {
+    if (payPanelBillId != null && payPanel != null && visibleRows.some((r) => r.id === payPanelBillId)) {
+      return payPanelBillId;
+    }
+    if (draftDetailBillId != null && visibleRows.some((r) => r.id === draftDetailBillId)) {
+      return draftDetailBillId;
+    }
+    return null;
+  }, [payPanelBillId, payPanel, draftDetailBillId, visibleRows]);
+
+  /** After row selection or opening inline pay / detail, scroll that bill card toward the center of the list column. */
+  useEffect(() => {
+    const rowId = payPanelBillId ?? draftDetailBillId ?? selectedBillId;
+    if (!rowId) return;
+    const id = requestAnimationFrame(() => {
+      const escaped =
+        typeof CSS !== "undefined" && typeof CSS.escape === "function"
+          ? CSS.escape(rowId)
+          : String(rowId).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      const el = document.querySelector(`[data-easy-view-row="${escaped}"]`);
+      (el as HTMLElement | null)?.scrollIntoView({
+        block: "center",
+        behavior: "smooth",
+        inline: "nearest",
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [selectedBillId, draftDetailBillId, payPanelBillId]);
 
   /** Prefer selected / pay-panel row so "All" + Pay row still gets the teal gradient. */
   const mainBackgroundClass = useMemo(() => {
@@ -367,7 +393,7 @@ export function PaymentRequestEasyView({
 
           {loading ? (
             <ul className="flex flex-col gap-3" aria-hidden>
-              {Array.from({ length: 1 }, (_, i) => (
+              {Array.from({ length: 6 }, (_, i) => (
                 <li
                   key={`sk-${i}`}
                   className={`${EASY_VIEW_ROW_GRID} rounded-lg border border-gray-200 bg-white`}
@@ -409,11 +435,12 @@ export function PaymentRequestEasyView({
                 const isPayPanelOpen = payPanelBillId === row.id && payPanel != null;
                 const isDraftDetailOpen = draftDetailBillId === row.id;
                 const isRowSelected = selectedBillId === row.id;
-                const isFocusBill = focusBillId != null && row.id === focusBillId;
-                const dimRow = focusBillId != null && !isFocusBill;
+                const isFocusBill = opacityFocusBillId != null && row.id === opacityFocusBillId;
+                const dimRow = opacityFocusBillId != null && !isFocusBill;
                 return (
                   <li
                     key={row.id}
+                    data-easy-view-row={row.id}
                     className={`flex flex-col overflow-hidden rounded-lg border bg-white transition-[opacity,colors] duration-200 ${
                       isRowSelected ? "border-secondary/50" : "border-gray-200"
                     } ${dimRow ? "opacity-20" : "opacity-100"}`}

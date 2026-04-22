@@ -18,6 +18,7 @@ import { enrichAccountCodeWithOptions } from "@/lib/billFormSelectOptions";
 import { billToDetailedInfo, buildBillUpdatePayload } from "@/lib/paymentRequestBillMap";
 import { BillActionBar } from "./BillActionBar";
 import {
+  EasyViewDetailedInformationSkeleton,
   EasyViewDraftBillActionsRow,
   EasyViewDraftDetailedInformation,
   EasyViewDraftDetailedInformationEdit,
@@ -233,22 +234,7 @@ export function EasyViewDraftDetailBody({
   }, [bill, draft, billId, accountOptions, onBillSaved]);
 
   if (loading) {
-    return (
-      <div className="space-y-3 py-2" aria-hidden>
-        <div className="h-6 w-48 max-w-full animate-pulse rounded-md bg-gray-200" />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-        </div>
-      </div>
-    );
+    return <EasyViewDetailedInformationSkeleton mode="draftCard" />;
   }
   if (loadErr) {
     return (
@@ -410,20 +396,10 @@ export function EasyViewReadonlyBillDetailBody({
 
   if (loading) {
     return (
-      <div className="space-y-3 py-2" aria-hidden>
-        <div className="h-6 w-48 max-w-full animate-pulse rounded-md bg-gray-200" />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-          <div className="h-11 animate-pulse rounded-2xl bg-gray-100" />
-        </div>
-      </div>
+      <EasyViewDetailedInformationSkeleton
+        mode="readOnly"
+        showFooterActionsSkeleton={showPaidReturnedBar}
+      />
     );
   }
   if (loadErr) {
