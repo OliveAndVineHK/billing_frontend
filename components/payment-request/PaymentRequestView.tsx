@@ -94,7 +94,7 @@ export type PaymentRequestViewProps = {
 
 export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   const router = useRouter();
-  const { isElevated } = useUserRole();
+  const { isElevated, isViewOnly } = useUserRole();
   const [statusFilter, setStatusFilter] =
     useState<PaymentRequestStatusFilter>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -218,7 +218,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
         billId={easyViewPayBillId}
         billStatus={easyViewPaySource.status}
         contactTitle={easyViewPaySource.contact?.trim() ?? ""}
-        readOnly={false}
+        readOnly={isViewOnly}
         invoiceAmount={parseFloat(easyViewPaySource.amount ?? "0") || 0}
         currencyCode={easyViewPaySource.currency_code?.trim() || "HKD"}
         onPaymentSaved={loadBills}
@@ -399,7 +399,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
             ? rawBills.find((b) => b.id === recordPaymentTarget.billId)?.contact?.trim() ?? ""
             : ""
         }
-        readOnly={recordPaymentTarget?.readOnly ?? false}
+        readOnly={isViewOnly || (recordPaymentTarget?.readOnly ?? false)}
         invoiceAmount={
           recordPaymentTarget
             ? parseFloat(rawBills.find((b) => b.id === recordPaymentTarget.billId)?.amount ?? "0")

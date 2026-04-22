@@ -492,7 +492,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   ref,
 ) {
   const sortDescriptionIdPrefix = useId();
-  const { isElevated } = useUserRole();
+  const { isElevated, isViewOnly } = useUserRole();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bankSlipDetailsRowId, setBankSlipDetailsRowId] = useState<string | null>(null);
   const [rowMenu, setRowMenu] = useState<RowMenuState | null>(null);
@@ -611,7 +611,8 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   const rowMenuRow = rowMenu ? rows.find((r) => r.id === rowMenu.rowId) : undefined;
   const isRowMenuDeleteDisabled =
     rowMenuRow?.status === "Voided" ||
-    ((rowMenuRow?.status === "Paid" || rowMenuRow?.status === "Partially paid") && !isElevated);
+    ((rowMenuRow?.status === "Paid" || rowMenuRow?.status === "Partially paid") && !isElevated) ||
+    isViewOnly;
   const rowMenuPublishedToXero = rowMenuRow?.xeroActive === true;
   const showRowMenuPublish =
     isElevated &&
@@ -857,8 +858,8 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             <span className="text-sm font-semibold tabular-nums">{row.bankslipFileCount}</span>
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>draft</span>
                           </button>
-                        ) : bankslipReadOnly ? (
-                          <div className={uploadBankslipReadOnlyClass} aria-label={isVoided ? `Voided — upload not available for ${row.contactTitle}` : `Draft — upload not available for ${row.contactTitle}`}>
+                        ) : bankslipReadOnly || isViewOnly ? (
+                          <div className={uploadBankslipReadOnlyClass} aria-label={isVoided ? `Voided — upload not available for ${row.contactTitle}` : isDraft ? `Draft — upload not available for ${row.contactTitle}` : `Upload not available for ${row.contactTitle}`}>
                             <span className="whitespace-nowrap">Upload</span>
                             <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>upload_file</span>
                           </div>
@@ -1099,13 +1100,15 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                                   <span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span>
                                   <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span>
                                 </button>
-                              ) : bankslipReadOnly ? (
+                              ) : bankslipReadOnly || isViewOnly ? (
                                 <div
                                   className={uploadBankslipReadOnlyClass}
                                   aria-label={
                                     isVoided
                                       ? `Voided — upload not available for ${row.contactTitle}`
-                                      : `Draft — upload not available for ${row.contactTitle}`
+                                      : isDraft
+                                        ? `Draft — upload not available for ${row.contactTitle}`
+                                        : `Upload not available for ${row.contactTitle}`
                                   }
                                 >
                                   <span className="whitespace-nowrap">Upload</span>

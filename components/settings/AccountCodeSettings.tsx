@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchEntityBillAccounts, updateEntityBillAccount } from "@/lib/api";
+import { useUserRole } from "@/lib/useUserRole";
 
 const CHECKBOX_CLASS = "checkbox-secondary-white-tick h-4 w-4 shrink-0 rounded border border-primary/40";
 
 export type AccountCodeRow = { id: string; label: string };
 
 export function AccountCodeSettings() {
+  const { isViewOnly } = useUserRole();
   const [rows, setRows] = useState<AccountCodeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -226,7 +228,7 @@ export function AccountCodeSettings() {
               {saveMessage.text}
             </p>
           ) : null}
-          <button type="button" onClick={handleSave} disabled={saving} className="box-border h-12 w-full cursor-pointer rounded-lg bg-secondary text-base font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm">
+          <button type="button" onClick={handleSave} disabled={saving || isViewOnly} title={isViewOnly ? "You have view-only access and cannot perform this action" : undefined} className="box-border h-12 w-full cursor-pointer rounded-lg bg-secondary text-base font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm">
             {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
