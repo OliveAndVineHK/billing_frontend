@@ -14,9 +14,6 @@ import type { PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 const EASY_VIEW_STATUS_CELL =
   "box-border inline-flex w-full min-w-0 max-w-full items-center justify-center rounded-lg px-2.5 py-1 text-sm font-semibold sm:px-3 sm:py-0 lg:h-[42px] lg:min-h-[42px] lg:text-sm";
 
-const SUBMITTED_DATE_SORT_HELP =
-  "Sort by submitted date (oldest first or newest first). Click again to reverse. Only rows you see now are sorted; changing the status filter resets the order.";
-
 const EASY_VIEW_TD_BASE = "px-4 py-3 text-sm text-primary sm:px-5 sm:py-3.5";
 
 const easyViewContactTd = `${EASY_VIEW_TD_BASE} align-middle min-w-0`;
@@ -257,6 +254,33 @@ function EasyViewStatusCell({
   );
 }
 
+function SubmittedDateSortButton({
+  submittedDateSort,
+  onToggle,
+}: {
+  submittedDateSort: "asc" | "desc";
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded outline-none hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+      aria-label={`Sort by submitted date${submittedDateSort === "asc" ? ", ascending" : ", descending"}`}
+      title="Sort Newest - Oldest"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+    >
+      <span className="inline-flex size-5 items-center justify-center" aria-hidden>
+        <span className="material-symbols-outlined block text-[18px] leading-none text-primary opacity-100">
+          {submittedDateSort === "asc" ? "expand_less" : "expand_more"}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 export function PaymentRequestEasyView({
   rows,
   loading,
@@ -342,36 +366,28 @@ export function PaymentRequestEasyView({
       className={`flex min-h-0 flex-1 flex-col gap-4 px-4 pb-4 pt-1 sm:px-6 lg:flex-row lg:items-stretch lg:gap-6 lg:pt-2 ${mainBackgroundClass}`}
     >
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="mb-3 flex w-full min-w-0 flex-wrap items-center justify-between gap-2">
+        <div className="mb-3 flex w-full min-w-0 flex-wrap items-center gap-2">
           <span className="min-w-0 truncate text-[18px] font-semibold text-black" title={activeStatus}>
             {activeStatus}
           </span>
-          <div className="flex shrink-0 flex-wrap items-center gap-1 sm:gap-1.5">
-            <span className="text-[14px] font-medium text-primary">Submitted date</span>
-            <button
-              type="button"
-              className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded outline-none hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
-              aria-label={`Sort by submitted date${submittedDateSort === "asc" ? ", ascending" : ", descending"}`}
-              title={SUBMITTED_DATE_SORT_HELP}
-              onClick={() => setSubmittedDateSort((d) => (d === "asc" ? "desc" : "asc"))}
-            >
-              <span className="inline-flex size-5 items-center justify-center" aria-hidden>
-                <span className="material-symbols-outlined block text-[18px] leading-none text-primary opacity-100">
-                  {submittedDateSort === "asc" ? "expand_less" : "expand_more"}
-                </span>
-              </span>
-            </button>
-          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto">
+          <div className="mb-2 flex items-center gap-1 md:hidden">
+            <span className="text-sm font-medium text-primary">Submitted date</span>
+            <SubmittedDateSortButton
+              submittedDateSort={submittedDateSort}
+              onToggle={() => setSubmittedDateSort((d) => (d === "asc" ? "desc" : "asc"))}
+            />
+          </div>
           {loading ? (
             <div className={EASY_VIEW_HEADER_GRID} aria-hidden>
               <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} pb-1`}>
                 <div className="h-3.5 w-[min(100%,11rem)] rounded-md bg-gray-200/90 animate-pulse" />
               </div>
-              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} pb-1`}>
+              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
                 <div className="h-3.5 w-[min(100%,9.5rem)] rounded-md bg-gray-200/90 animate-pulse" />
+                <div className="size-7 shrink-0 rounded bg-gray-200/90 animate-pulse" />
               </div>
               <div className={`${EASY_VIEW_TD_BASE} pb-1`} aria-hidden />
               <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} pb-1`}>
@@ -384,7 +400,15 @@ export function PaymentRequestEasyView({
           ) : (
             <div className={EASY_VIEW_HEADER_GRID}>
               <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE}`}>Contact / Description</div>
-              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE}`}>Submitted Date</div>
+              <div
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
+              >
+                <span className="min-w-0 shrink truncate">Submitted Date</span>
+                <SubmittedDateSortButton
+                  submittedDateSort={submittedDateSort}
+                  onToggle={() => setSubmittedDateSort((d) => (d === "asc" ? "desc" : "asc"))}
+                />
+              </div>
               <div className={EASY_VIEW_TD_BASE} aria-hidden />
               <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE}`}>Unpaid Amount</div>
               <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE}`}>Status</div>

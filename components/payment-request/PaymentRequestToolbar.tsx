@@ -283,7 +283,7 @@ export function PaymentRequestToolbar({
 
   return (
     <>
-    <div className="flex w-full min-w-0 flex-col gap-3 bg-white px-4 py-3 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+    <div className="mx-auto flex w-full min-w-0 max-w-[1920px] flex-col gap-3 bg-white px-4 py-3 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
       <div className="-mx-4 flex min-w-0 flex-wrap items-center gap-2 px-4 sm:mx-0 sm:px-0">
         <button type="button" disabled={!hasAnyRole || isViewOnly} title={isViewOnly ? "You have view-only access and cannot perform this action" : undefined} onClick={() => { if (!isViewOnly) { setBillModalMounted(true); setBillModalOpen(true); } }} className="box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-[42px] sm:min-h-[42px] sm:px-4">Add Bill<span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>add</span></button>
         <div ref={statusWrapRef} className="relative min-w-0 flex-1 sm:hidden">

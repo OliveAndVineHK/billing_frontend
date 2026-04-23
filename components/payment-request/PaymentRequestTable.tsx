@@ -64,7 +64,7 @@ const SORTABLE_TITLE: Partial<Record<PaymentRequestColumnTitle, SortKey>> = {
   "Paid Date": "paidDate",
 };
 
-/** Short tooltip + screen-reader text for column sort (native title + aria-describedby). */
+/** Screen-reader copy for column sort (sr-only + aria-describedby). */
 function sortColumnDescription(key: SortKey): string {
   const suffix =
     " Click again to reverse. Only rows you see now are sorted; changing the status filter resets the order.";
@@ -83,6 +83,25 @@ function sortColumnDescription(key: SortKey): string {
       return "Sort by unpaid amount." + suffix;
     default:
       return "Sort this column." + suffix;
+  }
+}
+
+/** Native hover tooltip for sort control — keep short. */
+function sortColumnTooltip(key: SortKey): string {
+  switch (key) {
+    case "contact":
+      return "Sort A-Z";
+    case "invoiceDate":
+    case "submittedDate":
+      return "Sort Newest - Oldest";
+    case "paidDate":
+      return "Sort Newest - Oldest";
+    case "status":
+      return "Sort Status";
+    case "unpaidAmount":
+      return "Sort Highest - Lowest";
+    default:
+      return "Sort";
   }
 }
 
@@ -906,7 +925,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                             className={`inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${hoverSort}`}
                             aria-label={`Sort by ${title}${sortActive ? `, ${sort.dir === "asc" ? "ascending" : "descending"}` : ""}`}
                             aria-describedby={`${sortDescriptionIdPrefix}-${sortKeyForCol}`}
-                            title={sortColumnDescription(sortKeyForCol)}
+                            title={sortColumnTooltip(sortKeyForCol)}
                             onClick={() => onSortColumn(sortKeyForCol)}
                           >
                             <span className="inline-flex size-5 items-center justify-center" aria-hidden>

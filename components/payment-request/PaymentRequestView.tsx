@@ -396,7 +396,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
         canPublish={isElevated}
       />
       <main
-        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3"
+        className="mx-auto flex min-h-0 min-w-0 w-full max-w-[1920px] flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3"
         data-easy-view={easyView ? "true" : undefined}
       >
         {error ? (
