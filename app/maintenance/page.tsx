@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   description: "Minty is down for scheduled maintenance.",
 };
 
+/** Set `NEXT_PUBLIC_MAINTENANCE_SHOW_NEW_LINK=1` (or `true`) when the new app link should appear in the footer. */
+const showNewAppLink =
+  process.env.NEXT_PUBLIC_MAINTENANCE_SHOW_NEW_LINK === "1" ||
+  process.env.NEXT_PUBLIC_MAINTENANCE_SHOW_NEW_LINK === "true";
+
 export default function MaintenancePage() {
   return (
     <div className="flex min-h-dvh min-h-screen flex-col bg-white">
@@ -18,7 +23,7 @@ export default function MaintenancePage() {
           className="h-12 w-auto object-contain object-bottom sm:h-14"
         />
       </header>
-      <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center px-6 py-4">
+      <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center px-6 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <div className="flex w-full max-w-md flex-col items-center text-center">
           <Image
             src="/cat-hole.png"
@@ -37,7 +42,9 @@ export default function MaintenancePage() {
         </div>
       </div>
 
-      <footer className="shrink-0 w-full px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 text-center sm:pb-6 sm:pt-4">
+      <footer
+        className={`shrink-0 w-full px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 text-center sm:pb-6 sm:pt-4 ${showNewAppLink ? "" : "hidden"}`}
+      >
         <p className="text-[11px] leading-snug text-gray-500 sm:text-xs">
           This will be the new link for the app:{" "}
           <a
