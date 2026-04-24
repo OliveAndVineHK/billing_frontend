@@ -143,25 +143,6 @@ function ModuleSelectionContent() {
   return (
     <div className="flex min-h-dvh min-h-screen flex-col overflow-x-hidden bg-white">
       <main className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 py-6 sm:gap-6 sm:p-8 md:gap-8">
-        <div
-          role="status"
-          className="mx-auto inline-flex max-w-full items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 shadow-sm sm:px-5"
-        >
-          <span
-            className="material-symbols-outlined shrink-0 text-[28px] leading-none text-amber-800"
-            aria-hidden
-          >
-            build
-          </span>
-          <div className="max-w-full min-w-0 text-left">
-            <p className="text-sm font-semibold text-amber-950 sm:text-base">Scheduled maintenance</p>
-            <p className="mt-1 text-xs leading-snug text-amber-900/90 sm:text-sm">
-              There will be maintenance on{" "}
-              <strong className="font-bold text-amber-950">April 24, 2026</strong> from{" "}
-              <strong className="font-bold text-amber-950">8:00am – 12:00pm</strong> (UTC+8:00).
-            </p>
-          </div>
-        </div>
         <Image src="/logo-selection.webp" alt="Logo" width={560} height={560} priority sizes="(max-width: 640px) 320px, (max-width: 768px) 400px, (max-width: 1024px) 480px, 560px" className="h-auto w-full max-w-[160px] sm:max-w-[200px] md:max-w-[240px] lg:max-w-[280px]" />
 
         {hasMounted && entityNameRef.current && (
