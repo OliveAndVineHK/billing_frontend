@@ -13,7 +13,6 @@ import {
   dedupeEntityBillContactsForPicker,
   fetchEntityBillContacts,
   fetchPayments,
-  deletePayment as apiDeletePayment,
   isDuplicateBillReferenceError,
   publishBill,
   returnBill as returnBillApi,
@@ -1005,19 +1004,19 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const paymentHistoryRows = useMemo((): PaymentHistoryRow[] => {
     if (!requestId) return [];
     return payments.filter(shouldShowPaymentInHistory).map((p): PaymentHistoryRow => {
-      const amt = parseFloat(p.amount || "0");
       const shortDate = p.payment_date
         ? formatIsoDateForDisplay(p.payment_date.trim().slice(0, 10)) || "—"
         : "—";
       const forThisBill = p.bill_id === requestId;
-      let dateLabel: string;
-      if (p.payment_status === "pending") {
-        dateLabel = `Pending on ${shortDate}`;
-      } else if (forThisBill && amt > 0 && amt + 1e-9 < invoiceTotalMajor) {
-        dateLabel = `Partial Pay on ${shortDate}`;
-      } else {
-        dateLabel = `Paid on ${shortDate}`;
-      }
+      const dateLabel = shortDate;
+      const isPending = (p.payment_status ?? "").trim().toLowerCase() === "pending";
+      const rawBillStatus =
+        (p.bill_status && p.bill_status.trim()) || (forThisBill ? bill?.status : undefined) || "";
+      const statusLabel = isPending
+        ? "Pending"
+        : rawBillStatus
+          ? billStatusToDisplayLabel(rawBillStatus)
+          : "—";
       const ref =
         (p.bill_reference && p.bill_reference.trim()) ||
         (p.reference_no && p.reference_no.trim()) ||
@@ -1028,29 +1027,13 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         billStatus: p.bill_status,
         date: dateLabel,
         amountLabel: `(${currencyLabel} ${parseFloat(p.amount || "0").toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
+        statusLabel,
         invoiceNo: ref,
         invoiceHref: forThisBill ? "#" : `/payment-request/${p.bill_id}`,
         isOtherBill: !forThisBill,
       };
     });
-  }, [payments, requestId, invoiceTotalMajor, currencyLabel]);
-
-  const handleDeletePaymentHistoryRow = useCallback(
-    async (row: PaymentHistoryRow) => {
-      try {
-        await apiDeletePayment(row.billId, row.id);
-        const data = await fetchPayments(requestId);
-        const pruned = data.payments.filter((x) => x.id !== row.id);
-        setPayments(pruned);
-        await rollbackToPaymentRequestedIfNoPayments(pruned);
-        await reloadBill();
-        bumpAudit();
-      } catch {
-        /* ignore */
-      }
-    },
-    [requestId, rollbackToPaymentRequestedIfNoPayments, reloadBill, bumpAudit],
-  );
+  }, [payments, requestId, currencyLabel, bill]);
 
   const billIsDraft = useMemo(
     () => (bill?.status ?? "").trim().toLowerCase().replace(/-/g, "_") === "draft",
@@ -1342,11 +1325,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
                             Payment History
                           </h2>
                         </div>
-                        <PaymentHistoryListPanel
-                          rows={paymentHistoryRows}
-                          canDeletePayments={isElevated && bill?.status !== "voided"}
-                          onDeleteRow={handleDeletePaymentHistoryRow}
-                        />
+                        <PaymentHistoryListPanel rows={paymentHistoryRows} />
                       </div>
                     ) : null}
                   </div>
