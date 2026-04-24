@@ -94,6 +94,40 @@ function PreviewBlock({
   );
 }
 
+/** Easy-view aside: document-style skeleton while invoice blobs / URLs load. */
+function FillColumnInvoiceLoadingSkeleton() {
+  return (
+    <div
+      className="flex w-full shrink-0 flex-col gap-2 p-1.5 sm:p-2"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading invoice attachment"
+    >
+      <figure className="relative mx-auto w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="flex min-h-[min(14rem,48dvh)] w-full flex-col gap-3 p-3 sm:min-h-[min(18rem,52dvh)] sm:gap-4 sm:p-4">
+          <div className="flex items-center gap-2 border-b border-gray-100 pb-3 sm:pb-4">
+            <div className="h-8 w-8 shrink-0 animate-pulse rounded-md bg-gray-200" aria-hidden />
+            <div className="h-2.5 min-w-0 flex-1 animate-pulse rounded-full bg-gray-200/80" aria-hidden />
+            <div className="h-8 w-8 shrink-0 animate-pulse rounded-md bg-gray-100" aria-hidden />
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col items-center gap-3 rounded-lg border border-dashed border-gray-200 bg-gray-50/90 p-3 sm:p-4">
+            <div
+              className="aspect-[8.5/11] w-full max-w-[min(100%,17rem)] animate-pulse rounded-sm bg-gradient-to-b from-gray-100 to-gray-200/90 sm:max-w-[min(100%,20rem)]"
+              aria-hidden
+            />
+            <div className="flex w-full max-w-[14rem] flex-col gap-2">
+              <div className="h-2 w-[96%] animate-pulse rounded-full bg-gray-200/90" aria-hidden />
+              <div className="h-2 w-[88%] animate-pulse rounded-full bg-gray-200/80" aria-hidden />
+              <div className="h-2 w-[92%] animate-pulse rounded-full bg-gray-200/75" aria-hidden />
+              <div className="h-2 w-[72%] animate-pulse rounded-full bg-gray-200/70" aria-hidden />
+            </div>
+          </div>
+        </div>
+      </figure>
+    </div>
+  );
+}
+
 export function InvoiceAttachmentPreview({
   attachments,
   imageSrcs = [],
@@ -207,16 +241,20 @@ export function InvoiceAttachmentPreview({
     <div
       className="flex w-full shrink-0 flex-col gap-2 p-1.5 sm:p-2" style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}>
       {isLoadingAttachments ? (
-        <figure
-          className="relative mx-auto w-full min-w-0 max-w-full overflow-hidden rounded border border-gray-200 bg-white shadow-sm"
-          role="status"
-          aria-busy="true"
-          aria-label="Loading invoice attachment"
-        >
-          <div className="flex aspect-[8.5/11] w-full max-h-[min(75vh,56rem)] min-h-[min(12rem,40dvh)] items-center justify-center bg-gray-50 sm:min-h-[min(16rem,45dvh)]">
-            <div className="mx-auto h-full w-[92%] max-w-full animate-pulse rounded-sm bg-gray-100" aria-hidden />
-          </div>
-        </figure>
+        fillColumn ? (
+          <FillColumnInvoiceLoadingSkeleton />
+        ) : (
+          <figure
+            className="relative mx-auto w-full min-w-0 max-w-full overflow-hidden rounded border border-gray-200 bg-white shadow-sm"
+            role="status"
+            aria-busy="true"
+            aria-label="Loading invoice attachment"
+          >
+            <div className="flex aspect-[8.5/11] w-full max-h-[min(75vh,56rem)] min-h-[min(12rem,40dvh)] items-center justify-center bg-gray-50 sm:min-h-[min(16rem,45dvh)]">
+              <div className="mx-auto h-full w-[92%] max-w-full animate-pulse rounded-sm bg-gray-100" aria-hidden />
+            </div>
+          </figure>
+        )
       ) : (
         items.map((item, i) => (
           <Fragment key={item ? `${item.url}-${i}` : `placeholder-${i}`}>

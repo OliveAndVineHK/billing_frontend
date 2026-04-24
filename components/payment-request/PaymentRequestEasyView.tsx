@@ -1,7 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from "react";
 import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { type EasyViewDraftDetailActions } from "./EasyViewDraftDetailedInformation";
 import { EasyViewDraftDetailBody, EasyViewReadonlyBillDetailBody } from "./EasyViewDraftDetailBody";
@@ -21,6 +30,14 @@ const easyViewSubmittedTd = `${EASY_VIEW_TD_BASE} align-middle whitespace-nowrap
 const easyViewUnpaidTd = `${EASY_VIEW_TD_BASE} align-middle tabular-nums min-w-0`;
 const easyViewAttachmentTd = `${EASY_VIEW_TD_BASE} align-middle flex min-w-0 max-w-full flex-row flex-nowrap items-center justify-start gap-1.5 overflow-hidden sm:gap-2`;
 const easyViewStatusTd = `${EASY_VIEW_TD_BASE} align-middle min-w-0 max-w-full overflow-hidden`;
+
+/** For the **first** visible bill only: list scrolled this far from top — default invoice aside (no offset). */
+const EASY_VIEW_INVOICE_SCROLL_TOP_DEFAULT_PX = 32;
+/**
+ * For the **first** visible bill only: row top this far below the list viewport top still counts
+ * as "upper list" — default invoice offset and gentler scroll (bills below use full alignment).
+ */
+const EASY_VIEW_INVOICE_ROW_TOP_DEFAULT_PX = 160;
 
 const EASY_VIEW_GRID_COLS =
   "md:grid-cols-[minmax(10rem,1.32fr)_minmax(10.5rem,1.15fr)_minmax(11rem,0.52fr)_minmax(8.5rem,0.9fr)_minmax(10rem,0.82fr)]";
@@ -302,6 +319,9 @@ export function PaymentRequestEasyView({
   easyViewBillMutatePending = false,
 }: PaymentRequestEasyViewProps) {
   const [submittedDateSort, setSubmittedDateSort] = useState<"asc" | "desc">("desc");
+  const listScrollRef = useRef<HTMLDivElement>(null);
+  const asideRef = useRef<HTMLElement>(null);
+  const [invoiceAsideOffsetY, setInvoiceAsideOffsetY] = useState(0);
 
   const visibleRows = useMemo(() => {
     const filtered =
@@ -310,6 +330,44 @@ export function PaymentRequestEasyView({
     copy.sort((a, b) => compareBySubmittedDate(a, b, submittedDateSort));
     return copy;
   }, [rows, activeStatus, submittedDateSort]);
+
+  const updateInvoiceAsideAlign = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      setInvoiceAsideOffsetY(0);
+      return;
+    }
+    if (!selectedBillId || !listScrollRef.current || !asideRef.current) {
+      setInvoiceAsideOffsetY(0);
+      return;
+    }
+    const escaped =
+      typeof CSS !== "undefined" && typeof CSS.escape === "function"
+        ? CSS.escape(selectedBillId)
+        : String(selectedBillId).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    const row = listScrollRef.current.querySelector(`[data-easy-view-row="${escaped}"]`) as HTMLElement | null;
+    if (!row) {
+      setInvoiceAsideOffsetY(0);
+      return;
+    }
+    const listEl = listScrollRef.current;
+    const listRect = listEl.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    const rowDistanceBelowListTop = rowRect.top - listRect.top;
+    const firstVisibleId = visibleRows[0]?.id;
+    const isFirstVisibleBill = firstVisibleId != null && selectedBillId === firstVisibleId;
+    if (
+      isFirstVisibleBill &&
+      (listEl.scrollTop <= EASY_VIEW_INVOICE_SCROLL_TOP_DEFAULT_PX ||
+        rowDistanceBelowListTop <= EASY_VIEW_INVOICE_ROW_TOP_DEFAULT_PX)
+    ) {
+      setInvoiceAsideOffsetY(0);
+      return;
+    }
+    const asideRect = asideRef.current.getBoundingClientRect();
+    const y = rowRect.top - asideRect.top;
+    setInvoiceAsideOffsetY(Math.max(0, Math.round(y)));
+  }, [selectedBillId, visibleRows]);
 
   /** Dim other rows only while inline pay or detailed information is expanded (not when only the invoice aside is focused). */
   const opacityFocusBillId = useMemo(() => {
@@ -322,24 +380,63 @@ export function PaymentRequestEasyView({
     return null;
   }, [payPanelBillId, payPanel, draftDetailBillId, visibleRows]);
 
-  /** After row selection or opening inline pay / detail, scroll that bill card toward the center of the list column. */
+  /** After row selection or opening inline pay / detail, scroll that bill card into view (avoid centering top rows — clips against the list edge). */
   useEffect(() => {
     const rowId = payPanelBillId ?? draftDetailBillId ?? selectedBillId;
     if (!rowId) return;
     const id = requestAnimationFrame(() => {
+      const listEl = listScrollRef.current;
+      if (!listEl) return;
       const escaped =
         typeof CSS !== "undefined" && typeof CSS.escape === "function"
           ? CSS.escape(rowId)
           : String(rowId).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-      const el = document.querySelector(`[data-easy-view-row="${escaped}"]`);
-      (el as HTMLElement | null)?.scrollIntoView({
-        block: "center",
+      const el = listEl.querySelector(`[data-easy-view-row="${escaped}"]`) as HTMLElement | null;
+      if (!el) return;
+      const listRect = listEl.getBoundingClientRect();
+      const rowRect = el.getBoundingClientRect();
+      const rowDistanceBelowListTop = rowRect.top - listRect.top;
+      const firstVisibleId = visibleRows[0]?.id;
+      const isFirstVisibleBill = firstVisibleId != null && rowId === firstVisibleId;
+      const treatAsUpperList =
+        isFirstVisibleBill &&
+        (listEl.scrollTop <= EASY_VIEW_INVOICE_SCROLL_TOP_DEFAULT_PX ||
+          rowDistanceBelowListTop <= EASY_VIEW_INVOICE_ROW_TOP_DEFAULT_PX);
+      el.scrollIntoView({
+        block: treatAsUpperList ? "nearest" : "center",
         behavior: "smooth",
         inline: "nearest",
       });
     });
     return () => cancelAnimationFrame(id);
-  }, [selectedBillId, draftDetailBillId, payPanelBillId]);
+  }, [selectedBillId, draftDetailBillId, payPanelBillId, visibleRows]);
+
+  /** Large screens: shift invoice aside with marginTop so its block lines up with the selected row (aside scrolls if needed). */
+  useLayoutEffect(() => {
+    updateInvoiceAsideAlign();
+    const listEl = listScrollRef.current;
+    const asideEl = asideRef.current;
+    if (!listEl) return;
+    listEl.addEventListener("scroll", updateInvoiceAsideAlign, { passive: true });
+    window.addEventListener("resize", updateInvoiceAsideAlign);
+    const ro = new ResizeObserver(() => {
+      updateInvoiceAsideAlign();
+    });
+    ro.observe(listEl);
+    if (asideEl) ro.observe(asideEl);
+    return () => {
+      listEl.removeEventListener("scroll", updateInvoiceAsideAlign);
+      window.removeEventListener("resize", updateInvoiceAsideAlign);
+      ro.disconnect();
+    };
+  }, [
+    updateInvoiceAsideAlign,
+    visibleRows.length,
+    invoiceAttachmentsLoading,
+    invoiceAttachments.length,
+    payPanelBillId,
+    draftDetailBillId,
+  ]);
 
   /** Prefer selected / pay-panel row so "All" + Pay row still gets the teal gradient. */
   const mainBackgroundClass = useMemo(() => {
@@ -372,7 +469,7 @@ export function PaymentRequestEasyView({
           </span>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div ref={listScrollRef} className="min-h-0 flex-1 overflow-auto">
           <div className="mb-2 flex items-center gap-1 md:hidden">
             <span className="text-sm font-medium text-primary">Submitted date</span>
             <SubmittedDateSortButton
@@ -591,15 +688,21 @@ export function PaymentRequestEasyView({
         aria-hidden
       />
 
-      <aside className="relative mx-auto hidden h-full min-h-0 w-full min-w-0 shrink-0 flex-col overflow-hidden lg:flex lg:max-w-[min(100%,28rem)] lg:flex-1 lg:self-stretch xl:max-w-[min(100%,32rem)]">
+      <aside
+        ref={asideRef}
+        className="relative mx-auto hidden h-full min-h-0 w-full min-w-0 shrink-0 flex-col overflow-x-hidden overflow-y-auto lg:flex lg:max-w-[min(100%,28rem)] lg:flex-1 lg:self-stretch xl:max-w-[min(100%,32rem)]"
+      >
         {selectedBillId ? (
-          <div className="flex h-full min-h-0 w-full flex-1 flex-col">
+          <div
+            className="flex min-h-0 w-full flex-1 flex-col"
+            style={invoiceAsideOffsetY > 0 ? { marginTop: invoiceAsideOffsetY } : undefined}
+          >
             <div className="mb-3 flex w-full min-w-0 shrink-0">
               <span className="min-w-0 truncate text-[18px] font-semibold text-black" title="Invoice">
                 Invoice
               </span>
             </div>
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               <InvoiceAttachmentPreview
                 attachments={invoiceAttachments}
                 isLoadingAttachments={invoiceAttachmentsLoading}
