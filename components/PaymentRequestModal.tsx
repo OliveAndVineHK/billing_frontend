@@ -663,7 +663,12 @@ export function PaymentRequestModal({
                   className="w-24 shrink-0"
                   fullWidth
                   uniformFill
-                  triggerClassName="w-full px-2 sm:px-3 rounded-l-2xl rounded-r-none border-r-0 bg-white text-black hover:bg-white"
+                  error={!!fieldErrors.amount}
+                  triggerClassName={
+                    fieldErrors.amount
+                      ? "w-full px-2 sm:px-3 rounded-l-2xl rounded-r-none border-r-0 border-red-500 bg-white text-black hover:bg-white focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200/50"
+                      : "w-full px-2 sm:px-3 rounded-l-2xl rounded-r-none border-r-0 bg-white text-black hover:bg-white"
+                  }
                 />
                 <input
                   id="pr-amount"
