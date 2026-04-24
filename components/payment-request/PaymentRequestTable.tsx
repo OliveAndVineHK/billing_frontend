@@ -8,7 +8,7 @@ import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
 import { useUserRole } from "@/lib/useUserRole";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { recordPaymentButtonClass } from "./paymentRequestButtonClasses";
-import { compareNullableNumber, dateSortValue } from "@/lib/paymentRequestDateSort";
+import { compareRows, type SortKey } from "@/lib/paymentRequestRowSort";
 
 const COLUMN_TITLES = [
   "Contact / Description",
@@ -52,8 +52,6 @@ function truncateMobileBillDescription(text: string): string {
     ? `${text.slice(0, MOBILE_BILL_DESCRIPTION_VISIBLE_CHARS)}...`
     : text;
 }
-
-type SortKey = "contact" | "invoiceDate" | "status" | "submittedDate" | "unpaidAmount" | "paidDate";
 
 const SORTABLE_TITLE: Partial<Record<PaymentRequestColumnTitle, SortKey>> = {
   "Contact / Description": "contact",
@@ -102,56 +100,6 @@ function sortColumnTooltip(key: SortKey): string {
       return "Sort Highest - Lowest";
     default:
       return "Sort";
-  }
-}
-
-function unpaidSortValue(s: string): number | null {
-  const t = s.trim();
-  if (!t) return null;
-  const n = Number.parseFloat(t.replace(/[^0-9.-]+/g, ""));
-  return Number.isFinite(n) ? n : null;
-}
-
-const STATUS_TABLE_ORDER = ["Payment Requested", "Returned", "Paid", "Partially paid", "Draft", "Voided"] as const;
-
-function statusSortRank(label: string): number {
-  const i = (STATUS_TABLE_ORDER as readonly string[]).indexOf(label);
-  return i >= 0 ? i : STATUS_TABLE_ORDER.length;
-}
-
-function compareRows(a: PaymentRequestRow, b: PaymentRequestRow, key: SortKey, dir: "asc" | "desc"): number {
-  const d = dir === "asc" ? 1 : -1;
-  switch (key) {
-    case "contact": {
-      const t = a.contactTitle.localeCompare(b.contactTitle, undefined, { sensitivity: "base" });
-      if (t !== 0) return t * d;
-      return a.contactCaption.localeCompare(b.contactCaption, undefined, { sensitivity: "base" }) * d;
-    }
-    case "invoiceDate": {
-      const byDate = compareNullableNumber(dateSortValue(a.invoiceDate), dateSortValue(b.invoiceDate), d);
-      if (byDate !== 0) return byDate;
-      return a.id.localeCompare(b.id);
-    }
-    case "submittedDate": {
-      const byDate = compareNullableNumber(dateSortValue(a.submittedDate), dateSortValue(b.submittedDate), d);
-      if (byDate !== 0) return byDate;
-      return a.id.localeCompare(b.id);
-    }
-    case "paidDate": {
-      const byDate = compareNullableNumber(dateSortValue(a.paidDate), dateSortValue(b.paidDate), d);
-      if (byDate !== 0) return byDate;
-      return a.id.localeCompare(b.id);
-    }
-    case "status": {
-      const ra = statusSortRank(a.status);
-      const rb = statusSortRank(b.status);
-      if (ra !== rb) return (ra - rb) * d;
-      return a.status.localeCompare(b.status, undefined, { sensitivity: "base" }) * d;
-    }
-    case "unpaidAmount":
-      return compareNullableNumber(unpaidSortValue(a.unpaidAmount), unpaidSortValue(b.unpaidAmount), d);
-    default:
-      return 0;
   }
 }
 

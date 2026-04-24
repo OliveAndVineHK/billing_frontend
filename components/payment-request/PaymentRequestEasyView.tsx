@@ -16,7 +16,7 @@ import { type EasyViewDraftDetailActions } from "./EasyViewDraftDetailedInformat
 import { EasyViewDraftDetailBody, EasyViewReadonlyBillDetailBody } from "./EasyViewDraftDetailBody";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { statusDisplayBadgeClass } from "@/lib/billStatusDisplay";
-import { compareBySubmittedDate } from "@/lib/paymentRequestDateSort";
+import { compareRows, type SortKey } from "@/lib/paymentRequestRowSort";
 import type { PaymentRequestRow } from "./PaymentRequestTable";
 import type { PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
 
@@ -57,6 +57,9 @@ const EASY_VIEW_BANKSLIP_DEFAULT_BTN =
 /** Fixed-width area so rows without files still reserve space; partial icon stays column-aligned with rows that have a slip. */
 const EASY_VIEW_BANKSLIP_SLOT =
   "flex h-10 w-24 shrink-0 items-center justify-center sm:h-[42px] sm:w-[6.5rem]";
+
+/** Sortable columns exposed in easy view (same `compareRows` as the main table). */
+type EasyViewSortKey = Extract<SortKey, "contact" | "submittedDate" | "unpaidAmount" | "status">;
 
 function EasyViewBankSlipControl({
   row,
@@ -271,27 +274,34 @@ function EasyViewStatusCell({
   );
 }
 
-function SubmittedDateSortButton({
-  submittedDateSort,
+function EasyViewSortChevronButton({
+  sortDir,
   onToggle,
+  ariaLabel,
+  title,
+  active,
 }: {
-  submittedDateSort: "asc" | "desc";
+  sortDir: "asc" | "desc";
   onToggle: () => void;
+  ariaLabel: string;
+  title: string;
+  active: boolean;
 }) {
   return (
     <button
       type="button"
-      className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded outline-none hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
-      aria-label={`Sort by submitted date${submittedDateSort === "asc" ? ", ascending" : ", descending"}`}
-      title="Sort Newest - Oldest"
+      className={`inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded outline-none hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary ${active ? "" : "opacity-60"}`}
+      aria-label={ariaLabel}
+      title={title}
+      aria-pressed={active}
       onClick={(e) => {
         e.stopPropagation();
         onToggle();
       }}
     >
       <span className="inline-flex size-5 items-center justify-center" aria-hidden>
-        <span className="material-symbols-outlined block text-[18px] leading-none text-primary opacity-100">
-          {submittedDateSort === "asc" ? "expand_less" : "expand_more"}
+        <span className="material-symbols-outlined block text-[18px] leading-none text-primary">
+          {!active ? "expand_more" : sortDir === "asc" ? "expand_less" : "expand_more"}
         </span>
       </span>
     </button>
@@ -318,7 +328,10 @@ export function PaymentRequestEasyView({
   onDraftBillSaved,
   easyViewBillMutatePending = false,
 }: PaymentRequestEasyViewProps) {
-  const [submittedDateSort, setSubmittedDateSort] = useState<"asc" | "desc">("desc");
+  const [sort, setSort] = useState<{ key: EasyViewSortKey; dir: "asc" | "desc" }>({
+    key: "status",
+    dir: "asc",
+  });
   const listScrollRef = useRef<HTMLDivElement>(null);
   const asideRef = useRef<HTMLElement>(null);
   const [invoiceAsideOffsetY, setInvoiceAsideOffsetY] = useState(0);
@@ -327,9 +340,18 @@ export function PaymentRequestEasyView({
     const filtered =
       activeStatus === "All" ? rows : rows.filter((r) => r.status === activeStatus);
     const copy = [...filtered];
-    copy.sort((a, b) => compareBySubmittedDate(a, b, submittedDateSort));
+    copy.sort((a, b) => compareRows(a, b, sort.key, sort.dir));
     return copy;
-  }, [rows, activeStatus, submittedDateSort]);
+  }, [rows, activeStatus, sort]);
+
+  /** Match `PaymentRequestTable` `onSortColumn`: same column toggles direction; new column starts at `asc`. */
+  const setEasyViewSort = useCallback((key: EasyViewSortKey) => {
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  }, []);
+
+  useEffect(() => {
+    setSort({ key: "status", dir: "asc" });
+  }, [activeStatus]);
 
   const updateInvoiceAsideAlign = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -409,7 +431,7 @@ export function PaymentRequestEasyView({
       });
     });
     return () => cancelAnimationFrame(id);
-  }, [selectedBillId, draftDetailBillId, payPanelBillId, visibleRows]);
+  }, [selectedBillId, draftDetailBillId, payPanelBillId, visibleRows, sort]);
 
   /** Large screens: shift invoice aside with marginTop so its block lines up with the selected row (aside scrolls if needed). */
   useLayoutEffect(() => {
@@ -432,6 +454,7 @@ export function PaymentRequestEasyView({
   }, [
     updateInvoiceAsideAlign,
     visibleRows.length,
+    sort,
     invoiceAttachmentsLoading,
     invoiceAttachments.length,
     payPanelBillId,
@@ -470,45 +493,119 @@ export function PaymentRequestEasyView({
         </div>
 
         <div ref={listScrollRef} className="min-h-0 flex-1 overflow-auto">
-          <div className="mb-2 flex items-center gap-1 md:hidden">
-            <span className="text-sm font-medium text-primary">Submitted date</span>
-            <SubmittedDateSortButton
-              submittedDateSort={submittedDateSort}
-              onToggle={() => setSubmittedDateSort((d) => (d === "asc" ? "desc" : "asc"))}
-            />
+          <div className="mb-2 flex flex-col gap-2 md:hidden">
+            <div className="flex items-center gap-1">
+              <span className="text-sm font-medium text-primary">Contact</span>
+              <EasyViewSortChevronButton
+                sortDir={sort.dir}
+                active={sort.key === "contact"}
+                onToggle={() => setEasyViewSort("contact")}
+                ariaLabel={`Sort by contact${sort.key === "contact" ? (sort.dir === "asc" ? ", ascending" : ", descending") : ""}`}
+                title="Sort A-Z"
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-sm font-medium text-primary">Submitted date</span>
+              <EasyViewSortChevronButton
+                sortDir={sort.dir}
+                active={sort.key === "submittedDate"}
+                onToggle={() => setEasyViewSort("submittedDate")}
+                ariaLabel={`Sort by submitted date${sort.key === "submittedDate" ? (sort.dir === "asc" ? ", ascending" : ", descending") : ""}`}
+                title="Sort Newest - Oldest"
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-sm font-medium text-primary">Status</span>
+              <EasyViewSortChevronButton
+                sortDir={sort.dir}
+                active={sort.key === "status"}
+                onToggle={() => setEasyViewSort("status")}
+                ariaLabel={`Sort by status${sort.key === "status" ? (sort.dir === "asc" ? ", ascending" : ", descending") : ""}`}
+                title="Sort Status"
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-sm font-medium text-primary">Unpaid amount</span>
+              <EasyViewSortChevronButton
+                sortDir={sort.dir}
+                active={sort.key === "unpaidAmount"}
+                onToggle={() => setEasyViewSort("unpaidAmount")}
+                ariaLabel={`Sort by unpaid amount${sort.key === "unpaidAmount" ? (sort.dir === "asc" ? ", ascending" : ", descending") : ""}`}
+                title="Sort Highest - Lowest"
+              />
+            </div>
           </div>
           {loading ? (
             <div className={EASY_VIEW_HEADER_GRID} aria-hidden>
-              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} pb-1`}>
+              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
                 <div className="h-3.5 w-[min(100%,11rem)] rounded-md bg-gray-200/90 animate-pulse" />
+                <div className="size-7 shrink-0 rounded bg-gray-200/90 animate-pulse" />
               </div>
               <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
                 <div className="h-3.5 w-[min(100%,9.5rem)] rounded-md bg-gray-200/90 animate-pulse" />
                 <div className="size-7 shrink-0 rounded bg-gray-200/90 animate-pulse" />
               </div>
               <div className={`${EASY_VIEW_TD_BASE} pb-1`} aria-hidden />
-              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} pb-1`}>
+              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
                 <div className="h-3.5 w-[min(100%,7.5rem)] rounded-md bg-gray-200/90 animate-pulse" />
+                <div className="size-7 shrink-0 rounded bg-gray-200/90 animate-pulse" />
               </div>
-              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} pb-1`}>
+              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
                 <div className="h-3.5 w-[min(100%,5rem)] rounded-md bg-gray-200/90 animate-pulse" />
+                <div className="size-7 shrink-0 rounded bg-gray-200/90 animate-pulse" />
               </div>
             </div>
           ) : (
             <div className={EASY_VIEW_HEADER_GRID}>
-              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE}`}>Contact / Description</div>
+              <div
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
+              >
+                <span className="min-w-0 shrink truncate">Contact</span>
+                <EasyViewSortChevronButton
+                  sortDir={sort.dir}
+                  active={sort.key === "contact"}
+                  onToggle={() => setEasyViewSort("contact")}
+                  ariaLabel={`Sort by contact${sort.key === "contact" ? (sort.dir === "asc" ? ", ascending" : ", descending") : ""}`}
+                  title="Sort A-Z"
+                />
+              </div>
               <div
                 className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
               >
                 <span className="min-w-0 shrink truncate">Submitted Date</span>
-                <SubmittedDateSortButton
-                  submittedDateSort={submittedDateSort}
-                  onToggle={() => setSubmittedDateSort((d) => (d === "asc" ? "desc" : "asc"))}
+                <EasyViewSortChevronButton
+                  sortDir={sort.dir}
+                  active={sort.key === "submittedDate"}
+                  onToggle={() => setEasyViewSort("submittedDate")}
+                  ariaLabel={`Sort by submitted date${sort.key === "submittedDate" ? (sort.dir === "asc" ? ", ascending" : ", descending") : ""}`}
+                  title="Sort Newest - Oldest"
                 />
               </div>
               <div className={EASY_VIEW_TD_BASE} aria-hidden />
-              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE}`}>Unpaid Amount</div>
-              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE}`}>Status</div>
+              <div
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
+              >
+                <span className="min-w-0 shrink truncate">Unpaid Amount</span>
+                <EasyViewSortChevronButton
+                  sortDir={sort.dir}
+                  active={sort.key === "unpaidAmount"}
+                  onToggle={() => setEasyViewSort("unpaidAmount")}
+                  ariaLabel={`Sort by unpaid amount${sort.key === "unpaidAmount" ? (sort.dir === "asc" ? ", ascending" : ", descending") : ""}`}
+                  title="Sort Highest - Lowest"
+                />
+              </div>
+              <div
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
+              >
+                <span className="min-w-0 shrink truncate">Status</span>
+                <EasyViewSortChevronButton
+                  sortDir={sort.dir}
+                  active={sort.key === "status"}
+                  onToggle={() => setEasyViewSort("status")}
+                  ariaLabel={`Sort by status${sort.key === "status" ? (sort.dir === "asc" ? ", ascending" : ", descending") : ""}`}
+                  title="Sort Status"
+                />
+              </div>
             </div>
           )}
 
