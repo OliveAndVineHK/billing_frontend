@@ -579,6 +579,7 @@ export function RecordPaymentModal({
                 const amt = parseFloat(p.amount || "0");
                 const isPending = p.payment_status === "pending";
                 const isPartialPayment = amt > 0 && amt + 1e-9 < invoiceAmount;
+                const dateLabel = formatPaymentDateLabel(p.payment_date);
                 return (
                   <li key={p.id} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-3 sm:gap-3 sm:px-4">
                     <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${isPending ? "bg-amber-100 text-amber-600" : "bg-secondary/15 text-secondary"}`} aria-hidden>
@@ -586,15 +587,17 @@ export function RecordPaymentModal({
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-primary">
-                        {isPending
-                          ? `Pending on ${formatPaymentDateLabel(p.payment_date)}`
-                          : isPartialPayment
-                            ? `Partial Pay on ${formatPaymentDateLabel(p.payment_date)}`
-                            : `Paid on ${formatPaymentDateLabel(p.payment_date)}`}
+                        {readOnly
+                          ? dateLabel
+                          : isPending
+                            ? `Pending on ${dateLabel}`
+                            : isPartialPayment
+                              ? `Partial Pay on ${dateLabel}`
+                              : `Paid on ${dateLabel}`}
                       </p>
-                      {isPending && (
+                      {isPending && !readOnly ? (
                         <p className="text-[11px] text-amber-600">Pending</p>
-                      )}
+                      ) : null}
                     </div>
                     <span className="shrink-0 text-sm font-bold text-primary tabular-nums">({formatMoney(amt, currencyLabel)})</span>
                     {!readOnly || canDeletePayments ? (
