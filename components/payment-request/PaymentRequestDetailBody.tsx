@@ -43,7 +43,7 @@ import { BillDraftSubmitButton } from "./BillDraftSubmitButton";
 import { InvoiceAttachmentPreview, type InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { InvoiceAttachmentToolbar } from "./InvoiceAttachmentToolbar";
 import { OverpaymentWarningModal } from "./OverpaymentWarningModal";
-import { PaymentHistoryCard, PaymentHistoryListPanel, type PaymentHistoryRow } from "./PaymentHistoryCard";
+import { PaymentHistoryListPanel, type PaymentHistoryRow } from "./PaymentHistoryCard";
 import { RecordPaymentModal } from "./RecordPaymentModal";
 import { RowDeleteConfirmModal } from "./RowDeleteConfirmModal";
 import { AttachmentDeleteConfirmModal } from "./AttachmentDeleteConfirmModal";
@@ -1457,51 +1457,6 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               </div>
             )}
           </div>
-          <PaymentHistoryCard
-            canDeletePayments={isElevated && !isViewOnly && bill?.status !== "voided"}
-            rows={payments.filter(shouldShowPaymentInHistory).map((p): PaymentHistoryRow => {
-              const amt = parseFloat(p.amount || "0");
-              const shortDate = p.payment_date
-                ? formatIsoDateForDisplay(p.payment_date.trim().slice(0, 10)) || "—"
-                : "—";
-              const forThisBill = p.bill_id === requestId;
-              let dateLabel: string;
-              if (p.payment_status === "pending") {
-                dateLabel = `Pending on ${shortDate}`;
-              } else if (forThisBill && amt > 0 && amt + 1e-9 < invoiceTotalMajor) {
-                dateLabel = `Partial Pay on ${shortDate}`;
-              } else {
-                dateLabel = `Paid on ${shortDate}`;
-              }
-              const ref =
-                (p.bill_reference && p.bill_reference.trim()) ||
-                (p.reference_no && p.reference_no.trim()) ||
-                p.bill_id.slice(0, 13).toUpperCase();
-              return {
-                id: p.id,
-                billId: p.bill_id,
-                billStatus: p.bill_status,
-                date: dateLabel,
-                amountLabel: `(${currencyLabel} ${parseFloat(p.amount || "0").toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
-                invoiceNo: ref,
-                invoiceHref: forThisBill ? "#" : `/payment-request/${p.bill_id}`,
-                isOtherBill: !forThisBill,
-              };
-            })}
-            onDeleteRow={async (row) => {
-              try {
-                await apiDeletePayment(row.billId, row.id);
-                const data = await fetchPayments(requestId);
-                const pruned = data.payments.filter((x) => x.id !== row.id);
-                setPayments(pruned);
-                await rollbackToPaymentRequestedIfNoPayments(pruned);
-                await reloadBill();
-                bumpAudit();
-              } catch {
-                /* ignore */
-              }
-            }}
-          />
           <ActivityHistoryAccordion
             billId={requestId}
             billRef={bill?.reference ? `#${bill.reference}` : undefined}

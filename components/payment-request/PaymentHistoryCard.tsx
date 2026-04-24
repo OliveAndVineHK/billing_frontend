@@ -130,26 +130,3 @@ export function PaymentHistoryListPanel({
     </>
   );
 }
-
-type PaymentHistoryCardProps = PaymentHistorySharedProps;
-
-export function PaymentHistoryCard({ rows = defaultRows, onDeleteRow, canDeletePayments = false }: PaymentHistoryCardProps) {
-  const [open, setOpen] = useState(true);
-
-  return (
-    <section id="payment-history" className="scroll-mt-4 rounded-lg border border-gray-200 bg-white shadow-sm">
-      <button
-        type="button"
-        className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-left sm:px-5 sm:py-4"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <h2 className="text-base font-semibold text-primary sm:text-lg">Payment History</h2>
-        <span className="material-symbols-outlined text-primary/70" aria-hidden>
-          {open ? "expand_less" : "expand_more"}
-        </span>
-      </button>
-      {open ? <PaymentHistoryListPanel rows={rows} onDeleteRow={onDeleteRow} canDeletePayments={canDeletePayments} /> : null}
-    </section>
-  );
-}
