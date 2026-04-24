@@ -126,7 +126,7 @@ const MODULE1_URL =
 /** Clear cookies and redirect the browser back to Module 1 login. */
 export function redirectToLogin() {
   clearAuth();
-  window.location.href = `${MODULE1_URL}/login`;
+  window.location.href = `${MODULE1_URL}/`;
 }
 
 /**
