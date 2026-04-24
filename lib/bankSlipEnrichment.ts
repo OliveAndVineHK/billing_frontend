@@ -98,7 +98,7 @@ export type BankSlipRowLabels = {
 };
 
 /**
- *  Uses an existing payment list (e.g. from `GET /bills/{id}/payments`) and loads
+ *   Uses an existing payment list (e.g. from `GET /bills/{id}/payments`) and loads
  * `GET /bills/{id}/payments/{paymentId}/attachments` per payment — same sources as the list view bank-slip flow.
  */
 export async function buildBankSlipDetailsFromPaymentList(
