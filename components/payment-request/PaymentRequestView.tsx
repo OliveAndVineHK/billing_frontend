@@ -29,6 +29,7 @@ import type { InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { fetchBillBankSlipEnrichment } from "@/lib/bankSlipEnrichment";
 import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
+import { getAuth } from "@/lib/auth";
 import { useUserRole } from "@/lib/useUserRole";
 
 function formatDate(dateStr: string): string {
@@ -124,7 +125,18 @@ export type PaymentRequestViewProps = {
 
 export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   const router = useRouter();
-  const { isElevated, isViewOnly } = useUserRole();
+  const { isElevated, isViewOnly, isReadOnly } = useUserRole();
+  const [currentEntityId, setCurrentEntityId] = useState<string>("");
+
+  useEffect(() => {
+    const a = getAuth();
+    setCurrentEntityId(a?.entityId ?? "");
+  }, []);
+
+  // True when a system superuser is viewing an entity they are not a member of.
+  // In this case we show a prominent banner and all write controls are already
+  // hidden/disabled by isViewOnly.
+  const showReadOnlyBanner = isViewOnly && isReadOnly(currentEntityId);
   const [statusFilter, setStatusFilter] =
     useState<PaymentRequestStatusFilter>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -395,6 +407,18 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
         canVoidPaid={isElevated}
         canPublish={isElevated}
       />
+      {showReadOnlyBanner ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mx-auto flex w-full max-w-[1920px] items-center gap-2 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 sm:px-6"
+        >
+          <span className="material-symbols-outlined shrink-0 text-[18px] leading-none text-amber-600" aria-hidden>
+            visibility
+          </span>
+          <span>Read-only access — you are not a member of this entity.</span>
+        </div>
+      ) : null}
       <main
         className="mx-auto flex min-h-0 min-w-0 w-full max-w-[1920px] flex-1 flex-col overflow-x-hidden pt-2 sm:pt-3"
         data-easy-view={easyView ? "true" : undefined}

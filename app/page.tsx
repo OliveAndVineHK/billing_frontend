@@ -9,6 +9,9 @@ import { fetchXeroStatus, fetchMe } from "@/lib/api";
 const MODULE1_URL =
   process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://localhost:8000";
+
 const EASY_VIEW_STORAGE_KEY = "payment-request-easy-view";
 
 function readStoredEasyView(): boolean | null {
@@ -50,9 +53,28 @@ export default function Home() {
     }
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const currentAuth = getAuth();
+    if (currentAuth?.token) {
+      try {
+        await fetch(`${API_BASE}/api/v1/auth/logout`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${currentAuth.token}`,
+            "X-Entity-Id": currentAuth.entityId,
+          },
+        });
+      } catch {
+        // proceed with local logout even if the server call fails
+      }
+    }
     clearAuth();
-    window.location.href = `${MODULE1_URL}/entity`;
+    try {
+      localStorage.removeItem(EASY_VIEW_STORAGE_KEY);
+    } catch {
+      /* private mode / unavailable */
+    }
+    window.location.href = `${MODULE1_URL}/`;
   };
 
   const entityAbbr = auth?.entityName

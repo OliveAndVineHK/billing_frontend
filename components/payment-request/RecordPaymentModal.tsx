@@ -113,7 +113,10 @@ export function RecordPaymentModal({
 }: RecordPaymentModalProps) {
   const iso = (currencyCode || "HKD").trim() || "HKD";
   const currencyLabel = currencyLabelForCode(iso);
-  const { isElevated: canDeletePayments } = useUserRole();
+  const { isElevated, isViewOnly } = useUserRole();
+  // Delete payments requires elevated role AND the user must not be in
+  // read-only mode (system superuser without entity membership).
+  const canDeletePayments = isElevated && !isViewOnly;
   const titleId = useId();
   const dateFieldId = useId();
   const amountFieldId = useId();

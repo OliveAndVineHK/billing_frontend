@@ -6,6 +6,9 @@ import { getAuth, getRoleFromToken } from "./auth";
 const ALL_BILL_ROLES = new Set(["cashier", "shop_manager", "accountant", "admin", "super_admin"]);
 const ELEVATED_ROLES = new Set(["accountant", "admin", "super_admin"]);
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://localhost:8000";
+
 /** Decodes the `system_role` claim from the billing JWT. Returns empty string on failure. */
 function getSystemRoleFromToken(): string {
   try {
@@ -33,31 +36,80 @@ export type UserRoleInfo = {
    * disabled in the UI and will be rejected by the API.
    */
   isViewOnly: boolean;
+  /**
+   * Entity IDs the current user has an explicit UserEntity membership for.
+   * Populated by fetching GET /api/v1/profile/me on mount.
+   * Empty array until the fetch completes (or if the user is not a superuser).
+   */
+  memberEntityIds: string[];
+  /**
+   * Returns true when the user is a system superuser AND does NOT have an
+   * explicit UserEntity membership for `entityId`.  In that case the UI must
+   * render in read-only mode (all write controls hidden/disabled).
+   *
+   * Always returns false for non-superusers (they are blocked at the access
+   * layer before reaching the entity, so no special UI treatment is needed).
+   */
+  isReadOnly: (entityId: string) => boolean;
 };
 
 /**
- * Reads the `role` and `system_role` claims from the billing JWT on mount
- * and exposes derived permission flags. Safe to call in any client component —
+ * Reads the `role` and `system_role` claims from the billing JWT on mount,
+ * fetches `member_entity_ids` from the profile endpoint for superusers, and
+ * exposes derived permission flags. Safe to call in any client component —
  * returns neutral defaults (`null`, `false`, `false`, `false`) until the JWT
  * is available.
  */
 export function useUserRole(): UserRoleInfo {
   const [role, setRole] = useState<string | null>(null);
   const [systemRole, setSystemRole] = useState<string>("");
+  const [memberEntityIds, setMemberEntityIds] = useState<string[]>([]);
 
   useEffect(() => {
     setRole(getRoleFromToken());
-    setSystemRole(getSystemRoleFromToken());
+    const sr = getSystemRoleFromToken();
+    setSystemRole(sr);
+
+    // Fetch member_entity_ids only for system superusers — this determines
+    // whether they are in read-only mode for the current entity.
+    if (sr.trim().toLowerCase() === "superuser") {
+      const auth = getAuth();
+      if (auth?.token) {
+        fetch(`${API_BASE}/api/v1/profile/me`, {
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+            "X-Entity-Id": auth.entityId,
+          },
+        })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data: { member_entity_ids?: string[] } | null) => {
+            if (data?.member_entity_ids) {
+              setMemberEntityIds(data.member_entity_ids);
+            }
+          })
+          .catch(() => {
+            // Non-fatal: fall back to empty list (most-restrictive behaviour).
+          });
+      }
+    }
   }, []);
 
   const normalized = (role ?? "").trim().toLowerCase().replace(/ /g, "_").replace(/-/g, "_");
   const normalizedSystemRole = systemRole.trim().toLowerCase();
   // A system superuser is identified by system_role='superuser' in the JWT.
   const isViewOnly = normalizedSystemRole === "superuser";
+
+  const isReadOnly = (entityId: string): boolean => {
+    if (!isViewOnly) return false;
+    return !memberEntityIds.includes(entityId);
+  };
+
   return {
     role,
     isElevated: ELEVATED_ROLES.has(normalized) && !isViewOnly,
     hasAnyRole: ALL_BILL_ROLES.has(normalized),
     isViewOnly,
+    memberEntityIds,
+    isReadOnly,
   };
 }

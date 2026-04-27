@@ -583,12 +583,14 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   const rowMenuPublishedToXero = rowMenuRow?.xeroActive === true;
   const showRowMenuPublish =
     isElevated &&
+    !isViewOnly &&
     rowMenuRow != null &&
     rowMenuRow.status !== "Draft" &&
     rowMenuRow.status !== "Voided" &&
     !rowMenuPublishedToXero;
   const showRowMenuRepublish =
     isElevated &&
+    !isViewOnly &&
     rowMenuRow != null &&
     rowMenuRow.status !== "Draft" &&
     rowMenuRow.status !== "Voided" &&
