@@ -138,11 +138,6 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
           <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#FFE6B1] text-3xl font-semibold text-[#6B3A12] sm:h-28 sm:w-28 sm:text-[2rem]">
             {loading ? <span className="inline-block h-3 w-3 animate-pulse rounded-full bg-primary/30" aria-hidden /> : abbr}
           </div>
-          <button type="button" disabled aria-label="Edit profile (not available yet)" className="absolute -bottom-0.5 -right-0.5 flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full border-0 bg-secondary text-white shadow-md ring-2 ring-white disabled:pointer-events-none">
-            <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-              mode_edit
-            </span>
-          </button>
         </div>
         <h1 className="mt-5 text-xl font-bold text-black sm:text-2xl">{loading ? "…" : displayName(profile)}</h1>
       </div>
