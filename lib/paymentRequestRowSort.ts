@@ -10,7 +10,7 @@ function unpaidSortValue(s: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-const STATUS_TABLE_ORDER = ["Payment Requested", "Returned", "Paid", "Partially paid", "Draft", "Voided"] as const;
+const STATUS_TABLE_ORDER = ["Payment Requested", "Returned", "Paid", "Partially Paid", "Draft", "Voided"] as const;
 
 function statusSortRank(label: string): number {
   const i = (STATUS_TABLE_ORDER as readonly string[]).indexOf(label);

@@ -26,8 +26,9 @@ export default function ProfilePage() {
     window.location.href = `${MODULE1_URL}/entity`;
   };
 
-  const entityAbbr = auth?.entityName
-    ? auth.entityName
+  const entityNameTrim = (auth?.entityName ?? "").trim();
+  const entityAbbr = entityNameTrim
+    ? entityNameTrim
         .split(/\s+/)
         .map((w) => w[0])
         .join("")
@@ -42,7 +43,7 @@ export default function ProfilePage() {
         showLogo={false}
         backHref="/"
         backLabel="Bills"
-        companyName={auth?.entityName || "Loading…"}
+        companyName={!auth ? "Loading…" : entityNameTrim || "—"}
         companyAbbreviation={entityAbbr}
         onLogout={handleLogout}
         xeroConnected={xeroConnected}

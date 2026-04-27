@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchAuditHistory, type AuditItem } from "@/lib/api";
+import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
 import { formatLocalDateForDisplay } from "@/lib/dateDisplayFormat";
 
 type ActivityHistoryItem = {
@@ -43,14 +44,196 @@ function formatTimeLabel(iso: string): string {
   return `${day} \u2022 ${time}`;
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isAmountLikeAuditLabel(label: string): boolean {
+  const t = label.trim().toLowerCase();
+  return (
+    t === "amount" ||
+    t === "invoice amount" ||
+    t === "amount due" ||
+    t === "total amount" ||
+    t === "invoice total" ||
+    t === "total"
+  );
+}
+
+function firstMoneyNumber(s: string): number | null {
+  const compact = s.replace(/,/g, "");
+  const m = compact.match(/-?\d+(?:\.\d+)?/);
+  if (!m) return null;
+  const n = Number.parseFloat(m[0]);
+  return Number.isFinite(n) ? n : null;
+}
+
+function stripSameLabelPrefix(value: string, label: string): string {
+  const v = value.trim();
+  const re = new RegExp(`^${escapeRegExp(label)}\\s*:`, "i");
+  return v.replace(re, "").trim() || v;
+}
+
+function toTitleCaseWords(s: string): string {
+  return s
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function formatStatusChangeLine(line: string): string {
+  const arrow = line.indexOf("→");
+  if (arrow === -1) return line;
+  const left = line.slice(0, arrow).trim();
+  const right = line.slice(arrow + 1).trim();
+  const colon = left.indexOf(":");
+  if (colon === -1) return line;
+  const label = left.slice(0, colon).trim();
+  if (!/^status$/i.test(label)) return line;
+  const oldRaw = left.slice(colon + 1).trim();
+  const newRaw = stripSameLabelPrefix(right, label);
+  const oldDisp = toTitleCaseWords(billStatusToDisplayLabel(oldRaw));
+  const newDisp = toTitleCaseWords(billStatusToDisplayLabel(newRaw));
+  const labelDisp = `${label.charAt(0).toUpperCase()}${label.slice(1).toLowerCase()}`;
+  return `${labelDisp}: ${oldDisp} → ${newDisp}`;
+}
+
 function parseChanges(detail: string): string[] {
   if (!detail || !detail.includes("→")) return [];
-  return detail.split("; ").filter((s) => s.includes("→"));
+  return detail.split("; ").filter((s) => {
+    const arrow = s.indexOf("→");
+    if (arrow === -1) return false;
+    const left = s.slice(0, arrow).trim();
+    const right = s.slice(arrow + 1).trim();
+    if (/^Xero Contact\s*:/i.test(left) || /^Xero Account Code\s*:/i.test(left)) return false;
+
+    const colon = left.indexOf(":");
+    if (colon !== -1) {
+      const labelPart = left.slice(0, colon).trim();
+      const oldRaw = left.slice(colon + 1).trim();
+      const newRaw = stripSameLabelPrefix(right, labelPart);
+      if (isAmountLikeAuditLabel(labelPart)) {
+        if (oldRaw === newRaw) return false;
+        const a = firstMoneyNumber(oldRaw);
+        const b = firstMoneyNumber(newRaw);
+        if (a != null && b != null && Object.is(a, b)) return false;
+      }
+    }
+    return true;
+  });
+}
+
+function initialsFromFirstLast(first: string, last: string): string {
+  const f = (first ?? "").trim();
+  const l = (last ?? "").trim();
+  const a = f.charAt(0);
+  const b = l.charAt(0);
+  if (a && b) return (a + b).toUpperCase();
+  if (a) return a.toUpperCase();
+  if (b) return b.toUpperCase();
+  return "—";
+}
+
+function initialsFromDisplayName(displayName: string): string {
+  const words = displayName.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    const first = words[0][0] ?? "";
+    const lastW = words[words.length - 1][0] ?? "";
+    const pair = (first + lastW).toUpperCase().slice(0, 2);
+    return pair || "?";
+  }
+  if (words.length === 1) {
+    const w = words[0];
+    return w.length >= 2 ? w.slice(0, 2).toUpperCase() : (w[0]?.toUpperCase() ?? "?");
+  }
+  return "?";
+}
+
+function parseLastCommaFirst(userName: string): { first: string; last: string } | null {
+  const t = userName.trim();
+  const i = t.indexOf(",");
+  if (i <= 0) return null;
+  const last = t.slice(0, i).trim();
+  const first = t.slice(i + 1).trim();
+  if (!first && !last) return null;
+  return { first, last };
+}
+
+function readAuditStringField(audit: AuditItem, keys: string[]): string {
+  const r = audit as unknown as Record<string, unknown>;
+  const nested =
+    r.user && typeof r.user === "object" && r.user !== null ? (r.user as Record<string, unknown>) : null;
+  for (const k of keys) {
+    const v = r[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+    if (nested) {
+      const v2 = nested[k];
+      if (typeof v2 === "string" && v2.trim()) return v2.trim();
+    }
+  }
+  return "";
+}
+
+function mergeCompoundFirstNameFromUserName(fn: string, ln: string, userName: string): { fn: string; ln: string } {
+  let outF = fn.trim();
+  const outL = ln.trim();
+  const u = userName.trim();
+  const parts = u.split(/\s+/).filter(Boolean);
+  if (!outL || parts.length < 2) return { fn: outF, ln: outL };
+  const lastTok = parts[parts.length - 1]!;
+  if (lastTok.toLowerCase() !== outL.toLowerCase()) return { fn: outF, ln: outL };
+  const firstPart = parts.slice(0, -1).join(" ").trim();
+  if (!firstPart) return { fn: outF, ln: outL };
+  if (
+    !outF ||
+    firstPart.toLowerCase() === outF.toLowerCase() ||
+    firstPart.toLowerCase().startsWith(outF.toLowerCase() + " ")
+  ) {
+    outF = firstPart;
+  }
+  return { fn: outF, ln: outL };
+}
+
+function auditDisplayNameAndInitials(audit: AuditItem): { displayName: string; initials: string } {
+  const userName =
+    (audit.user_name ?? "").trim() ||
+    readAuditStringField(audit, ["display_name", "full_name", "user_display_name", "displayName", "fullName"]);
+
+  let fn = readAuditStringField(audit, [
+    "user_first_name",
+    "first_name",
+    "userFirstName",
+    "firstName",
+    "given_name",
+    "givenName",
+  ]);
+  let ln = readAuditStringField(audit, [
+    "user_last_name",
+    "last_name",
+    "userLastName",
+    "lastName",
+    "family_name",
+    "familyName",
+  ]);
+
+  ({ fn, ln } = mergeCompoundFirstNameFromUserName(fn, ln, userName));
+
+  if (fn || ln) {
+    const displayName = [fn, ln].filter(Boolean).join(" ") || userName || "System";
+    return { displayName, initials: initialsFromFirstLast(fn, ln) };
+  }
+  const parsed = parseLastCommaFirst(userName);
+  if (parsed) {
+    const displayName = [parsed.first, parsed.last].filter(Boolean).join(" ") || userName || "System";
+    return { displayName, initials: initialsFromFirstLast(parsed.first, parsed.last) };
+  }
+  const displayName = userName || "System";
+  return { displayName, initials: initialsFromDisplayName(displayName) };
 }
 
 function auditToItem(audit: AuditItem, billRef: string): ActivityHistoryItem {
-  const words = (audit.user_name || "Unknown").trim().split(/\s+/);
-  const initials = words.map((w) => w[0]?.toUpperCase() ?? "").join("").slice(0, 2) || "?";
+  const { displayName, initials } = auditDisplayNameAndInitials(audit);
 
   const mapping = ACTION_MAP[audit.action];
   const verb = mapping?.verb ?? audit.action.replace(/_/g, " ");
@@ -59,11 +242,11 @@ function auditToItem(audit: AuditItem, billRef: string): ActivityHistoryItem {
   return {
     id: audit.id,
     initials,
-    userName: audit.user_name || "System",
+    userName: displayName,
     verb,
     subjectBold: subject,
     timeLabel: formatTimeLabel(audit.date),
-    changes: parseChanges(audit.detail),
+    changes: parseChanges(audit.detail).map(formatStatusChangeLine),
   };
 }
 
@@ -81,12 +264,12 @@ function ActivityHistoryTimelineSkeleton() {
               <div className="flex min-w-0 flex-1 flex-col rounded-lg bg-[#f9f9f9] px-4 py-3.5 sm:px-5 sm:py-4">
                 <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                   <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
-                    <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-gray-200" />
+                    <div className="h-7 w-7 shrink-0 animate-pulse rounded-full bg-[#FFE6B1]/60" />
                     <div className="min-w-0 flex-1 pt-0.5">
                       <div className="h-4 max-w-[min(100%,20rem)] animate-pulse rounded bg-gray-200" />
                     </div>
                   </div>
-                  <div className="h-3 w-[7.5rem] shrink-0 animate-pulse rounded bg-gray-100 pl-[3.25rem] sm:pl-0 sm:ml-0" />
+                  <div className="h-3 w-[7.5rem] shrink-0 animate-pulse rounded bg-gray-100 pl-10 sm:pl-0 sm:ml-0" />
                 </div>
               </div>
             </li>
@@ -172,7 +355,11 @@ export function ActivityHistoryAccordion({ billId, billRef, refreshSignal = 0 }:
                       <div className="flex min-w-0 flex-1 flex-col rounded-lg bg-[#f9f9f9] px-4 py-3.5 sm:px-5 sm:py-4">
                         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                           <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fef3c7] text-sm font-bold leading-none text-[#333333]">
+                            <div
+                              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FFE6B1] text-[12px] font-semibold leading-none text-[#6B3A12]"
+                              aria-hidden
+                              title={item.userName}
+                            >
                               {item.initials}
                             </div>
                             <p className="min-w-0 flex-1 text-sm leading-snug">
@@ -182,14 +369,14 @@ export function ActivityHistoryAccordion({ billId, billRef, refreshSignal = 0 }:
                             </p>
                           </div>
                           <time
-                            className="shrink-0 pl-[3.25rem] text-xs font-normal tabular-nums text-[#999999] sm:pl-0 sm:text-right sm:text-sm"
+                            className="shrink-0 pl-10 text-xs font-normal tabular-nums text-[#999999] sm:pl-0 sm:text-right sm:text-sm"
                             dateTime={item.timeLabel}
                           >
                             {item.timeLabel}
                           </time>
                         </div>
                         {item.changes.length > 0 ? (
-                          <ul className="mt-2 flex flex-col gap-1 pl-[3.25rem]">
+                          <ul className="mt-2 flex flex-col gap-1 pl-10">
                             {item.changes.map((c, i) => (
                               <li key={i} className="text-xs leading-relaxed text-[#888888]">
                                 <span className="text-[#555555]">{c.split("→")[0]?.trim()}</span>

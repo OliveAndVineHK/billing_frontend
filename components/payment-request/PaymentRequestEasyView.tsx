@@ -103,7 +103,7 @@ function EasyViewBankSlipControl({
 function unpaidAmountClass(status: string): string {
   if (status === "Paid") return "text-[#656565]";
   if (status === "Payment Requested") return "text-secondary";
-  if (status === "Partially paid") return "text-[#70ebba]";
+  if (status === "Partially Paid") return "text-[#70ebba]";
   if (status === "Voided") return "text-[#FF6B6B]";
   if (status === "Draft") return "text-[#656565]";
   if (status === "Returned") return "text-[#EA9713]";
@@ -115,7 +115,7 @@ function easyViewMainBackgroundClass(status: string): string {
   switch (status) {
     case "Payment Requested":
       return "bg-gradient-to-b from-secondary/10 from-[0%] to-white to-[15%]";
-    case "Partially paid":
+    case "Partially Paid":
       return "bg-gradient-to-b from-[#70ebba]/10 from-[0%] to-white to-[15%]";
     case "Returned":
       return "bg-gradient-to-b from-[#EA9713]/10 from-[0%] to-white to-[15%]";
@@ -149,6 +149,7 @@ export type PaymentRequestEasyViewProps = {
   /** Inline draft row: same expand pattern as pay panel, but only detailed information. */
   draftDetailBillId: string | null;
   onDraftBillOpen: (rowId: string) => void;
+  onOutsideCloseRequested?: () => void;
   draftDetailActions: EasyViewDraftDetailActions;
   isElevated: boolean;
   isViewOnly: boolean;
@@ -170,12 +171,14 @@ function EasyViewStatusCell({
   onDraftBillOpen: (rowId: string) => void;
 }) {
   const stop = (e: ReactMouseEvent) => e.stopPropagation();
+  const statusHoverClass =
+    "transition-[filter,box-shadow] hover:brightness-95 hover:shadow-sm active:brightness-90";
 
   if (row.status === "Voided") {
     return (
       <button
         type="button"
-        className={`${statusDisplayBadgeClass("Voided")} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
+        className={`${statusDisplayBadgeClass("Voided")} ${statusHoverClass} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
         onClick={(e) => {
           stop(e);
           onDraftBillOpen(row.id);
@@ -190,7 +193,7 @@ function EasyViewStatusCell({
     return (
       <button
         type="button"
-        className={`${statusDisplayBadgeClass("Returned")} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
+        className={`${statusDisplayBadgeClass("Returned")} ${statusHoverClass} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
         onClick={(e) => {
           stop(e);
           onDraftBillOpen(row.id);
@@ -205,7 +208,7 @@ function EasyViewStatusCell({
     return (
       <button
         type="button"
-        className={`${statusDisplayBadgeClass("Draft")} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
+        className={`${statusDisplayBadgeClass("Draft")} ${statusHoverClass} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
         onClick={(e) => {
           stop(e);
           onDraftBillOpen(row.id);
@@ -220,7 +223,7 @@ function EasyViewStatusCell({
     return (
       <button
         type="button"
-        className={`${statusDisplayBadgeClass("Paid")} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
+        className={`${statusDisplayBadgeClass("Paid")} ${statusHoverClass} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
         onClick={(e) => {
           stop(e);
           onDraftBillOpen(row.id);
@@ -231,11 +234,11 @@ function EasyViewStatusCell({
       </button>
     );
   }
-  if (row.status === "Partially paid") {
+  if (row.status === "Partially Paid") {
     return (
       <button
         type="button"
-        className={`${statusDisplayBadgeClass("Partially paid")} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed`}
+        className={`${statusDisplayBadgeClass("Partially Paid")} ${statusHoverClass} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:hover:brightness-100 disabled:hover:shadow-none`}
         onClick={(e) => {
           stop(e);
           if (!isElevated) return;
@@ -251,7 +254,7 @@ function EasyViewStatusCell({
     return (
       <button
         type="button"
-        className={`${EASY_VIEW_STATUS_CELL} cursor-pointer border border-transparent bg-secondary text-white disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`${EASY_VIEW_STATUS_CELL} ${statusHoverClass} cursor-pointer border border-transparent bg-secondary text-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100 disabled:hover:shadow-none`}
         onClick={(e) => {
           stop(e);
           if (!isElevated) return;
@@ -322,6 +325,7 @@ export function PaymentRequestEasyView({
   onOpenBankSlipUpload,
   draftDetailBillId,
   onDraftBillOpen,
+  onOutsideCloseRequested,
   draftDetailActions,
   isElevated,
   isViewOnly,
@@ -484,6 +488,13 @@ export function PaymentRequestEasyView({
   return (
     <div
       className={`flex min-h-0 flex-1 flex-col gap-4 px-4 pb-4 pt-1 sm:px-6 lg:flex-row lg:items-stretch lg:gap-6 lg:pt-2 ${mainBackgroundClass}`}
+      onClick={(e) => {
+        if (!onOutsideCloseRequested) return;
+        const target = e.target as HTMLElement | null;
+        if (!target) return;
+        if (target.closest("[data-easy-view-row]")) return;
+        onOutsideCloseRequested();
+      }}
     >
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="mb-3 flex w-full min-w-0 flex-wrap items-center gap-2">
@@ -681,7 +692,7 @@ export function PaymentRequestEasyView({
                           <div className={EASY_VIEW_BANKSLIP_SLOT}>
                             <EasyViewBankSlipControl row={row} onOpen={onOpenBankSlipUpload} />
                           </div>
-                          {row.status === "Partially paid" ? (
+                          {row.status === "Partially Paid" ? (
                             <Image
                               src="/partial.png"
                               alt=""

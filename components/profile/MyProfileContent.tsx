@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import {
   paymentRequestDetailCancelButtonClass,
   paymentRequestDetailSaveButtonClass,
@@ -56,7 +56,7 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setEntityName((getAuth()?.entityName ?? "").trim());
   }, []);
 
@@ -127,6 +127,7 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
   const abbr = initialsFromNames(profile?.first_name, profile?.last_name);
   const emailRaw = (profile?.email ?? "").trim();
   const emailDisplay = loading ? "…" : emailRaw || "—";
+  /** No entity selected (e.g. profile opened from module selection with token only) → show an em dash. */
   const entityDisplay = entityName || "—";
   const roleDisplay = formatRoleForDisplay(role);
 
@@ -137,11 +138,6 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
           <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#FFE6B1] text-3xl font-semibold text-[#6B3A12] sm:h-28 sm:w-28 sm:text-[2rem]">
             {loading ? <span className="inline-block h-3 w-3 animate-pulse rounded-full bg-primary/30" aria-hidden /> : abbr}
           </div>
-          <button type="button" disabled aria-label="Edit profile (not available yet)" className="absolute -bottom-0.5 -right-0.5 flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full border-0 bg-secondary text-white shadow-md ring-2 ring-white disabled:pointer-events-none">
-            <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-              mode_edit
-            </span>
-          </button>
         </div>
         <h1 className="mt-5 text-xl font-bold text-black sm:text-2xl">{loading ? "…" : displayName(profile)}</h1>
       </div>
@@ -156,7 +152,9 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/60">Entity</p>
-              <p className="mt-1 break-words text-base font-semibold text-black">{entityDisplay}</p>
+              <p className="mt-1 break-words text-base font-semibold text-black" aria-label={entityName ? "Entity name" : "No entity selected"}>
+                {entityDisplay}
+              </p>
             </div>
           </div>
           <div className="min-w-0 shrink-0 self-center sm:pl-1">

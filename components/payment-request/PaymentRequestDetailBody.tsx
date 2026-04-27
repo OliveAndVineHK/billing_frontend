@@ -1079,7 +1079,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
       isPublishing ||
       isViewOnly ||
       billDisplayStatus === "Voided" ||
-      ((billDisplayStatus === "Paid" || billDisplayStatus === "Partially paid") && !isElevated) ||
+      ((billDisplayStatus === "Paid" || billDisplayStatus === "Partially Paid") && !isElevated) ||
       (billDisplayStatus === "Returned" && !isElevated),
     [loadingBill, bill, isDeleting, isPublishing, isViewOnly, billDisplayStatus, isElevated],
   );

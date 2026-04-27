@@ -172,7 +172,7 @@ export function RecordPaymentModal({
     [totalPaid, remaining],
   );
 
-  /** Full Pay is locked when the bill is in Partially paid status (API `partially_paid`). */
+  /** Full Pay is locked when the bill is in Partially Paid status (API `partially_paid`). */
   const billIsPartiallyPaid = useMemo(
     () => isPartiallyPaidBillStatus(billStatus),
     [billStatus],
@@ -510,7 +510,7 @@ export function RecordPaymentModal({
                 title={
                   fullPayLocked
                     ? billIsPartiallyPaid
-                      ? "Full Pay is not available while the bill status is Partially paid. Use Partial Pay for the remaining balance."
+                      ? "Full Pay is not available while the bill status is Partially Paid. Use Partial Pay for the remaining balance."
                       : "Full Pay is only available before any partial payment is recorded. Use Partial Pay for the remaining balance."
                     : undefined
                 }

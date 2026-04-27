@@ -9,7 +9,7 @@ export type PaymentHistoryRow = {
   billStatus?: string;
   date: string;
   amountLabel: string;
-  /** Bill settlement label (e.g. Paid, Partially paid) for View Payment History. */
+  /** Bill settlement label (e.g. Paid, Partially Paid) for View Payment History. */
   statusLabel: string;
   invoiceNo: string;
   /** Link target for invoice ref; omit or "#" for current bill. */
@@ -24,10 +24,10 @@ type PaymentHistoryListPanelProps = {
 
 const defaultRows: PaymentHistoryRow[] = [
   { id: "1", billId: "demo-1", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", statusLabel: "Paid", invoiceNo: "MBIDAN-115803031626" },
-  { id: "2", billId: "demo-2", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", statusLabel: "Partially paid", invoiceNo: "MBIDAN-115803031627" },
+  { id: "2", billId: "demo-2", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", statusLabel: "Partially Paid", invoiceNo: "MBIDAN-115803031627" },
   { id: "3", billId: "demo-3", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", statusLabel: "Paid", invoiceNo: "MBIDAN-115803031628" },
   { id: "4", billId: "demo-4", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", statusLabel: "Paid", invoiceNo: "MBIDAN-115803031629" },
-  { id: "5", billId: "demo-5", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", statusLabel: "Partially paid", invoiceNo: "MBIDAN-115803031630" },
+  { id: "5", billId: "demo-5", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", statusLabel: "Partially Paid", invoiceNo: "MBIDAN-115803031630" },
   { id: "6", billId: "demo-6", date: "03 Mar 2026", amountLabel: "(HK$ 500.00)", statusLabel: "Paid", invoiceNo: "MBIDAN-115803031631" },
 ];
 

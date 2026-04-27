@@ -737,6 +737,10 @@ export type AuditItem = {
   user_id: string;
   user_name: string;
   user_email: string;
+  user_first_name?: string | null;
+  user_last_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
 };
 
 export function fetchAuditHistory(billId: string): Promise<AuditItem[]> {
