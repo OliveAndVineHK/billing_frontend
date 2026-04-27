@@ -45,7 +45,7 @@ function normalizeApiErrorDetail(detail: unknown, fallback: string): string {
 // ── Core fetch wrapper ───────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  if (isTokenExpiringSoon(30 * 60)) {
+  if (isTokenExpiringSoon(120)) {
     const refreshed = await refreshToken();
     if (!refreshed) {
       redirectToLogin();
@@ -147,7 +147,7 @@ async function fetchAttachmentDownloadJson(path: string): Promise<{
   mime_type?: string;
   file_size?: number;
 } | null> {
-  if (isTokenExpiringSoon(30 * 60)) {
+  if (isTokenExpiringSoon(120)) {
     const refreshed = await refreshToken();
     if (!refreshed) {
       redirectToLogin();
