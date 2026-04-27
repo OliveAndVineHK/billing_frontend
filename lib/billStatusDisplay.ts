@@ -5,7 +5,7 @@ export function billStatusToDisplayLabel(status: string): string {
     draft: "Draft",
     submitted: "Payment Requested",
     paid: "Paid",
-    partially_paid: "Partially paid",
+    partially_paid: "Partially Paid",
     voided: "Voided",
     returned: "Returned",
   };
@@ -26,7 +26,7 @@ export function statusDisplayBadgeClass(displayLabel: string): string {
       return `${base} border border-primary/25 bg-white text-[#656565]`;
     case "Payment Requested":
       return `${base} bg-secondary/10 text-secondary`;
-    case "Partially paid":
+    case "Partially Paid":
       return `${base} bg-[#70ebba]/10 font-semibold text-[#70ebba]`;
     case "Returned":
       return `${base} bg-[#EA9713]/15 text-[#EA9713]`;

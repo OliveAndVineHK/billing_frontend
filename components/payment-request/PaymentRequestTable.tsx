@@ -277,7 +277,7 @@ const rowMenuButtonClass =
 function unpaidAmountTextClass(status: string): string {
   if (status === "Paid") return "text-[#656565]";
   if (status === "Payment Requested") return "text-secondary";
-  if (status === "Partially paid") return "text-[#70ebba]";
+  if (status === "Partially Paid") return "text-[#70ebba]";
   if (status === "Voided") return "text-[#FF6B6B]";
   if (status === "Draft") return "text-[#656565]";
   if (status === "Returned") return "text-[#EA9713]";
@@ -578,7 +578,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   const rowMenuRow = rowMenu ? rows.find((r) => r.id === rowMenu.rowId) : undefined;
   const isRowMenuDeleteDisabled =
     rowMenuRow?.status === "Voided" ||
-    ((rowMenuRow?.status === "Paid" || rowMenuRow?.status === "Partially paid") && !isElevated) ||
+    ((rowMenuRow?.status === "Paid" || rowMenuRow?.status === "Partially Paid") && !isElevated) ||
     isViewOnly;
   const rowMenuPublishedToXero = rowMenuRow?.xeroActive === true;
   const showRowMenuPublish =
@@ -728,7 +728,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
         ) : (
           sortedVisibleRows.map((row) => {
             const isPaid = row.status === "Paid";
-            const isPartiallyPaid = row.status === "Partially paid";
+            const isPartiallyPaid = row.status === "Partially Paid";
             const isVoided = row.status === "Voided";
             const isPaymentRequested = row.status === "Payment Requested";
             const isDraft = row.status === "Draft";
@@ -929,7 +929,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
               {!loading &&
                 sortedVisibleRows.map((row) => {
                 const isPaid = row.status === "Paid";
-                const isPartiallyPaid = row.status === "Partially paid";
+                const isPartiallyPaid = row.status === "Partially Paid";
                 const isVoided = row.status === "Voided";
                 const isPaymentRequested = row.status === "Payment Requested";
                 const isDraft = row.status === "Draft";

@@ -103,7 +103,7 @@ function EasyViewBankSlipControl({
 function unpaidAmountClass(status: string): string {
   if (status === "Paid") return "text-[#656565]";
   if (status === "Payment Requested") return "text-secondary";
-  if (status === "Partially paid") return "text-[#70ebba]";
+  if (status === "Partially Paid") return "text-[#70ebba]";
   if (status === "Voided") return "text-[#FF6B6B]";
   if (status === "Draft") return "text-[#656565]";
   if (status === "Returned") return "text-[#EA9713]";
@@ -115,7 +115,7 @@ function easyViewMainBackgroundClass(status: string): string {
   switch (status) {
     case "Payment Requested":
       return "bg-gradient-to-b from-secondary/10 from-[0%] to-white to-[15%]";
-    case "Partially paid":
+    case "Partially Paid":
       return "bg-gradient-to-b from-[#70ebba]/10 from-[0%] to-white to-[15%]";
     case "Returned":
       return "bg-gradient-to-b from-[#EA9713]/10 from-[0%] to-white to-[15%]";
@@ -234,11 +234,11 @@ function EasyViewStatusCell({
       </button>
     );
   }
-  if (row.status === "Partially paid") {
+  if (row.status === "Partially Paid") {
     return (
       <button
         type="button"
-        className={`${statusDisplayBadgeClass("Partially paid")} ${statusHoverClass} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:hover:brightness-100 disabled:hover:shadow-none`}
+        className={`${statusDisplayBadgeClass("Partially Paid")} ${statusHoverClass} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap border-0 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:hover:brightness-100 disabled:hover:shadow-none`}
         onClick={(e) => {
           stop(e);
           if (!isElevated) return;
@@ -692,7 +692,7 @@ export function PaymentRequestEasyView({
                           <div className={EASY_VIEW_BANKSLIP_SLOT}>
                             <EasyViewBankSlipControl row={row} onOpen={onOpenBankSlipUpload} />
                           </div>
-                          {row.status === "Partially paid" ? (
+                          {row.status === "Partially Paid" ? (
                             <Image
                               src="/partial.png"
                               alt=""

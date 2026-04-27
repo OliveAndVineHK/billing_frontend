@@ -89,7 +89,7 @@ const STATUS_LABEL_TO_API: Record<string, string> = {
   "Draft": "draft",
   "Payment Requested": "submitted",
   "Paid": "paid",
-  "Partially paid": "partially_paid",
+  "Partially Paid": "partially_paid",
   "Voided": "voided",
   "Returned": "returned",
 };
@@ -171,7 +171,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
     const selectedSet = new Set(selectedBillIds);
     return bills.some(
       (row) =>
-        selectedSet.has(row.id) && (row.status === "Paid" || row.status === "Partially paid"),
+        selectedSet.has(row.id) && (row.status === "Paid" || row.status === "Partially Paid"),
     );
   }, [selectedBillIds, bills]);
 
