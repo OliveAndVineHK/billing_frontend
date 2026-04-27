@@ -1,4 +1,5 @@
 import { findEmailAddressInJson } from "./extractEmail";
+import { resolveMintyModuleUrl } from "./mintyEnv";
 
 const TOKEN_KEY = "billing_token";
 const ENTITY_ID_KEY = "billing_entity_id";
@@ -120,13 +121,10 @@ export function isTokenExpiringSoon(thresholdSeconds = 120): boolean {
   }
 }
 
-const MODULE1_URL =
-  process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
-
 /** Clear cookies and redirect the browser back to Module 1 login. */
 export function redirectToLogin() {
   clearAuth();
-  window.location.href = `${MODULE1_URL}/`;
+  window.location.href = `${resolveMintyModuleUrl()}/`;
 }
 
 /**

@@ -5,9 +5,7 @@ import { Header } from "@/components/layout";
 import { MyProfileContent } from "@/components/profile/MyProfileContent";
 import { getAuth, clearAuth, type AuthInfo } from "@/lib/auth";
 import { fetchXeroStatus } from "@/lib/api";
-
-const MODULE1_URL =
-  process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
+import { MINTY_MODULE_URL as MODULE1_URL } from "@/lib/mintyUrls";
 
 export default function ProfilePage() {
   const [auth, setAuthState] = useState<AuthInfo | null>(null);

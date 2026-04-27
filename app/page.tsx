@@ -5,9 +5,7 @@ import { EasyViewToggle, Header } from "@/components/layout";
 import { PaymentRequestView } from "@/components/payment-request";
 import { getAuth, clearAuth, type AuthInfo } from "@/lib/auth";
 import { fetchXeroStatus, fetchMe } from "@/lib/api";
-
-const MODULE1_URL =
-  process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
+import { MINTY_MODULE_URL as MODULE1_URL } from "@/lib/mintyUrls";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://localhost:8000";

@@ -1,8 +1,9 @@
 import { getAuth } from "@/lib/auth";
+import { resolveMintyModuleUrl } from "@/lib/mintyEnv";
 
 /** Minty (module 1) origin — same as Petty Cash / entity entry. */
-export const MINTY_MODULE_URL =
-  process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
+export const MINTY_MODULE_URL = resolveMintyModuleUrl();
+export { resolveMintyModuleUrl };
 
 /**
  * Minty entry URL with optional `next` path (path on the Minty app, e.g. `/entity/…/settings`).

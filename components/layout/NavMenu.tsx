@@ -7,9 +7,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useMemo, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { getAuth } from "@/lib/auth";
-
-const MODULE1_URL =
-  process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
+import { MINTY_MODULE_URL as MODULE1_URL } from "@/lib/mintyUrls";
 
 function navItemIsActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";

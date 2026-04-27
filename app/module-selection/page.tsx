@@ -6,9 +6,8 @@ import { Suspense, useState, useRef, useEffect } from "react";
 import { ModuleButton } from "@/components/ModuleButton";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { setAuth } from "@/lib/auth";
+import { MINTY_MODULE_URL as MODULE1_URL } from "@/lib/mintyUrls";
 
-const MODULE1_URL =
-  process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
 const MIN_LOADING_MS = 800;
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {

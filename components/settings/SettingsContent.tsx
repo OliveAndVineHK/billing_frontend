@@ -6,9 +6,7 @@ import { getAuth } from "@/lib/auth";
 import { AccountCodeSettings } from "./AccountCodeSettings";
 import { getSettingsTabFromSearchParams, SETTINGS_TAB_LABELS, SettingsPills } from "./SettingsPills";
 import { SettingsPlaceholder } from "./SettingsPlaceholder";
-
-const MODULE1_URL =
-  process.env.NEXT_PUBLIC_MODULE1_URL ?? "http://localhost:5001";
+import { MINTY_MODULE_URL as MODULE1_URL } from "@/lib/mintyUrls";
 
 export function SettingsContent() {
   const searchParams = useSearchParams();
