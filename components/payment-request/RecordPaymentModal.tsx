@@ -483,23 +483,21 @@ export function RecordPaymentModal({
               </p>
               <p className={`mt-1 font-bold text-primary ${isEasyInline ? "text-lg sm:text-xl" : "text-xl sm:text-2xl"}`}>{formatMoney(invoiceAmount, currencyLabel)}</p>
             </div>
-            {!isEasyInline ? (
-              <button
-                type="button"
-                onClick={() => setBankSlipPreviewOpen(true)}
-                className="relative -mr-1 -mt-0.5 box-border flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-primary/25 text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
-                aria-label={bankSlipOpenLabel}
-              >
-                <span className="material-symbols-outlined text-[24px] leading-none" aria-hidden>
-                  attach_file
+            <button
+              type="button"
+              onClick={() => setBankSlipPreviewOpen(true)}
+              className="relative -mr-1 -mt-0.5 box-border flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-primary/25 text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+              aria-label={bankSlipOpenLabel}
+            >
+              <span className="material-symbols-outlined text-[24px] leading-none" aria-hidden>
+                attach_file
+              </span>
+              {bankSlipFileCount > 0 ? (
+                <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-white">
+                  {bankSlipFileCount > 99 ? "99+" : bankSlipFileCount}
                 </span>
-                {bankSlipFileCount > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-white">
-                    {bankSlipFileCount > 99 ? "99+" : bankSlipFileCount}
-                  </span>
-                ) : null}
-              </button>
-            ) : null}
+              ) : null}
+            </button>
           </div>
 
           {!readOnly ? (

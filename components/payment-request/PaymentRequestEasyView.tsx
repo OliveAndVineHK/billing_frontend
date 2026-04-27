@@ -145,6 +145,8 @@ export type PaymentRequestEasyViewProps = {
   onRowClick: (rowId: string) => void;
   /** Opens the inline pay panel (Payment Requested) instead of the floating record-payment modal. */
   onPaymentRequestedPay: (rowId: string) => void;
+  /** Opens inline payment history (read-only) for paid bills. */
+  onPaidStatusOpen: (rowId: string) => void;
   onOpenBankSlipUpload: (rowId: string) => void;
   /** Inline draft row: same expand pattern as pay panel, but only detailed information. */
   draftDetailBillId: string | null;
@@ -163,11 +165,13 @@ function EasyViewStatusCell({
   row,
   isElevated,
   onPaymentRequestedPay,
+  onPaidStatusOpen,
   onDraftBillOpen,
 }: {
   row: PaymentRequestRow;
   isElevated: boolean;
   onPaymentRequestedPay: (rowId: string) => void;
+  onPaidStatusOpen: (rowId: string) => void;
   onDraftBillOpen: (rowId: string) => void;
 }) {
   const stop = (e: ReactMouseEvent) => e.stopPropagation();
@@ -226,9 +230,9 @@ function EasyViewStatusCell({
         className={`${statusDisplayBadgeClass("Paid")} ${statusHoverClass} box-border w-full min-w-0 max-w-full shrink-0 cursor-pointer whitespace-nowrap text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary`}
         onClick={(e) => {
           stop(e);
-          onDraftBillOpen(row.id);
+          onPaidStatusOpen(row.id);
         }}
-        aria-label="Paid — show bill details"
+        aria-label="Paid — view payment history"
       >
         Paid
       </button>
@@ -322,6 +326,7 @@ export function PaymentRequestEasyView({
   invoiceAttachmentsLoading,
   onRowClick,
   onPaymentRequestedPay,
+  onPaidStatusOpen,
   onOpenBankSlipUpload,
   draftDetailBillId,
   onDraftBillOpen,
@@ -728,6 +733,7 @@ export function PaymentRequestEasyView({
                           row={row}
                           isElevated={isElevated}
                           onPaymentRequestedPay={onPaymentRequestedPay}
+                          onPaidStatusOpen={onPaidStatusOpen}
                           onDraftBillOpen={onDraftBillOpen}
                         />
                       </div>
@@ -737,7 +743,7 @@ export function PaymentRequestEasyView({
                         className="border-t border-gray-200 bg-gray-50/50 p-4 sm:p-5"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="flex w-full min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:gap-6 sm:justify-between">
+                        <div className="flex w-full min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:gap-6 sm:justify-between">
                           <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
                             <div className="relative aspect-square w-full max-w-[min(100%,22rem)] shrink-0 sm:max-w-[24rem] md:max-w-[26rem] lg:max-w-[30rem]">
                               <Image
@@ -750,7 +756,7 @@ export function PaymentRequestEasyView({
                               />
                             </div>
                           </div>
-                          <div className="flex w-full min-w-0 max-w-[min(100%,720px)] shrink-0 justify-end self-end sm:self-center sm:ml-auto">
+                          <div className="flex w-full min-w-0 max-w-[min(100%,720px)] shrink-0 justify-end self-end sm:self-start sm:ml-auto">
                             {payPanel}
                           </div>
                         </div>

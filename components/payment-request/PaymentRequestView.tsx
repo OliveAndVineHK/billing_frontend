@@ -152,6 +152,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<{ billId: string; readOnly: boolean } | null>(null);
   const [easyViewPayBillId, setEasyViewPayBillId] = useState<string | null>(null);
+  const [easyViewPayReadOnly, setEasyViewPayReadOnly] = useState(false);
   const [easyViewDraftBillId, setEasyViewDraftBillId] = useState<string | null>(null);
   const [easyViewDraftDeleteOpen, setEasyViewDraftDeleteOpen] = useState(false);
   const [easyViewDraftDeletePending, setEasyViewDraftDeletePending] = useState(false);
@@ -264,12 +265,13 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
         open
         onClose={() => {
           setEasyViewPayBillId(null);
+          setEasyViewPayReadOnly(false);
           setEasyViewSelectedBillId(null);
         }}
         billId={easyViewPayBillId}
         billStatus={easyViewPaySource.status}
         contactTitle={easyViewPaySource.contact?.trim() ?? ""}
-        readOnly={isViewOnly}
+        readOnly={isViewOnly || easyViewPayReadOnly}
         invoiceAmount={parseFloat(easyViewPaySource.amount ?? "0") || 0}
         currencyCode={easyViewPaySource.currency_code?.trim() || "HKD"}
         onPaymentSaved={loadBills}
@@ -282,6 +284,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
       statusFilter === "All" ? bills : bills.filter((r) => r.status === statusFilter);
     if (!filtered.some((r) => r.id === easyViewPayBillId)) {
       setEasyViewPayBillId(null);
+      setEasyViewPayReadOnly(false);
     }
   }, [statusFilter, bills, easyViewPayBillId]);
 
@@ -448,10 +451,21 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
                 onRowClick={(rowId) => router.push(`/payment-request/${rowId}`)}
                 onPaymentRequestedPay={(rowId) => {
                   const isClosing = easyViewPayBillId === rowId;
+                  setEasyViewPayReadOnly(false);
                   setEasyViewSelectedBillId(isClosing ? null : rowId);
                   setRecordPaymentTarget(null);
                   setEasyViewDraftDeleteOpen(false);
                   setEasyViewDraftBillId(null);
+                  setEasyViewPayBillId(isClosing ? null : rowId);
+                }}
+                onPaidStatusOpen={(rowId) => {
+                  const isSameRow = easyViewPayBillId === rowId;
+                  const isClosing = isSameRow && easyViewPayReadOnly;
+                  setRecordPaymentTarget(null);
+                  setEasyViewDraftDeleteOpen(false);
+                  setEasyViewDraftBillId(null);
+                  setEasyViewSelectedBillId(isClosing ? null : rowId);
+                  setEasyViewPayReadOnly(!isClosing);
                   setEasyViewPayBillId(isClosing ? null : rowId);
                 }}
                 onOpenBankSlipUpload={(rowId) => setEasyViewBankSlipRowId(rowId)}
@@ -461,6 +475,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
                   setRecordPaymentTarget(null);
                   setEasyViewDraftDeleteOpen(false);
                   setEasyViewPayBillId(null);
+                  setEasyViewPayReadOnly(false);
                   setEasyViewSelectedBillId(isClosing ? null : rowId);
                   setEasyViewDraftBillId(isClosing ? null : rowId);
                 }}
@@ -468,6 +483,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
                   setRecordPaymentTarget(null);
                   setEasyViewDraftDeleteOpen(false);
                   setEasyViewPayBillId(null);
+                  setEasyViewPayReadOnly(false);
                   setEasyViewDraftBillId(null);
                   setEasyViewSelectedBillId(null);
                 }}
