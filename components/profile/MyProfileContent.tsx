@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import {
   paymentRequestDetailCancelButtonClass,
   paymentRequestDetailSaveButtonClass,
@@ -56,7 +56,7 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setEntityName((getAuth()?.entityName ?? "").trim());
   }, []);
 
@@ -127,6 +127,7 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
   const abbr = initialsFromNames(profile?.first_name, profile?.last_name);
   const emailRaw = (profile?.email ?? "").trim();
   const emailDisplay = loading ? "…" : emailRaw || "—";
+  /** No entity selected (e.g. profile opened from module selection with token only) → show an em dash. */
   const entityDisplay = entityName || "—";
   const roleDisplay = formatRoleForDisplay(role);
 
@@ -156,7 +157,9 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/60">Entity</p>
-              <p className="mt-1 break-words text-base font-semibold text-black">{entityDisplay}</p>
+              <p className="mt-1 break-words text-base font-semibold text-black" aria-label={entityName ? "Entity name" : "No entity selected"}>
+                {entityDisplay}
+              </p>
             </div>
           </div>
           <div className="min-w-0 shrink-0 self-center sm:pl-1">
