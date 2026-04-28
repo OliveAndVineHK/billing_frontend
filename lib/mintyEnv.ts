@@ -36,23 +36,23 @@ export function resolveMintyModuleUrl(): string {
     case "development":
     case "dev":
       return (
-        process.env.NEXT_PUBLIC_MODULE1_URL_DEV?.trim() || DEFAULT_DEV_URL
+        process.env.NEXT_PUBLIC_MODULE1_URL?.trim() || DEFAULT_DEV_URL
       );
     case "prestaging":
     case "pre-staging":
       return (
-        process.env.NEXT_PUBLIC_MODULE1_URL_PRESTAGING?.trim() ||
+        process.env.NEXT_PUBLIC_MODULE1_URL?.trim() ||
         DEFAULT_PRESTAGING_URL
       );
     case "staging":
       return (
-        process.env.NEXT_PUBLIC_MODULE1_URL_STAGING?.trim() ||
+        process.env.NEXT_PUBLIC_MODULE1_URL?.trim() ||
         DEFAULT_STAGING_URL
       );
     case "production":
     case "prod":
       return (
-        process.env.NEXT_PUBLIC_MODULE1_URL_PROD?.trim() || LOCALHOST_URL
+        process.env.NEXT_PUBLIC_MODULE1_URL?.trim() || LOCALHOST_URL
       );
     default:
       return LOCALHOST_URL;
