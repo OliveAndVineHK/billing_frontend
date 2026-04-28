@@ -858,9 +858,13 @@ export function RecordPaymentModal({
         open={bankSlipPreviewOpen}
         onClose={() => setBankSlipPreviewOpen(false)}
         details={bankSlipDetailsForModal}
-        allowRemoveFiles={false}
+        allowRemoveFiles={!readOnly}
         inlineUploadBillContext={{ billId, currencyCode: iso }}
         onInlineUploadSuccess={async () => {
+          await loadPayments();
+          onPaymentSaved?.();
+        }}
+        onBankSlipFileDeleted={async () => {
           await loadPayments();
           onPaymentSaved?.();
         }}
