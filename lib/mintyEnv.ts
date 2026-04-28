@@ -23,8 +23,7 @@ const DEFAULT_PRESTAGING_URL =
   "https://pre-staging-olive-and-vine-minty.onrender.com";
 const DEFAULT_STAGING_URL =
   "https://staging-olive-and-vine-minty-26bm.onrender.com";
-
-const DEFAULT_PROD_URL = "https://minty.oliveandvine.com";
+const DEFAULT_PROD_URL = "https://minty.oliveandvinehk.com";
 const LOCALHOST_URL = "http://localhost:5001";
 
 export function resolveMintyModuleUrl(): string {

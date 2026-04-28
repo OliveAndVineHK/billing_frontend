@@ -1,6 +1,7 @@
 import {
   getAuth,
   getEmailFromToken,
+  isTokenExpired,
   isTokenExpiringSoon,
   redirectToLogin,
   refreshToken,
@@ -45,9 +46,9 @@ function normalizeApiErrorDetail(detail: unknown, fallback: string): string {
 // ── Core fetch wrapper ───────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  if (isTokenExpiringSoon(30 * 60)) {
+  if (isTokenExpiringSoon(5 * 60)) {
     const refreshed = await refreshToken();
-    if (!refreshed) {
+    if (!refreshed && isTokenExpired()) {
       redirectToLogin();
       throw new ApiError(401, "Session expired. Redirecting to login.");
     }
@@ -147,9 +148,9 @@ async function fetchAttachmentDownloadJson(path: string): Promise<{
   mime_type?: string;
   file_size?: number;
 } | null> {
-  if (isTokenExpiringSoon(30 * 60)) {
+  if (isTokenExpiringSoon(5 * 60)) {
     const refreshed = await refreshToken();
-    if (!refreshed) {
+    if (!refreshed && isTokenExpired()) {
       redirectToLogin();
       throw new ApiError(401, "Session expired. Redirecting to login.");
     }
