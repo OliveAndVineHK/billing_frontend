@@ -21,6 +21,10 @@
 const DEFAULT_DEV_URL = "https://development-olive-and-vine-minty.onrender.com";
 const DEFAULT_PRESTAGING_URL =
   "https://pre-staging-olive-and-vine-minty.onrender.com";
+const DEFAULT_STAGING_URL =
+  "https://staging-olive-and-vine-minty-26bm.onrender.com";
+
+const DEFAULT_PROD_URL = "https://minty.oliveandvine.com";
 const LOCALHOST_URL = "http://localhost:5001";
 
 export function resolveMintyModuleUrl(): string {
@@ -44,12 +48,12 @@ export function resolveMintyModuleUrl(): string {
       );
     case "staging":
       return (
-        process.env.NEXT_PUBLIC_MODULE1_URL_STAGING?.trim() || LOCALHOST_URL
+        process.env.NEXT_PUBLIC_MODULE1_URL_STAGING?.trim() || DEFAULT_STAGING_URL
       );
     case "production":
     case "prod":
       return (
-        process.env.NEXT_PUBLIC_MODULE1_URL_PROD?.trim() || LOCALHOST_URL
+        process.env.NEXT_PUBLIC_MODULE1_URL_PROD?.trim() || DEFAULT_PROD_URL
       );
     default:
       return LOCALHOST_URL;
