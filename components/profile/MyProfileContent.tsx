@@ -127,7 +127,7 @@ export function MyProfileContent({ onLogOut }: MyProfileContentProps) {
   const abbr = initialsFromNames(profile?.first_name, profile?.last_name);
   const emailRaw = (profile?.email ?? "").trim();
   const emailDisplay = loading ? "…" : emailRaw || "—";
-  /** No  entity selected (e.g. profile opened from module selection with token only) → show an em dash. */
+  /** No   entity selected (e.g. profile opened from module selection with token only) → show an em dash. */
   const entityDisplay = entityName || "—";
   const roleDisplay = formatRoleForDisplay(role);
 
