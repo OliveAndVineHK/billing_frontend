@@ -31,5 +31,5 @@ export function PaymentRequestDetailStatusBadge({ refreshSignal = 0 }: PaymentRe
 
   if (!label) return null;
 
-  return <span className={statusDisplayBadgeClass(label)}>{label}</span>;
+  return <span className={`${statusDisplayBadgeClass(label)} sm:min-w-[11rem]`}>{label}</span>;
 }
