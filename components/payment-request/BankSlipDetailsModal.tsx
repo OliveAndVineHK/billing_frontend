@@ -586,6 +586,10 @@ export function BankSlipDetailsModal({
     try {
       const { payments } = await fetchPayments(inlineBillId);
       const existingPaymentId = pickExistingPaymentIdForBankSlipUpload(payments, inlineBillId);
+      const existingPayment = existingPaymentId
+        ? payments.find((p) => p.id === existingPaymentId) ?? null
+        : null;
+      const existingStatus = (existingPayment?.payment_status ?? "").trim().toLowerCase();
 
       let paymentId: string;
       if (existingPaymentId) {
@@ -603,7 +607,10 @@ export function BankSlipDetailsModal({
         await uploadPaymentAttachment(inlineBillId, paymentId, file, "bank_slip");
       }
 
-      await updatePayment(inlineBillId, paymentId, { payment_status: "completed" });
+      const shouldFinalize = createdPaymentId != null || existingStatus === "pending";
+      if (shouldFinalize) {
+        await updatePayment(inlineBillId, paymentId, { payment_status: "completed" });
+      }
 
       setStagedUploads([]);
       setSelectedStagedId(null);

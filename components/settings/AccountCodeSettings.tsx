@@ -4,12 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchEntityBillAccounts, updateEntityBillAccount } from "@/lib/api";
 import { useUserRole } from "@/lib/useUserRole";
 
-const CHECKBOX_CLASS = "checkbox-secondary-white-tick h-4 w-4 shrink-0 rounded border border-primary/40";
+const CHECKBOX_CLASS = "checkbox-secondary-white-tick h-4 w-4 shrink-0 rounded border border-primary/40 disabled:opacity-40";
 
 export type AccountCodeRow = { id: string; label: string };
 
 export function AccountCodeSettings() {
-  const { isViewOnly } = useUserRole();
+  const { isViewOnly, role } = useUserRole();
+  const isCashier = (role ?? "").trim().toLowerCase() === "cashier";
+  const readOnly = isViewOnly || isCashier;
   const [rows, setRows] = useState<AccountCodeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -200,7 +202,7 @@ export function AccountCodeSettings() {
                     type="checkbox"
                     checked={allFilteredSelected}
                     onChange={toggleSelectAllFiltered}
-                    disabled={filtered.length === 0}
+                    disabled={filtered.length === 0 || readOnly}
                     className={CHECKBOX_CLASS}
                     aria-label="Select all visible account codes"
                   />
@@ -210,7 +212,7 @@ export function AccountCodeSettings() {
                   return (
                     <li key={row.id} className={`flex items-center justify-between gap-3 px-3 py-3 sm:px-4 ${index > 0 ? "border-t border-gray-100" : ""}`}>
                       <span className="min-w-0 flex-1 text-base font-normal text-gray-700">{row.label}</span>
-                      <input type="checkbox" checked={isChecked} onChange={() => toggleRow(row.id)} className={CHECKBOX_CLASS} aria-label={`Include ${row.label} in bill account dropdown`}/>
+                      <input type="checkbox" checked={isChecked} onChange={() => toggleRow(row.id)} disabled={readOnly} className={CHECKBOX_CLASS} aria-label={`Include ${row.label} in bill account dropdown`}/>
                     </li>
                   );
                 })}
@@ -228,7 +230,7 @@ export function AccountCodeSettings() {
               {saveMessage.text}
             </p>
           ) : null}
-          <button type="button" onClick={handleSave} disabled={saving || isViewOnly} title={isViewOnly ? "You have view-only access and cannot perform this action" : undefined} className="box-border h-12 w-full cursor-pointer rounded-lg bg-secondary text-base font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm">
+          <button type="button" onClick={handleSave} disabled={saving || readOnly} title={isViewOnly ? "You have view-only access and cannot perform this action" : isCashier ? "Cashiers cannot modify bill settings" : undefined} className="box-border h-12 w-full cursor-pointer rounded-lg bg-secondary text-base font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm">
             {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
