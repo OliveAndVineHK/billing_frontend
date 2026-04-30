@@ -20,7 +20,7 @@ export function billStatusToDisplayLabel(status: string): string {
  */
 export function statusDisplayBadgeClass(displayLabel: string): string {
   const base =
-    "inline-flex max-w-full items-center justify-center rounded-lg px-2.5 py-1 text-center text-sm font-semibold sm:min-w-[11rem] sm:px-3 sm:py-0 sm:text-sm lg:h-[42px] lg:min-h-[42px]";
+    "inline-flex max-w-full items-center justify-center rounded-lg px-2.5 py-1 text-center text-sm font-semibold sm:px-3 sm:py-0 sm:text-sm lg:h-[42px] lg:min-h-[42px]";
   switch (displayLabel) {
     case "Paid":
       return `${base} border border-primary/25 bg-white text-[#656565]`;
