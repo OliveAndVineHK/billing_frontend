@@ -798,13 +798,13 @@ export function PaymentRequestEasyView({
       </div>
 
       <div
-        className="hidden min-h-0 w-px shrink-0 self-stretch bg-gray-200 lg:block"
+        className="hidden min-h-0 w-px shrink-0 self-stretch bg-gray-200 min-[1650px]:block"
         aria-hidden
       />
 
       <aside
         ref={asideRef}
-        className="relative mx-auto hidden h-full min-h-0 w-full min-w-0 shrink-0 flex-col overflow-x-hidden overflow-y-auto lg:flex lg:max-w-[min(100%,28rem)] lg:flex-1 lg:self-stretch xl:max-w-[min(100%,32rem)]"
+        className="relative mx-auto hidden h-full min-h-0 w-full min-w-0 shrink-0 flex-col overflow-x-hidden overflow-y-auto min-[1650px]:flex min-[1650px]:max-w-[min(100%,28rem)] min-[1650px]:flex-1 min-[1650px]:self-stretch xl:max-w-[min(100%,32rem)]"
       >
         {selectedBillId ? (
           <div
