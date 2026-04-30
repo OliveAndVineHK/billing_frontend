@@ -790,7 +790,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                     </div>
                     <div className="mt-4 flex min-h-[2.5rem] min-w-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <div className="flex min-w-0 min-h-10 flex-1 flex-wrap items-center gap-2">
-                        {!isVoided && !isDraft && isElevated ? (
+                        {!isVoided && !isDraft && !isReturned && isElevated ? (
                           isPaid ? (
                             <button type="button" aria-label={`View payments for ${row.contactTitle}`} onClick={(e) => { e.stopPropagation(); onRecordPayment?.(row.id, true); }} className={viewPaymentsButtonClass}>
                               <span className="whitespace-nowrap">View payments</span>
@@ -801,6 +801,11 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                               <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>add</span>
                             </button>
                           )
+                        ) : isReturned ? (
+                          <button type="button" disabled aria-label={`Returned — record payment not available for ${row.contactTitle}`} className={recordPaymentButtonClass}>
+                            <span className="whitespace-nowrap">Record Payment</span>
+                            <span className="material-symbols-outlined shrink-0 text-[20px] leading-none" aria-hidden>add</span>
+                          </button>
                         ) : !isVoided && !isDraft && isPaid && !isElevated ? (
                           <button type="button" disabled aria-label={`Insufficient permissions — view payments not available for ${row.contactTitle}`} className={viewPaymentsButtonClass}>
                             <span className="whitespace-nowrap">View payments</span>
@@ -1001,7 +1006,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                           );
                         case "Payment": {
                           const canViewPaid = isPaid && !isVoided && !isDraft && isElevated;
-                          const canRecord = !isPaid && !isVoided && !isDraft && isElevated;
+                          const canRecord = !isPaid && !isVoided && !isDraft && !isReturned && isElevated;
                           const disabledViewPaid = isPaid && !isVoided && !isDraft && !isElevated;
                           return (
                             <td key={title} className={`${dataCellBase} align-middle text-left ${actionBodyCellBg}`}>
@@ -1013,13 +1018,15 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                                     ? `Voided — record payment not available for ${row.contactTitle}`
                                     : isDraft
                                       ? `Draft — record payment not available for ${row.contactTitle}`
-                                      : canViewPaid
-                                        ? `View payments for ${row.contactTitle}`
-                                        : disabledViewPaid
-                                          ? `Insufficient permissions — view payments not available for ${row.contactTitle}`
-                                          : !isElevated
-                                            ? `Insufficient permissions — record payment not available for ${row.contactTitle}`
-                                            : `Record payment for ${row.contactTitle}`
+                                      : isReturned
+                                        ? `Returned — record payment not available for ${row.contactTitle}`
+                                        : canViewPaid
+                                          ? `View payments for ${row.contactTitle}`
+                                          : disabledViewPaid
+                                            ? `Insufficient permissions — view payments not available for ${row.contactTitle}`
+                                            : !isElevated
+                                              ? `Insufficient permissions — record payment not available for ${row.contactTitle}`
+                                              : `Record payment for ${row.contactTitle}`
                                 }
                                 onClick={(e) => {
                                   e.stopPropagation();
