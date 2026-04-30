@@ -264,6 +264,10 @@ export function PaymentRequestModal({
     setInvoiceDate(todayLocalISODate());
     setDueDate("");
     setBillNo("");
+    setDescription("");
+    setCurrency("HK$");
+    setUploadedFiles([]);
+    setPreviewFileId(null);
     let cancelled = false;
     fetchSuggestedBillReference()
       .then((r) => {
