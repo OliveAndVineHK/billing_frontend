@@ -566,6 +566,13 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     return Number.parseFloat(raw.replace(/,/g, "")) || 0;
   }, [formData?.amount]);
 
+  const unpaidAmountDisplay = useMemo(() => {
+    const raw = bill?.amount_due ?? "";
+    const n = Number.parseFloat(raw.replace(/,/g, ""));
+    if (!Number.isFinite(n)) return undefined;
+    return n.toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }, [bill?.amount_due]);
+
   const handleEdit = useCallback(() => {
     if (!bill) return;
     const base = billToDetailedInfo(bill);
@@ -1280,6 +1287,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
               data={formData}
               isEditing={isEditing}
               isSaving={isSaving}
+              unpaidAmount={unpaidAmountDisplay}
               disabled={!bill || bill?.status === "voided" || ((bill?.status === "paid" || bill?.status === "authorised") && !isElevated)}
               billNoError={isEditing ? billNoError : null}
               accountCodeError={
