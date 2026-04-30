@@ -232,9 +232,9 @@ function EasyViewStatusCell({
           stop(e);
           onPaidStatusOpen(row.id);
         }}
-        aria-label="Paid — view payment history"
+        aria-label="View payments"
       >
-        Paid
+        View payments
       </button>
     );
   }
