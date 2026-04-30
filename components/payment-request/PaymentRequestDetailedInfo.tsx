@@ -164,18 +164,21 @@ export function PaymentRequestReadOnlyAmountRow({
   currencyDisplayLabel,
   amount,
   highlightError = false,
+  tone = "default",
 }: {
   currencyDisplayLabel: string;
   amount: string;
   highlightError?: boolean;
+  tone?: "default" | "secondary";
 }) {
+  const amountColorClass = tone === "secondary" ? "text-secondary" : "text-black";
   return (
     <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-0">
       <div className="box-border flex h-11 min-h-[44px] w-full shrink-0 items-center justify-between gap-2 rounded-lg bg-transparent px-2 pl-3 pr-2 text-base font-semibold text-black sm:w-24 sm:rounded-l-lg sm:rounded-r-none sm:px-3 sm:text-sm" aria-label="Currency">
         <span className="min-w-0 flex-1 truncate">{currencyDisplayLabel}</span>
       </div>
       <div
-        className={`box-border flex min-h-[52px] min-w-0 w-full items-center rounded-lg bg-transparent px-3 py-1 text-xl font-semibold tabular-nums text-black sm:min-h-14 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:text-2xl sm:leading-snug ${highlightError ? "ring-2 ring-inset ring-red-500" : ""}`}
+        className={`box-border flex min-h-[52px] min-w-0 w-full items-center rounded-lg bg-transparent px-3 py-1 text-xl font-semibold tabular-nums ${amountColorClass} sm:min-h-14 sm:flex-1 sm:rounded-l-none sm:rounded-r-lg sm:text-2xl sm:leading-snug ${highlightError ? "ring-2 ring-inset ring-red-500" : ""}`}
         aria-readonly="true"
       >
         <span className="min-w-0 flex-1 truncate">{amount || "—"}</span>
@@ -439,7 +442,7 @@ export function PaymentRequestDetailedInfo({
           {!isEditing && unpaidAmount != null ? (
             <div>
               <FieldLabel editing={false}>Unpaid Amount</FieldLabel>
-              <PaymentRequestReadOnlyAmountRow currencyDisplayLabel={currencyDisplayLabel} amount={unpaidAmount} />
+              <PaymentRequestReadOnlyAmountRow currencyDisplayLabel={currencyDisplayLabel} amount={unpaidAmount} tone="secondary" />
             </div>
           ) : null}
         </div>
