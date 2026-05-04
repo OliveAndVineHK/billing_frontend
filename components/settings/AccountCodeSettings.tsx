@@ -10,8 +10,9 @@ export type AccountCodeRow = { id: string; label: string };
 
 export function AccountCodeSettings() {
   const { isViewOnly, role } = useUserRole();
-  const isCashier = (role ?? "").trim().toLowerCase() === "cashier";
-  const readOnly = isViewOnly || isCashier;
+  const normalizedRole = (role ?? "").trim().toLowerCase();
+  const isReadOnlyRole = normalizedRole === "cashier" || normalizedRole === "shop_manager";
+  const readOnly = isViewOnly || isReadOnlyRole;
   const [rows, setRows] = useState<AccountCodeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -230,7 +231,7 @@ export function AccountCodeSettings() {
               {saveMessage.text}
             </p>
           ) : null}
-          <button type="button" onClick={handleSave} disabled={saving || readOnly} title={isViewOnly ? "You have view-only access and cannot perform this action" : isCashier ? "Cashiers cannot modify bill settings" : undefined} className="box-border h-12 w-full cursor-pointer rounded-lg bg-secondary text-base font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm">
+          <button type="button" onClick={handleSave} disabled={saving || readOnly} title={isViewOnly ? "You have view-only access and cannot perform this action" : isReadOnlyRole ? "Only Accountant, Admin, or Super Admin can modify bill settings" : undefined} className="box-border h-12 w-full cursor-pointer rounded-lg bg-secondary text-base font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm">
             {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
