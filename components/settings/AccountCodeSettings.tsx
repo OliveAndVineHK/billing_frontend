@@ -124,7 +124,7 @@ export function AccountCodeSettings() {
 
   return (
     <div className="w-full pb-8 pt-2 sm:pt-3">
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className={`overflow-hidden rounded-lg border border-gray-200 ${readOnly ? "bg-gray-100" : "bg-white"} shadow-sm`}>
         <button type="button" onClick={() => setExpanded((e) => !e)} className="flex w-full items-start justify-between gap-3 px-4 py-4 text-left sm:px-5" aria-expanded={expanded}>
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-gray-800 sm:text-lg">Bill Account Code</h2>
@@ -196,7 +196,7 @@ export function AccountCodeSettings() {
                 className="visible-scrollbar max-h-[min(24rem,50vh)] overflow-y-auto overscroll-contain rounded-b-lg border-b border-r border-gray-100 [scrollbar-gutter:stable]"
                 aria-label="Account codes"
               >
-                <li className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-white px-3 py-3 sm:px-4">
+                <li className={`sticky top-0 z-10 flex items-center justify-between gap-3 ${readOnly ? "bg-gray-100" : "bg-white"} px-3 py-3 sm:px-4`}>
                   <span className="min-w-0 flex-1 text-right text-base font-normal text-primary">Select all</span>
                   <input
                     ref={selectAllRef}
