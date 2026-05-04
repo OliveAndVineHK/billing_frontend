@@ -36,8 +36,9 @@ type AdvancedFilters = {
 };
 
 type PaymentRequestToolbarProps = {
-  activeStatus: PaymentRequestStatusFilter;
-  onActiveStatusChange: (status: PaymentRequestStatusFilter) => void;
+  /** Empty array = "All" pill active. Multiple entries = stacked filter (desktop only). */
+  activeStatuses: PaymentRequestStatusFilter[];
+  onActiveStatusesChange: (statuses: PaymentRequestStatusFilter[]) => void;
   onBillCreated?: () => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
@@ -67,8 +68,8 @@ type StatusMenuState = { top: number; left: number; width: number };
 const BULK_MENU_MIN_WIDTH_PX = 200;
 
 export function PaymentRequestToolbar({
-  activeStatus,
-  onActiveStatusChange,
+  activeStatuses,
+  onActiveStatusesChange,
   onBillCreated,
   searchQuery,
   onSearchChange,
@@ -88,6 +89,13 @@ export function PaymentRequestToolbar({
 }: PaymentRequestToolbarProps) {
   const { hasAnyRole, isViewOnly } = useUserRole();
   const filterFieldIds = useId();
+  // Mobile dropdown is single-select: 0 → "All", 1 → that label, 2+ → "Multiple".
+  const mobileStatusLabel =
+    activeStatuses.length === 0
+      ? "All"
+      : activeStatuses.length === 1
+        ? activeStatuses[0]!
+        : "Multiple";
   const [billModalOpen, setBillModalOpen] = useState(false);
   const [billModalMounted, setBillModalMounted] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -287,17 +295,18 @@ export function PaymentRequestToolbar({
       <div className="-mx-4 flex min-w-0 flex-wrap items-center gap-2 px-4 sm:mx-0 sm:px-0">
         <button type="button" disabled={!hasAnyRole || isViewOnly} title={isViewOnly ? "You have view-only access and cannot perform this action" : undefined} onClick={() => { if (!isViewOnly) { setBillModalMounted(true); setBillModalOpen(true); } }} className="box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-[42px] sm:min-h-[42px] sm:px-4">Add Bill<span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>add</span></button>
         <div ref={statusWrapRef} className="relative min-w-0 flex-1 sm:hidden">
-          <button ref={statusButtonRef} type="button" aria-label={`Status: ${activeStatus}`} aria-expanded={statusOpen ? "true" : "false"} aria-haspopup="menu" onClick={() => { if (!statusButtonRef.current) return; toggleStatusMenu(statusButtonRef.current); }} className="box-border flex h-10 min-h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-primary/25 bg-white px-3 text-left text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
-            <span className="min-w-0 truncate">{activeStatus}</span>
+          <button ref={statusButtonRef} type="button" aria-label={`Status: ${mobileStatusLabel}`} aria-expanded={statusOpen ? "true" : "false"} aria-haspopup="menu" onClick={() => { if (!statusButtonRef.current) return; toggleStatusMenu(statusButtonRef.current); }} className="box-border flex h-10 min-h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-primary/25 bg-white px-3 text-left text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
+            <span className="min-w-0 truncate">{mobileStatusLabel}</span>
             <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary/70" aria-hidden>{statusOpen ? "expand_less" : "expand_more"}</span>
           </button>
           {statusOpen && statusMenu && typeof document !== "undefined"
             ? createPortal(
                 <div data-status-menu-panel role="menu" aria-label="Filter by status" className="fixed z-[400] max-h-[min(70vh,320px)] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg" style={{ top: statusMenu.top, left: statusMenu.left, width: statusMenu.width }}>
                   {PAYMENT_REQUEST_STATUS_FILTERS.map((label) => {
-                    const isActive = activeStatus === label;
+                    const isActive =
+                      label === "All" ? activeStatuses.length === 0 : activeStatuses.length === 1 && activeStatuses[0] === label;
                     return (
-                      <button key={label} type="button" role="menuitem" className={`block w-full cursor-pointer px-3 py-2.5 text-left text-sm font-medium transition-colors ${isActive ? "bg-secondary/15 text-secondary" : "text-primary hover:bg-gray-100"}`} onClick={() => { onActiveStatusChange(label); setStatusOpen(false); setStatusMenu(null); }}>
+                      <button key={label} type="button" role="menuitem" className={`block w-full cursor-pointer px-3 py-2.5 text-left text-sm font-medium transition-colors ${isActive ? "bg-secondary/15 text-secondary" : "text-primary hover:bg-gray-100"}`} onClick={() => { onActiveStatusesChange(label === "All" ? [] : [label]); setStatusOpen(false); setStatusMenu(null); }}>
                         {label}
                       </button>
                     );
@@ -309,9 +318,29 @@ export function PaymentRequestToolbar({
         </div>
         <div className="hidden min-w-0 flex-1 touch-pan-x gap-2 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] sm:flex sm:flex-wrap sm:touch-auto sm:overflow-visible [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Filter by status">
           {PAYMENT_REQUEST_STATUS_FILTERS.map((label) => {
-            const isActive = activeStatus === label;
+            const isAllPill = label === "All";
+            const isActive = isAllPill ? activeStatuses.length === 0 : activeStatuses.includes(label);
             return (
-              <button key={label} type="button" role="tab" aria-selected={isActive ? "true" : "false"} onClick={() => onActiveStatusChange(label)} className={`box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm md:text-base ${isActive ? "border-secondary bg-secondary/15 text-secondary" : "border-primary/25 text-primary hover:bg-primary/10"}`}>{label}</button>
+              <button
+                key={label}
+                type="button"
+                role="tab"
+                aria-selected={isActive ? "true" : "false"}
+                onClick={() => {
+                  if (isAllPill) {
+                    onActiveStatusesChange([]);
+                    return;
+                  }
+                  if (activeStatuses.includes(label)) {
+                    onActiveStatusesChange(activeStatuses.filter((s) => s !== label));
+                  } else {
+                    onActiveStatusesChange([...activeStatuses, label]);
+                  }
+                }}
+                className={`box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors sm:h-[42px] sm:min-h-[42px] sm:px-4 sm:text-sm md:text-base ${isActive ? "border-secondary bg-secondary/15 text-secondary" : "border-primary/25 text-primary hover:bg-primary/10"}`}
+              >
+                {label}
+              </button>
             );
           })}
         </div>
