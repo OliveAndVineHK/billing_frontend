@@ -138,3 +138,20 @@ input[type="date"].pr-date-input::-moz-calendar-picker-indicator {
 .visible-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #a3a3a3;
 }
+
+.onboarding-spotlight {
+  box-shadow: 0 0 0 3px var(--secondary), 0 6px 20px rgba(84, 211, 218, 0.25);
+  transition: box-shadow 200ms ease-out;
+  animation: onboarding-pulse 2.4s ease-in-out infinite;
+}
+@keyframes onboarding-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--secondary),                   0 6px 20px rgba(84, 211, 218, 0.25); }
+  50%      { box-shadow: 0 0 0 6px rgba(84, 211, 218, 0.45),           0 6px 24px rgba(84, 211, 218, 0.40); }
+}
+.onboarding-tooltip-open {
+  opacity: 1 !important;
+}
+.onboarding-tooltip-open a,
+.onboarding-tooltip-open button {
+  pointer-events: auto !important;
+}
