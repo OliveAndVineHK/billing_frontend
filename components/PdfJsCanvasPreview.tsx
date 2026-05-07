@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getAuth, isTokenExpiringSoon, redirectToLogin, refreshToken } from "@/lib/auth";
+import { getAuth, isTokenExpired, isTokenExpiringSoon, redirectToLogin, refreshToken } from "@/lib/auth";
 
 let workerSrcConfigured = false;
 
@@ -47,9 +47,9 @@ function isLocalSrc(src: string): boolean {
  */
 async function fetchProxyBlob(apiPath: string): Promise<string | null> {
   try {
-    if (isTokenExpiringSoon(30 * 60)) {
+    if (isTokenExpiringSoon(5 * 60)) {
       const refreshed = await refreshToken();
-      if (!refreshed) {
+      if (!refreshed && isTokenExpired()) {
         redirectToLogin();
         return null;
       }

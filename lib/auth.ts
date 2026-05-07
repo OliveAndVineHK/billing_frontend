@@ -121,10 +121,75 @@ export function isTokenExpiringSoon(thresholdSeconds = 120): boolean {
   }
 }
 
-/** Clear cookies and redirect the browser back to Module 1 login. */
+/**
+ * Returns true only if the JWT is already past its `exp` claim (with a small
+ * 5-second clock-skew tolerance). Used to decide when a failed refresh should
+ * actually kick the user back to login vs. allow the request to proceed.
+ * Returns false if the token is missing, malformed, or has no `exp` claim.
+ * Never throws.
+ */
+export function isTokenExpired(): boolean {
+  try {
+    const auth = getAuth();
+    if (!auth?.token) return false;
+    const parts = auth.token.split(".");
+    if (parts.length !== 3) return false;
+    const payloadJson = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    const payload = JSON.parse(payloadJson) as Record<string, unknown>;
+    if (typeof payload.exp !== "number") return false;
+    return payload.exp - Date.now() / 1000 < -5;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Best-effort silent re-handoff to Flask Module 1 to obtain a fresh billing JWT.
+ *
+ * Inputs:
+ *   - Reads `billing_entity_id` from the cookie jar to preserve the entity scope.
+ *   - Reads `window.location.pathname + search` so the user lands back on the
+ *     same page they were on (assuming the Flask session is still valid).
+ *
+ * Output: navigates the browser to
+ *   <MODULE1_URL>/entity/<entity_id>/billing-relogin?next=<encoded current path>
+ *
+ * If Flask session is still valid (typical case), Flask mints a new JWT and
+ * redirects straight back to /landing → cookie restored → user resumes with
+ * zero clicks. If the Flask session is also expired, Flask-Login's
+ * `login_view` sends them to the real login form. Either way no manual
+ * cookie clearing is required.
+ *
+ * Falls back to plain Module 1 root if no entity context is available.
+ */
 export function redirectToLogin() {
+  const entityId =
+    typeof document !== "undefined"
+      ? Object.fromEntries(
+          document.cookie
+            .split("; ")
+            .filter(Boolean)
+            .map((c) => {
+              const idx = c.indexOf("=");
+              return [c.slice(0, idx), decodeURIComponent(c.slice(idx + 1))];
+            }),
+        )[ENTITY_ID_KEY]
+      : "";
+
   clearAuth();
-  window.location.href = `${resolveMintyModuleUrl()}/`;
+
+  const base = resolveMintyModuleUrl().replace(/\/$/, "");
+  if (entityId) {
+    const here =
+      typeof window !== "undefined"
+        ? window.location.pathname + window.location.search
+        : "/";
+    const next = encodeURIComponent(here);
+    window.location.href = `${base}/entity/${entityId}/billing-relogin?next=${next}`;
+    return;
+  }
+
+  window.location.href = `${base}/`;
 }
 
 /**
