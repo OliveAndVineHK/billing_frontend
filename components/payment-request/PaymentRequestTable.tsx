@@ -287,7 +287,8 @@ function unpaidAmountTextClass(status: string): string {
 type PaymentRequestTableProps = {
   rows?: PaymentRequestRow[];
   onRecordPayment?: (rowId: string, readOnly?: boolean) => void;
-  statusFilter?: PaymentRequestStatusFilter;
+  /** Empty array = no status filter ("All"). Multiple entries = OR-filter (rows match any). */
+  statusFilters?: PaymentRequestStatusFilter[];
   onRowDelete?: (rowId: string) => void;
   onRowPublish?: (rowId: string) => void;
   onRowRepublish?: (rowId: string) => void;
@@ -447,7 +448,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
   {
     rows = DEMO_ROWS,
     onRecordPayment,
-    statusFilter = "All",
+    statusFilters = [],
     onRowDelete,
     onRowPublish,
     onRowRepublish,
@@ -499,9 +500,14 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
     });
   }, [rowIdSet, rows]);
 
+  const statusFilterKey = statusFilters.join("|");
   const visibleRows = useMemo(
-    () => (statusFilter === "All" ? rows : rows.filter((r) => r.status === statusFilter)),
-    [rows, statusFilter],
+    () =>
+      statusFilters.length === 0
+        ? rows
+        : rows.filter((r) => statusFilters.some((s) => s === r.status)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, statusFilterKey],
   );
 
   const sortedVisibleRows = useMemo(() => {
@@ -548,7 +554,8 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
     setRowDeleteConfirmId(null);
     setColumnsMenu(null);
     setBankSlipDetailsRowId(null);
-  }, [statusFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilterKey]);
 
   const onSortColumn = (sk: SortKey) => {
     setSort((s) => (s.key === sk ? { key: sk, dir: s.dir === "asc" ? "desc" : "asc" } : { key: sk, dir: "asc" }));

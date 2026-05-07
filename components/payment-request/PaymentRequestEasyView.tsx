@@ -135,7 +135,8 @@ function easyViewMainBackgroundClass(status: string): string {
 export type PaymentRequestEasyViewProps = {
   rows: PaymentRequestRow[];
   loading: boolean;
-  activeStatus: PaymentRequestStatusFilter;
+  /** Empty array = "All" (no filter). Multiple entries = stacked OR-filter. */
+  activeStatuses: PaymentRequestStatusFilter[];
   payPanelBillId: string | null;
   payPanel: ReactNode;
   /** When set, the right column shows invoice attachments for this bill (same preview as details page). */
@@ -318,7 +319,7 @@ function EasyViewSortChevronButton({
 export function PaymentRequestEasyView({
   rows,
   loading,
-  activeStatus,
+  activeStatuses,
   payPanelBillId,
   payPanel,
   selectedBillId,
@@ -345,13 +346,15 @@ export function PaymentRequestEasyView({
   const asideRef = useRef<HTMLElement>(null);
   const [invoiceAsideOffsetY, setInvoiceAsideOffsetY] = useState(0);
 
+  const activeStatusKey = activeStatuses.join("|");
   const visibleRows = useMemo(() => {
     const filtered =
-      activeStatus === "All" ? rows : rows.filter((r) => r.status === activeStatus);
+      activeStatuses.length === 0 ? rows : rows.filter((r) => activeStatuses.some((s) => s === r.status));
     const copy = [...filtered];
     copy.sort((a, b) => compareRows(a, b, sort.key, sort.dir));
     return copy;
-  }, [rows, activeStatus, sort]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, activeStatusKey, sort]);
 
   /** Match `PaymentRequestTable` `onSortColumn`: same column toggles direction; new column starts at `asc`. */
   const setEasyViewSort = useCallback((key: EasyViewSortKey) => {
@@ -360,7 +363,8 @@ export function PaymentRequestEasyView({
 
   useEffect(() => {
     setSort({ key: "status", dir: "asc" });
-  }, [activeStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStatusKey]);
 
   const updateInvoiceAsideAlign = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -484,11 +488,24 @@ export function PaymentRequestEasyView({
       const row = rows.find((r) => r.id === draftDetailBillId);
       if (row?.status) return easyViewMainBackgroundClass(row.status);
     }
-    return easyViewMainBackgroundClass(activeStatus);
-  }, [selectedBillId, payPanelBillId, draftDetailBillId, rows, activeStatus]);
+    // 0 statuses → "All"; exactly one → use that for tinting; multiple → neutral.
+    const tintingStatus =
+      activeStatuses.length === 0 ? "All" : activeStatuses.length === 1 ? activeStatuses[0]! : "All";
+    return easyViewMainBackgroundClass(tintingStatus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBillId, payPanelBillId, draftDetailBillId, rows, activeStatusKey]);
 
   const easyViewAsideImageSrc =
-    activeStatus === "Payment Requested" ? "/unpaid.png" : "/all-cat.png";
+    activeStatuses.length === 1 && activeStatuses[0] === "Payment Requested"
+      ? "/unpaid.png"
+      : "/all-cat.png";
+  // Header label: 0 → "All"; 1 → that label; 2+ → "Multiple".
+  const headerStatusLabel =
+    activeStatuses.length === 0
+      ? "All"
+      : activeStatuses.length === 1
+        ? activeStatuses[0]!
+        : "Multiple";
 
   return (
     <div
@@ -503,8 +520,8 @@ export function PaymentRequestEasyView({
     >
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="mb-3 flex w-full min-w-0 flex-wrap items-center gap-2">
-          <span className="min-w-0 truncate text-[18px] font-semibold text-black" title={activeStatus}>
-            {activeStatus}
+          <span className="min-w-0 truncate text-[18px] font-semibold text-black" title={headerStatusLabel}>
+            {headerStatusLabel}
           </span>
         </div>
 
