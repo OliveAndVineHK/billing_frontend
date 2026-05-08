@@ -137,8 +137,9 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   // In this case we show a prominent banner and all write controls are already
   // hidden/disabled by isViewOnly.
   const showReadOnlyBanner = isViewOnly && isReadOnly(currentEntityId);
-  const [statusFilter, setStatusFilter] =
-    useState<PaymentRequestStatusFilter>("All");
+  // Empty array = "All". One entry = single-status filter (kept server-side).
+  // 2+ entries = stacked filter (server returns everything, client filters by union).
+  const [statusFilters, setStatusFilters] = useState<PaymentRequestStatusFilter[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [minAmount, setMinAmount] = useState("");
@@ -206,7 +207,10 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
     setLoading(true);
     setError(null);
     try {
-      const apiStatus = statusFilter !== "All" ? STATUS_LABEL_TO_API[statusFilter] : undefined;
+      // Only push status to the server when exactly one is selected. For 0 or 2+
+      // we omit the param and let the client-side filter narrow the rows.
+      const apiStatus =
+        statusFilters.length === 1 ? STATUS_LABEL_TO_API[statusFilters[0]!] : undefined;
       const dateField = DATE_TYPE_TO_FIELD[dateType];
       const data = await fetchBills({
         page_size: 100,
@@ -250,7 +254,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, statusFilter, minAmount, maxAmount, dateType, startDate, endDate]);
+  }, [debouncedSearch, statusFilters, minAmount, maxAmount, dateType, startDate, endDate]);
 
   const easyViewPaySource = useMemo(() => {
     if (!easyViewPayBillId) return null;
@@ -281,21 +285,21 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   useEffect(() => {
     if (!easyViewPayBillId) return;
     const filtered =
-      statusFilter === "All" ? bills : bills.filter((r) => r.status === statusFilter);
+      statusFilters.length === 0 ? bills : bills.filter((r) => statusFilters.some((s) => s === r.status));
     if (!filtered.some((r) => r.id === easyViewPayBillId)) {
       setEasyViewPayBillId(null);
       setEasyViewPayReadOnly(false);
     }
-  }, [statusFilter, bills, easyViewPayBillId]);
+  }, [statusFilters, bills, easyViewPayBillId]);
 
   useEffect(() => {
     if (!easyViewDraftBillId) return;
     const filtered =
-      statusFilter === "All" ? bills : bills.filter((r) => r.status === statusFilter);
+      statusFilters.length === 0 ? bills : bills.filter((r) => statusFilters.some((s) => s === r.status));
     if (!filtered.some((r) => r.id === easyViewDraftBillId)) {
       setEasyViewDraftBillId(null);
     }
-  }, [statusFilter, bills, easyViewDraftBillId]);
+  }, [statusFilters, bills, easyViewDraftBillId]);
 
   useEffect(() => {
     if (!easyViewDraftBillId) setEasyViewDraftDeleteOpen(false);
@@ -336,11 +340,11 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   useEffect(() => {
     if (!easyViewSelectedBillId) return;
     const filtered =
-      statusFilter === "All" ? bills : bills.filter((r) => r.status === statusFilter);
+      statusFilters.length === 0 ? bills : bills.filter((r) => statusFilters.some((s) => s === r.status));
     if (!filtered.some((r) => r.id === easyViewSelectedBillId)) {
       setEasyViewSelectedBillId(null);
     }
-  }, [statusFilter, bills, easyViewSelectedBillId]);
+  }, [statusFilters, bills, easyViewSelectedBillId]);
 
   useEffect(() => {
     loadBills();
@@ -388,8 +392,8 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   return (
     <>
       <PaymentRequestToolbar
-        activeStatus={statusFilter}
-        onActiveStatusChange={setStatusFilter}
+        activeStatuses={statusFilters}
+        onActiveStatusesChange={setStatusFilters}
         onBillCreated={loadBills}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -442,7 +446,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
               <PaymentRequestEasyView
                 rows={bills}
                 loading={loading}
-                activeStatus={statusFilter}
+                activeStatuses={statusFilters}
                 payPanelBillId={easyViewPayBillId}
                 payPanel={easyViewPayPanel}
                 selectedBillId={easyViewSelectedBillId}
@@ -498,7 +502,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
               <PaymentRequestTable
                 ref={tableRef}
                 rows={bills}
-                statusFilter={statusFilter}
+                statusFilters={statusFilters}
                 loading={loading}
                 onSelectionChange={onTableSelectionChange}
                 onRecordPayment={(rowId, readOnly) => setRecordPaymentTarget({ billId: rowId, readOnly: readOnly ?? false })}
