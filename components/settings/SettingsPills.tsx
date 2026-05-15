@@ -37,9 +37,9 @@ const FLASK_REDIRECT_TABS: Partial<
   Record<SettingsTabId, (module1Url: string, entityId: string) => string>
 > = {
   users: (module1Url, entityId) =>
-    `${module1Url}/entity/settings/users/${entityId}`,
+    `${module1Url}/entity/settings/users/${entityId}?from=bills`,
   xero: (module1Url, entityId) =>
-    `${module1Url}/entity/${entityId}/settings/xero`,
+    `${module1Url}/entity/${entityId}/settings/xero?from=bills`,
   entity: (module1Url, entityId) =>
     `${module1Url}/entity/settings/entity/${entityId}?from=bills`,
 };
