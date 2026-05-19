@@ -34,13 +34,17 @@ export default function ProfilePage() {
         .slice(0, 3)
     : "---";
 
+  const hasEntity = !!auth?.entityId;
+  const backHref = hasEntity ? "/" : `${MODULE1_URL}/entity`;
+  const backLabel = hasEntity ? "Bills" : "Entity List";
+
   return (
     <div className="flex min-h-dvh min-h-screen min-w-0 max-w-full flex-col overflow-x-clip bg-white pb-[env(safe-area-inset-bottom,0px)]">
       <Header
         title="My Profile"
         showLogo={false}
-        backHref="/"
-        backLabel="Bills"
+        backHref={backHref}
+        backLabel={backLabel}
         companyName={!auth ? "Loading…" : entityNameTrim || "—"}
         companyAbbreviation={entityAbbr}
         onLogout={handleLogout}
