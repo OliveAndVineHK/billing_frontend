@@ -98,6 +98,7 @@ export function NavMenu({ items, menuSections, companyAbbreviation = "---", onLo
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
+  const [hasEntity, setHasEntity] = useState(false);
   const panelId = useId();
 
   const resolvedSections = useMemo(() => menuSections ?? buildMenuSections(), [menuSections]);
@@ -108,6 +109,7 @@ export function NavMenu({ items, menuSections, companyAbbreviation = "---", onLo
 
   useEffect(() => {
     setPortalReady(true);
+    setHasEntity(!!getAuth()?.entityId);
   }, []);
 
   useEffect(() => {
@@ -140,31 +142,33 @@ export function NavMenu({ items, menuSections, companyAbbreviation = "---", onLo
                 <span className="material-symbols-outlined text-[26px] leading-none">close</span>
               </button>
             </div>
-            {selectEntityItem ? (
+            {hasEntity && selectEntityItem ? (
               <NavMenuItemLink item={selectEntityItem} pathname={pathname} onNavigate={() => setOpen(false)} />
             ) : null}
           </div>
           <div className="flex min-h-0 flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4">
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <div className="w-full max-h-[calc(100%-11.5rem)] flex-none overflow-y-auto overscroll-contain">
-                <div className="flex flex-col gap-3">
-                  {resolvedSections.map((section) => (
-                    <div key={section.title} className={`flex flex-col ${section.title === "Payment Request" ? "mt-6 gap-3" : "gap-1"}`} role="group" aria-label={section.title}>
-                      <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-primary/70">{section.title}</p>
-                      <ul className="flex flex-col gap-1">
-                        {section.items.map((item) => (
-                          <li key={item.label} className="w-full">
-                            <NavMenuItemLink item={item} pathname={pathname} onNavigate={() => setOpen(false)} />
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
+              {hasEntity ? (
+                <div className="w-full max-h-[calc(100%-11.5rem)] flex-none overflow-y-auto overscroll-contain">
+                  <div className="flex flex-col gap-3">
+                    {resolvedSections.map((section) => (
+                      <div key={section.title} className={`flex flex-col ${section.title === "Payment Request" ? "mt-6 gap-3" : "gap-1"}`} role="group" aria-label={section.title}>
+                        <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-primary/70">{section.title}</p>
+                        <ul className="flex flex-col gap-1">
+                          {section.items.map((item) => (
+                            <li key={item.label} className="w-full">
+                              <NavMenuItemLink item={item} pathname={pathname} onNavigate={() => setOpen(false)} />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="mt-4 shrink-0 -mx-4 border-t border-primary/15 sm:-mx-6" role="presentation">
+              ) : null}
+              <div className={`shrink-0 -mx-4 sm:-mx-6 ${hasEntity ? "mt-4 border-t border-primary/15" : ""}`} role="presentation">
                 <div className="flex flex-col gap-1 px-4 pt-4 sm:px-6 sm:pt-4">
-                  {settingsItem ? <NavMenuItemLink item={settingsItem} pathname={pathname} onNavigate={() => setOpen(false)} /> : null}
+                  {hasEntity && settingsItem ? <NavMenuItemLink item={settingsItem} pathname={pathname} onNavigate={() => setOpen(false)} /> : null}
                   <button
                     type="button"
                     onClick={() => {
@@ -181,17 +185,19 @@ export function NavMenu({ items, menuSections, companyAbbreviation = "---", onLo
                 </div>
               </div>
               <div className="min-h-0 min-w-0 flex-1" aria-hidden />
-              <div className="flex shrink-0 justify-center px-2 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
-                <Image
-                  src="/cat.png"
-                  alt=""
-                  width={200}
-                  height={180}
-                  className="h-auto w-[min(100%,10rem)] object-contain object-bottom select-none"
-                  draggable={false}
-                  priority={false}
-                />
-              </div>
+              {hasEntity ? (
+                <div className="flex shrink-0 justify-center px-2 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+                  <Image
+                    src="/cat.png"
+                    alt=""
+                    width={200}
+                    height={180}
+                    className="h-auto w-[min(100%,10rem)] object-contain object-bottom select-none"
+                    draggable={false}
+                    priority={false}
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
         </nav>
