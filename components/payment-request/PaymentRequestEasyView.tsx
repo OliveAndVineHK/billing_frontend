@@ -709,7 +709,7 @@ export function PaymentRequestEasyView({
                         </div>
                       </div>
                       <div className={easyViewSubmittedTd}>{row.submittedDate}</div>
-                      <div className={easyViewAttachmentTd} onClick={(e) => e.stopPropagation()}>
+                      <div className={easyViewAttachmentTd}>
                         <div className="flex w-full min-w-0 max-w-full flex-row flex-nowrap items-center gap-1.5 sm:gap-2">
                           <div className={EASY_VIEW_BANKSLIP_SLOT}>
                             <EasyViewBankSlipControl row={row} onOpen={onOpenBankSlipUpload} />
