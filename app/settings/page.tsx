@@ -34,7 +34,7 @@ export default function SettingsPage() {
     : "---";
 
   return (
-    <div className="flex min-h-dvh min-h-screen min-w-0 max-w-full flex-col overflow-x-clip bg-white pb-[env(safe-area-inset-bottom,0px)]">
+    <div className="flex h-dvh h-screen min-w-0 max-w-full flex-col overflow-hidden bg-white">
       <Header
         title="Settings"
         showLogo={false}
@@ -44,8 +44,9 @@ export default function SettingsPage() {
         companyAbbreviation={entityAbbr}
         onLogout={handleLogout}
         xeroConnected={xeroConnected}
+        noBorder
       />
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-[env(safe-area-inset-bottom,0px)]">
         <Suspense
           fallback={
             <div className="mx-auto w-full max-w-[1024px] px-4 py-6 sm:px-6">
