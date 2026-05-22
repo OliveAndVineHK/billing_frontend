@@ -20,7 +20,7 @@ export function SettingsContent() {
 
   return (
     <div className="mx-auto w-full max-w-[1024px] px-4 sm:px-6">
-      <div className="pt-3 sm:pt-4">
+      <div className="sticky top-0 z-10 bg-white pt-3 pb-3 sm:pt-4 sm:pb-4">
         <SettingsPills activeTab={tab} entityId={entityId} module1Url={MODULE1_URL} />
       </div>
       {tab === "bill" ? (

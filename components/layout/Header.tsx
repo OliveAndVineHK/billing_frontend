@@ -21,6 +21,8 @@ type HeaderProps = {
   xeroConnected?: boolean;
   /** Omit top safe-area padding when a row above the header already applies it. */
   suppressTopSafeArea?: boolean;
+  /** Drop the bottom border (separator) — e.g. when a sticky pills row sits directly below. */
+  noBorder?: boolean;
 };
 
 export function Header({
@@ -37,6 +39,7 @@ export function Header({
   onLogout,
   xeroConnected,
   suppressTopSafeArea = false,
+  noBorder = false,
 }: HeaderProps) {
   const homeHref = brandHref === undefined ? "/" : brandHref;
   const showBack = Boolean(backHref);
@@ -83,7 +86,7 @@ export function Header({
 
   return (
     <header
-      className={`border-b border-gray-200 bg-white ${suppressTopSafeArea ? "" : "pt-[env(safe-area-inset-top,0px)]"}`}
+      className={`bg-white ${noBorder ? "" : "border-b border-gray-200"} ${suppressTopSafeArea ? "" : "pt-[env(safe-area-inset-top,0px)]"}`}
     >
       <div className="mx-auto flex w-full max-w-[1920px] flex-row items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
         <div className="flex min-w-0 min-h-10 flex-1 items-center sm:min-h-0">{leftSection}</div>

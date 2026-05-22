@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchEntityBillAccounts, updateEntityBillAccount } from "@/lib/api";
 import { useUserRole } from "@/lib/useUserRole";
+import { useToast } from "@/components/Toast";
 
 const CHECKBOX_CLASS = "checkbox-secondary-white-tick h-4 w-4 shrink-0 rounded border border-primary/40 disabled:opacity-40";
 
@@ -20,7 +21,7 @@ export function AccountCodeSettings() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set());
   const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const { showToast } = useToast();
   const selectAllRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -65,25 +66,18 @@ export function AccountCodeSettings() {
   const handleSave = async () => {
     if (!hasChanges || saving) return;
     setSaving(true);
-    setSaveMessage(null);
     try {
       await Promise.all(
         changedIds.map(({ id, is_active }) => updateEntityBillAccount(id, { is_active })),
       );
       setSavedIds(new Set(selectedIds));
-      setSaveMessage({ type: "success", text: "Changes saved successfully." });
+      showToast("Bill settings updated successfully", "success");
     } catch {
-      setSaveMessage({ type: "error", text: "Failed to save some changes. Please try again." });
+      showToast("Failed to save some changes. Please try again.", "error");
     } finally {
       setSaving(false);
     }
   };
-
-  useEffect(() => {
-    if (!saveMessage) return;
-    const t = window.setTimeout(() => setSaveMessage(null), 3000);
-    return () => clearTimeout(t);
-  }, [saveMessage]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -226,11 +220,6 @@ export function AccountCodeSettings() {
 
       {expanded ? (
         <div className="mt-3 flex w-full flex-col gap-3">
-          {saveMessage ? (
-            <p className={`text-center text-sm font-medium ${saveMessage.type === "success" ? "text-emerald-600" : "text-red-600"}`} role="alert">
-              {saveMessage.text}
-            </p>
-          ) : null}
           <button type="button" onClick={handleSave} disabled={saving || readOnly} title={isViewOnly ? "You have view-only access and cannot perform this action" : isReadOnlyRole ? "Only Accountant, Admin, or Super Admin can modify bill settings" : undefined} className="box-border h-12 w-full cursor-pointer rounded-lg bg-secondary text-base font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:text-sm">
             {saving ? "Saving…" : "Save Changes"}
           </button>
