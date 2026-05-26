@@ -26,7 +26,7 @@ export function AccountCodeSettings() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchEntityBillAccounts({ forceChartSync: true, includeInactive: true })
+    fetchEntityBillAccounts({ includeInactive: true })
       .then((accounts) => {
         if (cancelled) return;
         setRows(
