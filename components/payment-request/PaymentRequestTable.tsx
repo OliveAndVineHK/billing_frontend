@@ -694,7 +694,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
 
   return (
     <div className="w-full min-w-0 px-4 pb-6 sm:px-6">
-      <div className="flex flex-col gap-3 sm:hidden" role="list" aria-label="Payment requests">
+      <div className="flex flex-col gap-3 lg:hidden" role="list" aria-label="Payment requests">
         {loading ? (
           <div className="flex flex-col gap-3" role="status" aria-busy="true" aria-label="Loading payment requests">
             {Array.from({ length: MOBILE_SKELETON_CARD_COUNT }, (_, i) => (
@@ -859,7 +859,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
           })
         )}
       </div>
-      <div className="hidden rounded-lg border border-gray-200 sm:block">
+      <div className="hidden rounded-lg border border-gray-200 lg:block">
         <div className="overflow-x-auto touch-auto [-webkit-overflow-scrolling:touch]">
           <table className="min-w-[82rem] w-full border-collapse text-left">
             <thead>

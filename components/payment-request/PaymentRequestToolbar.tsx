@@ -291,10 +291,10 @@ export function PaymentRequestToolbar({
 
   return (
     <>
-    <div className="mx-auto flex w-full min-w-0 max-w-[1920px] flex-col gap-3 bg-white px-4 py-3 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+    <div className="mx-auto flex w-full min-w-0 max-w-[1920px] flex-col gap-3 bg-white px-4 py-3 sm:px-6 sm:py-4 xl:flex-row xl:items-center xl:justify-between xl:gap-6">
       <div className="-mx-4 flex min-w-0 flex-wrap items-center gap-2 px-4 sm:mx-0 sm:px-0">
         <button type="button" disabled={!hasAnyRole || isViewOnly} title={isViewOnly ? "You have view-only access and cannot perform this action" : undefined} onClick={() => { if (!isViewOnly) { setBillModalMounted(true); setBillModalOpen(true); } }} className="box-border inline-flex h-10 min-h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:opacity-50 sm:h-[42px] sm:min-h-[42px] sm:px-4">Add Bill<span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>add</span></button>
-        <div ref={statusWrapRef} className="relative min-w-0 flex-1 sm:hidden">
+        <div ref={statusWrapRef} className="relative min-w-0 flex-1 min-[925px]:hidden">
           <button ref={statusButtonRef} type="button" aria-label={`Status: ${mobileStatusLabel}`} aria-expanded={statusOpen ? "true" : "false"} aria-haspopup="menu" onClick={() => { if (!statusButtonRef.current) return; toggleStatusMenu(statusButtonRef.current); }} className="box-border flex h-10 min-h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-primary/25 bg-white px-3 text-left text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
             <span className="min-w-0 truncate">{mobileStatusLabel}</span>
             <span className="material-symbols-outlined shrink-0 text-[22px] leading-none text-primary/70" aria-hidden>{statusOpen ? "expand_less" : "expand_more"}</span>
@@ -316,7 +316,7 @@ export function PaymentRequestToolbar({
               )
             : null}
         </div>
-        <div className="hidden min-w-0 flex-1 touch-pan-x gap-2 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] sm:flex sm:flex-wrap sm:touch-auto sm:overflow-visible [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Filter by status">
+        <div className="hidden min-w-0 flex-1 touch-pan-x gap-2 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] min-[925px]:flex min-[925px]:flex-wrap min-[925px]:touch-auto min-[925px]:overflow-visible [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Filter by status">
           {PAYMENT_REQUEST_STATUS_FILTERS.map((label) => {
             const isAllPill = label === "All";
             const isActive = isAllPill ? activeStatuses.length === 0 : activeStatuses.includes(label);
@@ -346,7 +346,7 @@ export function PaymentRequestToolbar({
         </div>
       </div>
 
-      <div className="flex w-full min-w-0 flex-row items-center gap-2 sm:gap-2 lg:w-auto lg:max-w-2xl lg:flex-1 xl:max-w-3xl">
+      <div className="flex w-full min-w-0 flex-row items-center gap-2 sm:gap-2 xl:w-auto xl:max-w-3xl xl:flex-1">
         <label htmlFor="payment-request-search" className="sr-only">
           Search by contact or description
         </label>
