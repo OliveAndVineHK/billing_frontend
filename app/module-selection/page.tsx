@@ -5,10 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, useRef, useEffect } from "react";
 import { ModuleButton } from "@/components/ModuleButton";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { setAuth } from "@/lib/auth";
+import { getAuth, setAuth } from "@/lib/auth";
 import { MINTY_MODULE_URL as MODULE1_URL } from "@/lib/mintyUrls";
 
 const MIN_LOADING_MS = 800;
+const API_BASE =
+  process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://localhost:8000";
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
@@ -33,23 +35,40 @@ function ModuleSelectionContent() {
   // Capture params into refs on first render so they survive the router.replace()
   // re-render that strips them from the URL (F8 fix). Plain consts derived from
   // searchParams become "" after the replace; refs hold the original values.
+  //
+  // URL-only at this stage — reading cookies during render is a hydration trap
+  // (server has no document, client does, so they'd diverge). The cookie
+  // fallback happens in the mount effect below, before the buttons reveal.
   const tokenRef = useRef(searchParams.get("token") ?? "");
   const entityIdRef = useRef(searchParams.get("entity_id") ?? "");
   const entityNameRef = useRef(searchParams.get("entity_name") ?? "");
 
-  // Decode JWT to check if billing is enabled
-  const [billingEnabled, setBillingEnabled] = useState(true); // Default to true for backward compatibility
-
-  useEffect(() => {
-    const token = tokenRef.current;
-    if (token) {
-      const payload = decodeJwtPayload(token);
-      if (payload && typeof payload.billing_enabled === "boolean") {
-        setBillingEnabled(payload.billing_enabled);
-        console.log("Module selection: billing_enabled =", payload.billing_enabled);
-      }
+  // Decode JWT once during initial state init — synchronous with the first
+  // render so neither button briefly flashes before being hidden. Both flags
+  // default to true (back-compat) when the claim is missing or the token is
+  // malformed; only an explicit `false` hides the corresponding module.
+  const initialClaims = useRef<{ billingEnabled: boolean; pettyCashEnabled: boolean } | null>(null);
+  if (initialClaims.current === null) {
+    const payload = tokenRef.current ? decodeJwtPayload(tokenRef.current) : null;
+    initialClaims.current = {
+      billingEnabled:
+        payload && typeof payload.billing_enabled === "boolean"
+          ? payload.billing_enabled
+          : true,
+      pettyCashEnabled:
+        payload && typeof payload.petty_cash_enabled === "boolean"
+          ? payload.petty_cash_enabled
+          : true,
+    };
+    if (payload) {
+      console.log(
+        "Module selection: billing_enabled =", payload.billing_enabled,
+        "petty_cash_enabled =", payload.petty_cash_enabled,
+      );
     }
-  }, []);
+  }
+  const [billingEnabled, setBillingEnabled] = useState(initialClaims.current.billingEnabled);
+  const [pettyCashEnabled, setPettyCashEnabled] = useState(initialClaims.current.pettyCashEnabled);
 
   const module1Href =
     entityIdRef.current && tokenRef.current
@@ -73,22 +92,90 @@ function ModuleSelectionContent() {
   const lastPaymentTouchTime = useRef(0);
   const [loadingMintyPeek, setLoadingMintyPeek] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
+  // Gates the buttons until the DB-authoritative /entitlements fetch resolves.
+  // Keeping the buttons hidden during the brief "JWT-claim ↔ DB" reconciliation
+  // window is how we avoid flashing a card that the DB will hide a moment later.
+  const [entitlementsReady, setEntitlementsReady] = useState(false);
 
   useEffect(() => {
+    // URL had no token (this is a refresh after router.replace stripped the
+    // params on a prior visit). Fall back to the persisted auth cookie and
+    // re-seed the JWT-claim state so the buttons reveal in the right shape
+    // instead of the all-defaults-true fallback.
+    const hadUrlToken = !!tokenRef.current;
+    if (!hadUrlToken) {
+      const auth = getAuth();
+      if (auth?.token) {
+        tokenRef.current = auth.token;
+        entityIdRef.current = auth.entityId;
+        entityNameRef.current = auth.entityName;
+        const payload = decodeJwtPayload(auth.token);
+        if (payload) {
+          if (typeof payload.billing_enabled === "boolean") {
+            setBillingEnabled(payload.billing_enabled);
+          }
+          if (typeof payload.petty_cash_enabled === "boolean") {
+            setPettyCashEnabled(payload.petty_cash_enabled);
+          }
+        }
+      }
+    }
+
+    // Reveal banner + module buttons. Server rendered nothing for these, so
+    // the first client paint after this state flip is also the first paint
+    // that includes them — no SSR/CSR diff to hydrate.
     setHasMounted(true);
-    const token = tokenRef.current;
-    const entityId = entityIdRef.current;
-    const entityName = entityNameRef.current;
-    if (token) {
-      // Write the cookie before replacing the URL so the auth state is
-      // committed regardless of the re-render that follows router.replace().
-      setAuth(token, entityId, entityName);
+
+    // Original handoff path: when the URL had a token (initial landing from
+    // Module 1), persist it to cookies and strip the params.
+    if (hadUrlToken) {
+      setAuth(tokenRef.current, entityIdRef.current, entityNameRef.current);
       const clean = new URLSearchParams(searchParams.toString());
       clean.delete("token");
       clean.delete("entity_id");
       clean.delete("entity_name");
       const qs = clean.toString();
       router.replace(`/module-selection${qs ? `?${qs}` : ""}`);
+    }
+
+    // Authoritative refresh from the backend. The DB is the only source of
+    // truth for entitlements. We keep the buttons hidden (via entitlementsReady)
+    // until this resolves so a cookie JWT that disagrees with the DB never
+    // briefly paints a card the DB is about to hide.
+    //
+    // A safety timeout flips ready=true even if the network never responds,
+    // so a slow backend can't strand the page on an empty button row forever.
+    // In that fallback case the JWT-claim values are what get revealed —
+    // imperfect, but better than a stuck screen.
+    const fetchToken = tokenRef.current;
+    const fetchEntityId = entityIdRef.current;
+    if (!fetchToken || !fetchEntityId) {
+      // Nothing to verify against (signed out, or no entity context) — reveal
+      // immediately with whatever the JWT-claim defaults gave us.
+      setEntitlementsReady(true);
+    } else {
+      const safetyTimer = window.setTimeout(() => setEntitlementsReady(true), 5000);
+      fetch(`${API_BASE}/api/v1/auth/entitlements`, {
+        headers: { Authorization: `Bearer ${fetchToken}`, "X-Entity-Id": fetchEntityId },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { petty_cash_enabled?: boolean; billing_enabled?: boolean } | null) => {
+          if (data) {
+            if (typeof data.petty_cash_enabled === "boolean") {
+              setPettyCashEnabled(data.petty_cash_enabled);
+            }
+            if (typeof data.billing_enabled === "boolean") {
+              setBillingEnabled(data.billing_enabled);
+            }
+          }
+        })
+        .catch(() => {
+          // Non-fatal: reveal with the JWT-claim values painted above.
+        })
+        .finally(() => {
+          window.clearTimeout(safetyTimer);
+          setEntitlementsReady(true);
+        });
     }
   }, []);
 
@@ -159,8 +246,10 @@ function ModuleSelectionContent() {
           Choose Module Type
         </h1>
         <div className="module-buttons-group mx-auto flex w-full max-w-[260px] flex-col items-center justify-center gap-4 sm:max-w-[400px] sm:flex-row sm:flex-nowrap sm:gap-6 md:max-w-[820px]">
-          <ModuleButton iconSrc="/pettycash-icon.webp" iconAlt="Petty cash" imageScale={0.8} hoverBackImage="/minty-l.webp" onClick={handleClick} onTouchEnd={handleTouchEnd} />
-          {billingEnabled && (
+          {hasMounted && entitlementsReady && pettyCashEnabled && (
+            <ModuleButton iconSrc="/pettycash-icon.webp" iconAlt="Petty cash" imageScale={0.8} hoverBackImage="/minty-l.webp" onClick={handleClick} onTouchEnd={handleTouchEnd} />
+          )}
+          {hasMounted && entitlementsReady && billingEnabled && (
             <ModuleButton iconSrc="/payment-icon.webp" iconAlt="Payment request" imageScale={1.0} hoverBackImage="/minty-r.webp" hoverBackImagePosition="top-right" onClick={handlePaymentClick} onTouchEnd={handlePaymentTouchEnd} />
           )}
         </div>

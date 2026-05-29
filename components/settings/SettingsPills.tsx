@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { useEntitlements } from "@/lib/moduleClaims";
+
 export const SETTINGS_TAB_IDS = ["users", "xero", "entity", "bill"] as const;
 export type SettingsTabId = (typeof SETTINGS_TAB_IDS)[number];
 
@@ -51,10 +53,16 @@ type SettingsPillsProps = {
 };
 
 export function SettingsPills({ activeTab, entityId, module1Url }: SettingsPillsProps) {
+  // The "Petty Cash Settings" pill bounces the user over to Module 1; it makes
+  // no sense for entities that don't have the petty cash module turned on, and
+  // would land them on a screen they can't use. Filter it out when disabled.
+  const { pettyCashEnabled } = useEntitlements();
+  const visibleTabs = TABS.filter((t) => t.id !== "entity" || pettyCashEnabled);
+
   return (
     <div className="w-full">
       <div className="flex flex-wrap gap-2 pb-1">
-        {TABS.map(({ id, label }) => {
+        {visibleTabs.map(({ id, label }) => {
           const isActive = activeTab === id;
           const flaskUrl = FLASK_REDIRECT_TABS[id];
 

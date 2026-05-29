@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useMemo, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { getAuth } from "@/lib/auth";
+import { useEntitlements } from "@/lib/moduleClaims";
 import { MINTY_MODULE_URL as MODULE1_URL } from "@/lib/mintyUrls";
 
 function navItemIsActive(pathname: string, href: string) {
@@ -27,24 +28,29 @@ function buildModule1EntryUrl(path?: string): string {
   return `${MODULE1_URL}/entity`;
 }
 
-function buildMenuSections(): NavMenuSection[] {
+function buildMenuSections(pettyCashEnabled: boolean): NavMenuSection[] {
   const auth = getAuth();
   const dashboardHref = buildModule1EntryUrl();
   const reportsPath = auth?.entityId ? `/entity/${auth.entityId}/reports` : undefined;
   const reportsHref = buildModule1EntryUrl(reportsPath);
-  return [
-    {
+  const sections: NavMenuSection[] = [];
+  // Petty Cash links cross into Module 1 — only surface them when the
+  // entity actually has the petty cash module turned on. Bill-only customers
+  // never see these handoffs (they'd land on a screen they can't use).
+  if (pettyCashEnabled) {
+    sections.push({
       title: "Petty Cash",
       items: [
         { href: dashboardHref, label: "Dashboard", icon: "space_dashboard", external: true },
         { href: reportsHref, label: "Reports", icon: "bar_chart", external: true },
       ],
-    },
-    {
-      title: "Payment Request",
-      items: [{ href: "/", label: "Bills", icon: "local_atm" }],
-    },
-  ];
+    });
+  }
+  sections.push({
+    title: "Payment Request",
+    items: [{ href: "/", label: "Bills", icon: "local_atm" }],
+  });
+  return sections;
 }
 
 function buildDefaultItems(sections: NavMenuSection[]): NavMenuItem[] {
@@ -101,7 +107,14 @@ export function NavMenu({ items, menuSections, companyAbbreviation = "---", onLo
   const [hasEntity, setHasEntity] = useState(false);
   const panelId = useId();
 
-  const resolvedSections = useMemo(() => menuSections ?? buildMenuSections(), [menuSections]);
+  // Subscribe to DB-fresh entitlements so a CLI/admin toggle of PETTY_CASH
+  // takes effect on the next page load without needing a re-handoff through
+  // Module 1 (the cookie JWT claim can be hours stale).
+  const { pettyCashEnabled } = useEntitlements();
+  const resolvedSections = useMemo(
+    () => menuSections ?? buildMenuSections(pettyCashEnabled),
+    [menuSections, pettyCashEnabled],
+  );
   const resolvedItems = useMemo(() => items ?? buildDefaultItems(resolvedSections), [items, resolvedSections]);
 
   const selectEntityItem = resolvedItems.find((i) => i.label === "Select entity");
