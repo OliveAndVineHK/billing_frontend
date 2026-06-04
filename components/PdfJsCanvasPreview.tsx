@@ -247,10 +247,11 @@ function PdfJsCanvasRenderer({
           canvas.setAttribute("aria-label", `${title} — page ${p} of ${pdfDoc.numPages}`);
           canvas.width = Math.floor(viewport.width * dpr);
           canvas.height = Math.floor(viewport.height * dpr);
-          canvas.style.width = `${viewport.width}px`;
-          canvas.style.height = `${viewport.height}px`;
+          canvas.style.maxWidth = `${viewport.width}px`;
+          canvas.style.width = "100%";
+          canvas.style.height = "auto";
           canvas.className =
-            "mx-auto block h-auto max-w-full rounded border border-gray-200 bg-white shadow-sm";
+            "mx-auto block rounded border border-gray-200 bg-white shadow-sm";
           const ctx = canvas.getContext("2d");
           if (!ctx) throw new Error("2D context unavailable");
           ctx.scale(dpr, dpr);
