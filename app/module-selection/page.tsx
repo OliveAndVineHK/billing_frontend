@@ -75,8 +75,6 @@ function ModuleSelectionContent() {
       ? `${MODULE1_URL}/entity/${entityIdRef.current}/enter?token=${tokenRef.current}`
       : `${MODULE1_URL}/entity`;
 
-  const entityBackHref = `${MODULE1_URL}/entity`;
-
   const acronym = entityNameRef.current
     ? entityNameRef.current
         .split(/\s+/)
@@ -232,14 +230,14 @@ function ModuleSelectionContent() {
         <Image src="/logo-selection.webp" alt="Logo" width={560} height={560} priority sizes="(max-width: 640px) 320px, (max-width: 768px) 400px, (max-width: 1024px) 480px, 560px" className="h-auto w-full max-w-[160px] sm:max-w-[200px] md:max-w-[240px] lg:max-w-[280px]" />
 
         {hasMounted && entityNameRef.current && (
-          <a href={entityBackHref} className="flex items-center gap-3 rounded-full border border-gray-100 bg-white px-4 py-2 shadow-sm transition-colors hover:bg-gray-50">
+          <div className="flex items-center gap-3 rounded-full border border-gray-100 bg-white px-4 py-2 shadow-sm">
             <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold" style={{ backgroundColor: "#E0F7FA", color: "#00838F" }}>
               {acronym}
             </span>
             <span className="text-sm font-semibold text-[#474747]">
               {entityNameRef.current}
             </span>
-          </a>
+          </div>
         )}
 
         <h1 className="text-center text-lg font-bold text-black sm:text-xl md:text-2xl">
