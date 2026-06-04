@@ -66,7 +66,7 @@ type DetailSubmitFieldErrors = Partial<
 function validateDetailRequiredForSubmit(d: PaymentRequestDetailedInfoData): DetailSubmitFieldErrors | null {
   const errors: DetailSubmitFieldErrors = {};
   if (!d.accountCode.trim()) errors.accountCode = "Please select an account code.";
-  if (!d.contact.trim()) errors.contact = "Contact is required.";
+  if (!d.contact.trim()) errors.contact = "Supplier is required.";
   if (!d.invoiceDate.trim()) errors.invoiceDate = "Invoice date is required.";
   if (!d.dueDate.trim()) errors.dueDate = "Due date is required.";
   const amt = Number.parseFloat((d.amount ?? "").replace(/,/g, ""));

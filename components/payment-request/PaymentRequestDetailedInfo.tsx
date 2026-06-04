@@ -468,7 +468,7 @@ export function PaymentRequestDetailedInfo({
 
         <div>
           <FieldLabel htmlFor={idContact} editing={isEditing}>
-            Contact<span className="text-red-500"> *</span>
+            Supplier<span className="text-red-500"> *</span>
           </FieldLabel>
           <div className={contactHeaderEnd ? "flex items-center gap-2 sm:gap-3" : undefined}>
             <div className={contactHeaderEnd ? "min-w-0 flex-1" : undefined}>

@@ -241,7 +241,7 @@ export function EasyViewDraftDetailedInformation({
         <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-y-4">
           <div className="min-w-0 lg:col-span-1">
             <div className={paymentRequestDetailFieldLabelClass}>
-              Contact<span className="text-red-500"> *</span>
+              Supplier<span className="text-red-500"> *</span>
             </div>
             <PaymentRequestReadOnlySelectShell value={contact} />
           </div>
@@ -477,7 +477,7 @@ export function EasyViewDraftDetailedInformationEdit({
       <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-y-4">
         <div className="min-w-0 lg:col-span-1">
           <label htmlFor={idContact} className={paymentRequestDetailFieldLabelClass}>
-            Contact<span className="text-red-500"> *</span>
+            Supplier<span className="text-red-500"> *</span>
           </label>
           <BillContactPicker
             id={idContact}

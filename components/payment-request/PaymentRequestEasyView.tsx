@@ -528,12 +528,12 @@ export function PaymentRequestEasyView({
         <div ref={listScrollRef} className="min-h-0 flex-1 overflow-auto">
           <div className="mb-2 flex flex-col gap-2 md:hidden">
             <div className="flex items-center gap-1">
-              <span className="text-sm font-medium text-primary">Contact</span>
+              <span className="text-sm font-medium text-primary">Supplier</span>
               <EasyViewSortChevronButton
                 sortDir={sort.dir}
                 active={sort.key === "contact"}
                 onToggle={() => setEasyViewSort("contact")}
-                ariaLabel={`Sort by contact${sort.key === "contact" ? (sort.dir === "asc" ? ", ascending" : ", descending") : ""}`}
+                ariaLabel={`Sort by supplier${sort.key === "contact" ? (sort.dir === "asc" ? ", ascending" : ", descending") : ""}`}
                 title="Sort A-Z"
               />
             </div>
@@ -593,12 +593,12 @@ export function PaymentRequestEasyView({
               <div
                 className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
               >
-                <span className="min-w-0 shrink truncate">Contact</span>
+                <span className="min-w-0 shrink truncate">Supplier</span>
                 <EasyViewSortChevronButton
                   sortDir={sort.dir}
                   active={sort.key === "contact"}
                   onToggle={() => setEasyViewSort("contact")}
-                  ariaLabel={`Sort by contact${sort.key === "contact" ? (sort.dir === "asc" ? ", ascending" : ", descending") : ""}`}
+                  ariaLabel={`Sort by supplier${sort.key === "contact" ? (sort.dir === "asc" ? ", ascending" : ", descending") : ""}`}
                   title="Sort A-Z"
                 />
               </div>

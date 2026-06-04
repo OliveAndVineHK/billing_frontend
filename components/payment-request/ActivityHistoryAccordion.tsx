@@ -315,7 +315,7 @@ export function ActivityHistoryAccordion({ billId, billRef, refreshSignal = 0 }:
         className="rounded-xl border border-gray-200/90 bg-white p-4 sm:p-5 md:p-6"
         role="status"
         aria-busy="true"
-        aria-label="Loading activity history"
+        aria-label="Loading history"
       >
         <div className="mb-4 flex items-center justify-between gap-3 sm:mb-5">
           <div className="h-6 w-48 max-w-[75%] animate-pulse rounded-md bg-gray-200" aria-hidden />
@@ -329,7 +329,7 @@ export function ActivityHistoryAccordion({ billId, billRef, refreshSignal = 0 }:
   return (
     <section className="rounded-xl border border-gray-200/90 bg-white">
       <button type="button" className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-left sm:px-5 sm:py-4" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <h2 className="text-base font-semibold text-[#5c5c5c] sm:text-lg">Activity History</h2>
+        <h2 className="text-base font-semibold text-[#5c5c5c] sm:text-lg">History</h2>
         <span className="material-symbols-outlined text-[#5c5c5c]/70" aria-hidden>
           {open ? "expand_less" : "expand_more"}
         </span>
