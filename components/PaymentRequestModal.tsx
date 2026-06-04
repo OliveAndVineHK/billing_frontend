@@ -85,7 +85,7 @@ function validatePaymentRequestForm(values: {
     e.amount = "Enter an amount greater than zero.";
   }
   if (!values.contact.trim()) {
-    e.contact = "Contact is required.";
+    e.contact = "Supplier is required.";
   }
   if (!values.accountCode.trim()) {
     e.accountCode = "Account code is required.";
@@ -714,7 +714,7 @@ export function PaymentRequestModal({
 
             <div>
               <FieldLabel htmlFor="pr-contact" required>
-                Contact
+                Supplier
               </FieldLabel>
               <BillContactPicker
                 id="pr-contact"

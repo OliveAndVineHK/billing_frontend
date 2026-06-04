@@ -11,7 +11,7 @@ import { recordPaymentButtonClass } from "./paymentRequestButtonClasses";
 import { compareRows, type SortKey } from "@/lib/paymentRequestRowSort";
 
 const COLUMN_TITLES = [
-  "Contact / Description",
+  "Supplier / Description",
   "Submitted Date",
   "Invoice Date",
   "Status",
@@ -54,7 +54,7 @@ function truncateMobileBillDescription(text: string): string {
 }
 
 const SORTABLE_TITLE: Partial<Record<PaymentRequestColumnTitle, SortKey>> = {
-  "Contact / Description": "contact",
+  "Supplier / Description": "contact",
   "Invoice Date": "invoiceDate",
   Status: "status",
   "Submitted Date": "submittedDate",
@@ -313,7 +313,7 @@ type ColumnsMenuState = { top: number; left: number };
 type ColumnSelectorKey = "contact" | "submittedDate" | "invoiceDate" | "status" | "unpaidAmount";
 
 const COLUMN_SELECTOR_ITEMS: Array<{ key: ColumnSelectorKey; label: string }> = [
-  { key: "contact", label: "Contact / Description" },
+  { key: "contact", label: "Supplier / Description" },
   { key: "submittedDate", label: "Submitted Date" },
   { key: "invoiceDate", label: "Invoice Date" },
   { key: "status", label: "Status" },
@@ -362,7 +362,7 @@ function persistColumnVisibility(next: Record<ColumnSelectorKey, boolean>) {
 }
 
 const TITLE_SELECTOR_KEY: Partial<Record<PaymentRequestColumnTitle, ColumnSelectorKey>> = {
-  "Contact / Description": "contact",
+  "Supplier / Description": "contact",
   "Submitted Date": "submittedDate",
   "Invoice Date": "invoiceDate",
   Status: "status",
@@ -370,7 +370,7 @@ const TITLE_SELECTOR_KEY: Partial<Record<PaymentRequestColumnTitle, ColumnSelect
 };
 
 const SELECTOR_TITLE: Record<ColumnSelectorKey, PaymentRequestColumnTitle> = {
-  contact: "Contact / Description",
+  contact: "Supplier / Description",
   submittedDate: "Submitted Date",
   invoiceDate: "Invoice Date",
   status: "Status",
@@ -380,7 +380,7 @@ const SELECTOR_TITLE: Record<ColumnSelectorKey, PaymentRequestColumnTitle> = {
 const NON_SELECTOR_TITLES: PaymentRequestColumnTitle[] = COLUMN_TITLES.filter((title) => !TITLE_SELECTOR_KEY[title]);
 
 function skeletonDesktopTdClass(title: PaymentRequestColumnTitle): string {
-  if (title === "Contact / Description") return contactCellClass;
+  if (title === "Supplier / Description") return contactCellClass;
   if (title === "Invoice Date") return singleLineDateCellClass;
   if (title === "Submitted Date") return invoiceDateCellClass;
   if (title === "Status") return singleLineStatusCellClass;
@@ -393,7 +393,7 @@ function skeletonDesktopTdClass(title: PaymentRequestColumnTitle): string {
 
 function skeletonDesktopCellInner(title: PaymentRequestColumnTitle) {
   switch (title) {
-    case "Contact / Description":
+    case "Supplier / Description":
       return (
         <div className="space-y-2 py-0.5">
           <div className="h-4 max-w-[14rem] animate-pulse rounded bg-gray-200" />
@@ -872,7 +872,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                   if (selectorKey && !columnVisibility[selectorKey]) return null;
                   const sortKeyForCol = SORTABLE_TITLE[title];
                   const sortActive = sortKeyForCol != null && sort.key === sortKeyForCol;
-                  const thBase = `border-b border-gray-200 px-4 py-3 text-left text-xs sm:px-5 sm:py-3.5 sm:text-sm ${isActionColumnTitle(title) ? "bg-secondary text-white" : "bg-[#9CA3AF] text-white"} ${title === "Contact / Description" ? "min-w-[14rem]" : title === "Payment" || title === "Bankslip" ? "min-w-[11rem] whitespace-nowrap" : title === "Invoice Date" || title === "Paid Date" ? "min-w-[9rem] whitespace-nowrap" : title === "Status" ? "min-w-0 whitespace-nowrap sm:min-w-[11rem]" : title === "Unpaid Amount" ? "min-w-[13rem] whitespace-nowrap" : "min-w-[7rem] whitespace-nowrap"}`;
+                  const thBase = `border-b border-gray-200 px-4 py-3 text-left text-xs sm:px-5 sm:py-3.5 sm:text-sm ${isActionColumnTitle(title) ? "bg-secondary text-white" : "bg-[#9CA3AF] text-white"} ${title === "Supplier / Description" ? "min-w-[14rem]" : title === "Payment" || title === "Bankslip" ? "min-w-[11rem] whitespace-nowrap" : title === "Invoice Date" || title === "Paid Date" ? "min-w-[9rem] whitespace-nowrap" : title === "Status" ? "min-w-0 whitespace-nowrap sm:min-w-[11rem]" : title === "Unpaid Amount" ? "min-w-[13rem] whitespace-nowrap" : "min-w-[7rem] whitespace-nowrap"}`;
                   const hoverSort = title === "Paid Date" ? "hover:bg-white/15 focus-visible:outline-white/60" : "hover:bg-black/10 focus-visible:outline-white/60";
                   return (
                     <th key={title} scope="col" aria-sort={sortActive ? (sort.dir === "asc" ? "ascending" : "descending") : undefined} className={thBase}>
@@ -959,7 +959,7 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                       const selectorKey = TITLE_SELECTOR_KEY[title];
                       if (selectorKey && !columnVisibility[selectorKey]) return null;
                       switch (title) {
-                        case "Contact / Description":
+                        case "Supplier / Description":
                           return (
                             <td key={title} className={contactCellClass}>
                               <div className="flex min-w-0 flex-col gap-0.5">

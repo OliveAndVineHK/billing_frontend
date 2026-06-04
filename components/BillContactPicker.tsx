@@ -124,7 +124,7 @@ export function BillContactPicker({
       setOpen(false);
     } catch (e) {
       setCreateError(
-        e instanceof ApiError ? e.message : "Could not create contact in Xero.",
+        e instanceof ApiError ? e.message : "Could not create supplier in Xero.",
       );
     } finally {
       setCreating(false);
@@ -136,8 +136,8 @@ export function BillContactPicker({
     : "border-gray-300 focus:border-secondary focus:ring-secondary/25 ";
 
   const addRowText = creating
-    ? "Creating contact…"
-    : `+ Add '${trimmedName}' as a new contact`;
+    ? "Creating supplier…"
+    : `+ Add '${trimmedName}' as a new supplier`;
 
   const menu =
     open && menuHasContent ? (
@@ -175,7 +175,7 @@ export function BillContactPicker({
           <li
             role="option"
             aria-selected={false}
-            aria-label={creating ? "Creating contact in Xero" : `Add ${trimmedName} as a new contact`}
+            aria-label={creating ? "Creating supplier in Xero" : `Add ${trimmedName} as a new supplier`}
             className={
               "cursor-pointer px-3 py-2.5 text-left text-sm font-medium text-primary transition-colors " +
               (filtered.length > 0 ? "border-t border-gray-100 " : "") +
@@ -209,7 +209,7 @@ export function BillContactPicker({
           aria-autocomplete="list"
           disabled={disabled || creating}
           value={contactName}
-          placeholder="Select a contact"
+          placeholder="Select a supplier"
           onChange={(e) => {
             onChange({ xero_contact_id: "", contact: e.target.value });
             setCreateError(null);
