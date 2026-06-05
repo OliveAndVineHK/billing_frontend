@@ -124,7 +124,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {mounted
         ? createPortal(
-            <div className="pointer-events-none fixed right-4 z-[100] flex flex-col items-end gap-2" style={{ top: topPx }}>
+            <div className="pointer-events-none fixed right-4 z-[500] flex flex-col items-end gap-2" style={{ top: topPx }}>
               {toasts.map((t) => (
                 <ToastCard key={t.id} item={t} onClose={() => dismissToast(t.id)} />
               ))}

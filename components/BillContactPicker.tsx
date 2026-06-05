@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { ApiError, createEntityBillContact, type EntityBillContact } from "@/lib/api";
+import { useToast } from "@/components/Toast";
 
 const inputClassBase =
   "box-border h-11 min-h-[44px] w-full border bg-white px-3 text-base text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 sm:min-h-11 sm:text-sm ";
@@ -39,6 +40,7 @@ export function BillContactPicker({
   error = false,
   controlRoundedClassName = "rounded-2xl",
 }: BillContactPickerProps) {
+  const { showToast } = useToast();
   const listboxId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -122,6 +124,7 @@ export function BillContactPicker({
         contact: created.name,
       });
       setOpen(false);
+      showToast("Supplier created successfully!", "success");
     } catch (e) {
       setCreateError(
         e instanceof ApiError ? e.message : "Could not create supplier in Xero.",
