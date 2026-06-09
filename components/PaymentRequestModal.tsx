@@ -291,6 +291,16 @@ export function PaymentRequestModal({
   const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = e.target.files;
     if (!list?.length) return;
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+    const oversized = Array.from(list).filter((file) => file.size > MAX_FILE_SIZE);
+    if (oversized.length > 0) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        attachments: `File${oversized.length > 1 ? "s" : ""} exceed the 10MB limit: ${oversized.map((f) => f.name).join(", ")}`,
+      }));
+      e.target.value = "";
+      return;
+    }
     const added: UploadedEntry[] = Array.from(list).map((file) => ({
       id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
       file,
@@ -543,7 +553,7 @@ export function PaymentRequestModal({
                 <span className="material-symbols-outlined inline-block origin-center text-[48px] leading-none text-gray-400 [font-variation-settings:'FILL'_0,'wght'_400,'GRAD'_0,'opsz'_48] scale-[1.78] sm:text-[48px] sm:scale-[2.02]" aria-hidden>cloud_upload</span>
                 <div className="flex flex-col items-center">
                   <p className="px-2 text-center text-[14px] font-medium leading-tight text-gray-700">Click or drag files here to upload</p>
-                  <p className="mt-1 px-2 text-center text-[12px] leading-tight text-gray-400">PDF, JPEG, PNG (Max 5MB)</p>
+                  <p className="mt-1 px-2 text-center text-[12px] leading-tight text-gray-400">PDF, JPEG, PNG (Max 10MB)</p>
                 </div>
               </div>
             </div>
