@@ -24,7 +24,7 @@ const filterDateTextClass =
 const filterDateCalendarBtnClass =
   "absolute right-0 top-0 z-[3] box-border flex h-11 min-h-[44px] w-11 min-w-[44px] cursor-pointer items-center justify-center rounded-r-2xl border border-gray-300 bg-gray-100 text-primary transition-colors hover:bg-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11";
 
-export const PAYMENT_REQUEST_STATUS_FILTERS = ["All", "Draft", "Payment Requested", "Returned", "Paid", "Partially Paid", "Voided"] as const;
+export const PAYMENT_REQUEST_STATUS_FILTERS = ["All", "Payment Requested", "Partially Paid", "Returned", "Paid", "Draft", "Voided"] as const;
 export type PaymentRequestStatusFilter = (typeof PAYMENT_REQUEST_STATUS_FILTERS)[number];
 
 type AdvancedFilters = {
