@@ -147,6 +147,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   const [dateType, setDateType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [xeroStatus, setXeroStatus] = useState("");
   const [rawBills, setRawBills] = useState<BillListItem[]>([]);
   const [bills, setBills] = useState<PaymentRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -166,6 +167,13 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   const tableRef = useRef<PaymentRequestTableHandle>(null);
   const [easyViewBankSlipRowId, setEasyViewBankSlipRowId] = useState<string | null>(null);
   const bulkActionsEnabled = selectedBillIds.length >= 2;
+
+  /** Xero publish-state filter (client-side; `xeroActive` is derived in `mapBillToRow`). */
+  const visibleBills = useMemo(() => {
+    if (xeroStatus === "published") return bills.filter((r) => r.xeroActive === true);
+    if (xeroStatus === "not_published") return bills.filter((r) => r.xeroActive !== true);
+    return bills;
+  }, [bills, xeroStatus]);
 
   const easyViewBankSlipSourceRow = useMemo(() => {
     if (!easyViewBankSlipRowId) return undefined;
@@ -406,12 +414,14 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
         appliedDateType={dateType}
         appliedStartDate={startDate}
         appliedEndDate={endDate}
+        appliedXeroStatus={xeroStatus}
         onApplyFilters={(f) => {
           setMinAmount(f.minAmount ?? "");
           setMaxAmount(f.maxAmount ?? "");
           setDateType(f.dateType ?? "");
           setStartDate(f.startDate ?? "");
           setEndDate(f.endDate ?? "");
+          setXeroStatus(f.xeroStatus ?? "");
         }}
         selectionContainsPaid={selectionContainsPaid}
         canVoidPaid={isElevated}
@@ -444,7 +454,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
           <>
             <div className={easyView ? "hidden min-h-0 flex-1 flex-col lg:flex" : "hidden"}>
               <PaymentRequestEasyView
-                rows={bills}
+                rows={visibleBills}
                 loading={loading}
                 activeStatuses={statusFilters}
                 payPanelBillId={easyViewPayBillId}
@@ -501,7 +511,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
             <div className={easyView ? "max-lg:block lg:hidden" : "block"}>
               <PaymentRequestTable
                 ref={tableRef}
-                rows={bills}
+                rows={visibleBills}
                 statusFilters={statusFilters}
                 loading={loading}
                 onSelectionChange={onTableSelectionChange}
