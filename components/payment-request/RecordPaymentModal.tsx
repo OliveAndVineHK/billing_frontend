@@ -121,7 +121,7 @@ export function RecordPaymentModal({
   const dateFieldId = useId();
   const amountFieldId = useId();
 
-  const [payMode, setPayMode] = useState<PayMode>("partial");
+  const [payMode, setPayMode] = useState<PayMode>("full");
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
   const [paymentsFetchedBillId, setPaymentsFetchedBillId] = useState<string | null>(null);
@@ -256,7 +256,7 @@ export function RecordPaymentModal({
   useEffect(() => {
     if (open && billId) {
       loadPayments();
-      setPayMode("partial");
+      setPayMode("full");
       setDraftDate(todayISO());
       setDraftAmount("");
       setFormError(null);
