@@ -578,7 +578,9 @@ export function PaymentRequestEasyView({
                 <div className="h-3.5 w-[min(100%,9.5rem)] rounded-md bg-gray-200/90 animate-pulse" />
                 <div className="size-7 shrink-0 rounded bg-gray-200/90 animate-pulse" />
               </div>
-              <div className={`${EASY_VIEW_TD_BASE} pb-1`} aria-hidden />
+              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
+                <div className="h-3.5 w-[min(100%,6rem)] rounded-md bg-gray-200/90 animate-pulse" />
+              </div>
               <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
                 <div className="h-3.5 w-[min(100%,7.5rem)] rounded-md bg-gray-200/90 animate-pulse" />
                 <div className="size-7 shrink-0 rounded bg-gray-200/90 animate-pulse" />
@@ -614,7 +616,11 @@ export function PaymentRequestEasyView({
                   title="Sort Newest - Oldest"
                 />
               </div>
-              <div className={EASY_VIEW_TD_BASE} aria-hidden />
+              <div
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
+              >
+                <span className="min-w-0 shrink truncate">Bank Slip</span>
+              </div>
               <div
                 className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
               >
