@@ -486,14 +486,15 @@ export function RecordPaymentModal({
             <button
               type="button"
               onClick={() => setBankSlipPreviewOpen(true)}
-              className="relative -mr-1 -mt-0.5 box-border flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-primary/25 text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+              className="relative flex h-11 min-h-[44px] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-white px-3 text-sm text-primary/55 transition-colors hover:border-secondary/35 hover:bg-gray-50/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
               aria-label={bankSlipOpenLabel}
-            >
-              <span className="material-symbols-outlined text-[24px] leading-none" aria-hidden>
-                attach_file
+              >
+              <span className="whitespace-nowrap">Upload Bank Slip</span>
+              <span className="material-symbols-outlined shrink-0 text-[22px] text-gray-400" aria-hidden>
+                upload_file
               </span>
-              {bankSlipFileCount > 0 ? (
-                <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-white">
+                {bankSlipFileCount > 0 ? (
+                <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-white">
                   {bankSlipFileCount > 99 ? "99+" : bankSlipFileCount}
                 </span>
               ) : null}
@@ -677,22 +678,6 @@ export function RecordPaymentModal({
                       />
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setBankSlipPreviewOpen(true)}
-                    className="relative flex h-11 min-h-[44px] w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-white px-3 text-left text-sm text-primary/55 transition-colors hover:border-secondary/35 hover:bg-gray-50/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:min-h-11"
-                    aria-label={bankSlipOpenLabel}
-                  >
-                    <span className="truncate">Upload Bank Slip.</span>
-                    <span className="material-symbols-outlined shrink-0 text-[22px] text-gray-400" aria-hidden>
-                      upload_file
-                    </span>
-                    {bankSlipFileCount > 0 ? (
-                      <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-white">
-                        {bankSlipFileCount > 99 ? "99+" : bankSlipFileCount}
-                      </span>
-                    ) : null}
-                  </button>
                 </div>
 
                 {formError ? <p className="mt-2 text-sm text-red-600" role="alert">{formError}</p> : null}
