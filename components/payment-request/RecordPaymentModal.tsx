@@ -121,7 +121,7 @@ export function RecordPaymentModal({
   const dateFieldId = useId();
   const amountFieldId = useId();
 
-  const [payMode, setPayMode] = useState<PayMode>("partial");
+  const [payMode, setPayMode] = useState<PayMode>("full");
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
   const [paymentsFetchedBillId, setPaymentsFetchedBillId] = useState<string | null>(null);
@@ -165,6 +165,11 @@ export function RecordPaymentModal({
     [paymentsForBill],
   );
   const remaining = Math.max(0, Math.round((invoiceAmount - totalPaid) * 100) / 100);
+
+  /** Bill is settled in full — once the balance hits 0 we drop into the read-only "View payments" presentation. */
+  const isFullyPaid = invoiceAmount > 1e-9 && totalPaid > 1e-9 && remaining <= 1e-9;
+  /** Presentation-only read-only flag: the `readOnly` prop OR a fully-paid bill. Effects/logic still key off `readOnly`. */
+  const effectiveReadOnly = readOnly || isFullyPaid;
 
   /** Additional payments after an installment must use Partial Pay (Full Pay only when nothing paid yet or bill fully open). */
   const hasPartialPaymentTowardsInvoice = useMemo(
@@ -251,7 +256,7 @@ export function RecordPaymentModal({
   useEffect(() => {
     if (open && billId) {
       loadPayments();
-      setPayMode("partial");
+      setPayMode("full");
       setDraftDate(todayISO());
       setDraftAmount("");
       setFormError(null);
@@ -450,14 +455,14 @@ export function RecordPaymentModal({
         <div className="shrink-0">
           {isEasyInline ? (
             <h2 id={titleId} className="sr-only">
-              {readOnly ? "View payments" : "Payment history"}
+              {effectiveReadOnly ? "View payments" : "Payment history"}
             </h2>
           ) : (
             <>
               <div className="px-4 pt-4 sm:px-6 sm:pt-6">
                 <div className="flex items-start justify-between gap-3">
                   <h2 id={titleId} className="text-sm font-semibold uppercase tracking-[0.12em] text-secondary sm:text-base">
-                    {readOnly ? "View payments" : "Payment history"}
+                    {effectiveReadOnly ? "View payments" : "Payment history"}
                   </h2>
                   <button type="button" onClick={onClose} className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-primary transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary" aria-label="Close">
                     <span className="material-symbols-outlined text-[22px] leading-none" aria-hidden>close</span>
@@ -501,7 +506,7 @@ export function RecordPaymentModal({
             </button>
           </div>
 
-          {!readOnly ? (
+          {!effectiveReadOnly ? (
             <div className="mt-4 flex gap-2 sm:mt-5">
               <button
                 type="button"
@@ -543,7 +548,7 @@ export function RecordPaymentModal({
             </div>
           ) : null}
 
-          <div className={`relative flex items-center gap-3 ${readOnly ? "mt-2" : isEasyInline ? "my-5" : "my-6"}`}>
+          <div className={`relative flex items-center gap-3 ${effectiveReadOnly ? "mt-2" : isEasyInline ? "my-5" : "my-6"}`}>
             <div className="h-px flex-1 bg-gray-200" aria-hidden />
             <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-primary/50">
               {isEasyInline ? "LESS : PAYMENTS" : "Less : payments"}
@@ -565,7 +570,7 @@ export function RecordPaymentModal({
                     <div className="h-4 max-w-[min(100%,18rem)] animate-pulse rounded-sm bg-gray-200" />
                   </div>
                   <span className="inline-block h-5 w-[7.25rem] shrink-0 animate-pulse rounded-sm bg-gray-200 tabular-nums" aria-hidden />
-                  {!readOnly || canDeletePayments ? (
+                  {!effectiveReadOnly || canDeletePayments ? (
                     <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md">
                       <span className="block h-[22px] w-[22px] animate-pulse rounded bg-gray-200" aria-hidden />
                     </span>
@@ -589,7 +594,7 @@ export function RecordPaymentModal({
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-primary">
-                        {readOnly
+                        {effectiveReadOnly
                           ? dateLabel
                           : isPending
                             ? `Pending on ${dateLabel}`
@@ -597,12 +602,12 @@ export function RecordPaymentModal({
                               ? `Partial Pay on ${dateLabel}`
                               : `Paid on ${dateLabel}`}
                       </p>
-                      {isPending && !readOnly ? (
+                      {isPending && !effectiveReadOnly ? (
                         <p className="text-[11px] text-amber-600">Pending</p>
                       ) : null}
                     </div>
                     <span className="shrink-0 text-sm font-bold text-primary tabular-nums">({formatMoney(amt, currencyLabel)})</span>
-                    {!readOnly || canDeletePayments ? (
+                    {!effectiveReadOnly || canDeletePayments ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -629,7 +634,7 @@ export function RecordPaymentModal({
             </ul>
           )}
 
-          {!readOnly ? (
+          {!effectiveReadOnly ? (
             isEasyInline ? (
               <>
                 <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
@@ -735,7 +740,7 @@ export function RecordPaymentModal({
           ) : null}
         </div>
 
-        {!readOnly ? (
+        {!effectiveReadOnly ? (
           <div className="shrink-0 border-t border-gray-200 px-4 py-4 sm:px-6 sm:py-5">
             <div className="flex flex-col gap-4">
               {isEasyInline ? (
