@@ -12,6 +12,13 @@ const FILTER_DATE_TYPE_OPTIONS = [
   { value: "Submitted Date", label: "Submitted Date" },
 ] as const;
 
+/** Xero publish state. Empty value = "All" (no filter). */
+const FILTER_XERO_STATUS_OPTIONS = [
+  { value: "", label: "All" },
+  { value: "published", label: "Published" },
+  { value: "not_published", label: "Not published" },
+] as const;
+
 /** Filter panel field labels — sentence case (not all-caps). */
 const fieldLabelClass = "mb-1.5 block text-[11px] font-semibold tracking-wide text-gray-700 sm:text-xs";
 
@@ -33,6 +40,7 @@ type AdvancedFilters = {
   dateType?: string;
   startDate?: string;
   endDate?: string;
+  xeroStatus?: string;
 };
 
 type PaymentRequestToolbarProps = {
@@ -54,6 +62,7 @@ type PaymentRequestToolbarProps = {
   appliedDateType?: string;
   appliedStartDate?: string;
   appliedEndDate?: string;
+  appliedXeroStatus?: string;
   /** True when the current selection contains at least one Paid bill. */
   selectionContainsPaid?: boolean;
   /** Whether the current user may void Paid/Authorised bills (elevated roles only). */
@@ -83,6 +92,7 @@ export function PaymentRequestToolbar({
   appliedDateType = "",
   appliedStartDate = "",
   appliedEndDate = "",
+  appliedXeroStatus = "",
   selectionContainsPaid = false,
   canVoidPaid = false,
   canPublish = false,
@@ -115,6 +125,7 @@ export function PaymentRequestToolbar({
   const [dateType, setDateType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [xeroStatus, setXeroStatus] = useState("");
 
   /** When the filter panel opens, show the last saved filters (discard any unsaved draft from a previous close). */
   useEffect(() => {
@@ -124,7 +135,8 @@ export function PaymentRequestToolbar({
     setDateType(appliedDateType ?? "");
     setStartDate(appliedStartDate ?? "");
     setEndDate(appliedEndDate ?? "");
-  }, [filterOpen, appliedMinAmount, appliedMaxAmount, appliedDateType, appliedStartDate, appliedEndDate]);
+    setXeroStatus(appliedXeroStatus ?? "");
+  }, [filterOpen, appliedMinAmount, appliedMaxAmount, appliedDateType, appliedStartDate, appliedEndDate, appliedXeroStatus]);
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -249,10 +261,11 @@ export function PaymentRequestToolbar({
     setDateType("");
     setStartDate("");
     setEndDate("");
+    setXeroStatus("");
   };
 
   const onSaveFilterChanges = () => {
-    onApplyFilters?.({ minAmount, maxAmount, dateType, startDate, endDate });
+    onApplyFilters?.({ minAmount, maxAmount, dateType, startDate, endDate, xeroStatus });
     setFilterOpen(false);
     setFilterMenu(null);
   };
@@ -386,6 +399,20 @@ export function PaymentRequestToolbar({
                         options={[...FILTER_DATE_TYPE_OPTIONS]}
                         placeholder="Select date type"
                         ariaLabel="Date type"
+                        triggerClassName="!rounded-2xl"
+                        plainChevron
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor={`${filterFieldIds}-xero-status`} className={fieldLabelClass}>
+                        Xero Status
+                      </label>
+                      <ThemedSelect
+                        id={`${filterFieldIds}-xero-status`}
+                        value={xeroStatus ?? ""}
+                        onChange={setXeroStatus}
+                        options={[...FILTER_XERO_STATUS_OPTIONS]}
+                        ariaLabel="Xero status"
                         triggerClassName="!rounded-2xl"
                         plainChevron
                       />
