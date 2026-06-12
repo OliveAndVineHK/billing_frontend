@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { formatIsoDateForDisplay, parseDdMmmYyyyToIso } from "@/lib/dateDisplayFormat";
-import { openDatePicker } from "@/lib/openDatePicker";
+import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
 
 export const DATE_TEXT_PLACEHOLDER = "dd mmm yyyy";
 
@@ -25,60 +23,41 @@ export function DateTextField({
   invalid = false,
   calendarAriaLabel,
   textInputClassName,
-  calendarButtonClassName,
+  // Note: calendarButtonClassName remains in DateTextFieldProps for call-site
+  // compatibility but is intentionally not destructured here — the whole field is
+  // now the native date input's tap target, so a separate calendar button (and its
+  // showPicker() call) is no longer needed.
 }: DateTextFieldProps) {
-  const pickerRef = useRef<HTMLInputElement>(null);
-  const [text, setText] = useState(() => (value ? formatIsoDateForDisplay(value) : ""));
-
-  useEffect(() => {
-    setText(value ? formatIsoDateForDisplay(value) : "");
-  }, [value]);
-
-  const handleBlur = () => {
-    const parsed = parseDdMmmYyyyToIso(text);
-    if (parsed === null) {
-      setText(value ? formatIsoDateForDisplay(value) : "");
-      return;
-    }
-    if (parsed !== value) onChange(parsed);
-  };
+  const display = value ? formatIsoDateForDisplay(value) : "";
 
   return (
     <div className="relative">
+      {/* The real native date input fills the field. A tap anywhere on it opens the
+          OS date picker natively on every platform — including iOS WebView, where
+          showPicker() against a hidden input was a no-op. The input's own text is
+          made transparent so it doesn't clash with the formatted overlay below. */}
       <input
-        ref={pickerRef}
+        id={id}
         type="date"
-        tabIndex={-1}
-        aria-hidden="true"
+        aria-label={calendarAriaLabel}
+        aria-invalid={invalid || undefined}
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="sr-only"
+        className={textInputClassName + " pr-date-input text-transparent"}
+        style={{ colorScheme: "light" }}
       />
-      <input
-        id={id}
-        type="text"
-        autoComplete="off"
-        disabled={disabled}
-        placeholder={DATE_TEXT_PLACEHOLDER}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={handleBlur}
-        onClick={() => openDatePicker(pickerRef.current)}
-        aria-invalid={invalid || undefined}
-        className={textInputClassName}
-      />
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => openDatePicker(pickerRef.current)}
-        className={calendarButtonClassName}
-        aria-label={calendarAriaLabel}
+      {/* Formatted "dd mmm yyyy" display overlaid on top. pointer-events: none lets
+          taps fall through to the native input behind it. */}
+      <span
+        aria-hidden
+        className={
+          "pointer-events-none absolute inset-y-0 left-3 z-[1] flex items-center text-base sm:text-sm " +
+          (display ? "text-black" : "text-gray-700")
+        }
       >
-        <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden>
-          calendar_clock
-        </span>
-      </button>
+        {display || DATE_TEXT_PLACEHOLDER}
+      </span>
     </div>
   );
 }
