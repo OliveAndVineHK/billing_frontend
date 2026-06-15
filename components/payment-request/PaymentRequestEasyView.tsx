@@ -56,7 +56,7 @@ const EASY_VIEW_BANKSLIP_DEFAULT_BTN =
 
 /** Fixed-width area so rows without files still reserve space; partial icon stays column-aligned with rows that have a slip. */
 const EASY_VIEW_BANKSLIP_SLOT =
-  "flex h-10 w-24 shrink-0 items-center justify-center sm:h-[42px] sm:w-[6.5rem]";
+  "flex h-10 w-24 shrink-0 items-center justify-start sm:h-[42px] sm:w-[6.5rem]";
 
 /** Sortable columns exposed in easy view (same `compareRows` as the main table). */
 type EasyViewSortKey = Extract<SortKey, "contact" | "submittedDate" | "unpaidAmount" | "status">;
@@ -580,6 +580,7 @@ export function PaymentRequestEasyView({
               </div>
               <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
                 <div className="h-3.5 w-[min(100%,6rem)] rounded-md bg-gray-200/90 animate-pulse" />
+                <span className="size-7 shrink-0" aria-hidden />
               </div>
               <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
                 <div className="h-3.5 w-[min(100%,7.5rem)] rounded-md bg-gray-200/90 animate-pulse" />
@@ -620,6 +621,8 @@ export function PaymentRequestEasyView({
                 className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
               >
                 <span className="min-w-0 shrink truncate">Bank Slip</span>
+                {/* Invisible spacer matches the sort-chevron button height so the label aligns with the other columns. */}
+                <span className="size-7 shrink-0" aria-hidden />
               </div>
               <div
                 className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
