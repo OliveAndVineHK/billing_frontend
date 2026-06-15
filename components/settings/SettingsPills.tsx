@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { useEntitlements } from "@/lib/moduleClaims";
 
-export const SETTINGS_TAB_IDS = ["users", "xero", "entity", "bill"] as const;
+export const SETTINGS_TAB_IDS = ["users", "xero", "entity", "bill", "modules"] as const;
 export type SettingsTabId = (typeof SETTINGS_TAB_IDS)[number];
 
 const TABS: { id: SettingsTabId; label: string }[] = [
@@ -12,6 +12,7 @@ const TABS: { id: SettingsTabId; label: string }[] = [
   { id: "xero", label: "Entity & Integration" },
   { id: "entity", label: "Petty Cash Settings" },
   { id: "bill", label: "Bill Settings" },
+  { id: "modules", label: "Module & Subscription" },
 ];
 
 export const SETTINGS_TAB_LABELS: Record<SettingsTabId, string> = {
@@ -19,6 +20,7 @@ export const SETTINGS_TAB_LABELS: Record<SettingsTabId, string> = {
   xero: "Entity & Integration",
   entity: "Petty Cash Settings",
   bill: "Bill Settings",
+  modules: "Module & Subscription",
 };
 
 export function getSettingsTabFromSearchParams(tab: string | null): SettingsTabId {
@@ -44,6 +46,8 @@ const FLASK_REDIRECT_TABS: Partial<
     `${module1Url}/entity/${entityId}/settings/xero?from=bills`,
   entity: (module1Url, entityId) =>
     `${module1Url}/entity/settings/entity/${entityId}?from=bills`,
+  modules: (module1Url, entityId) =>
+    `${module1Url}/entity/settings/module/${entityId}?from=bills`,
 };
 
 type SettingsPillsProps = {
