@@ -105,38 +105,16 @@ body {
   }
 }
 
-/* The native date input is the full-width tap target that opens the OS picker on
-   every platform (iOS/Android/desktop). All visible text comes from the formatted
-   overlay span in DateTextField; the input's own rendering is fully hidden so the
-   native placeholder (mm/dd/yyyy, dd/mm/yyyy) and editable spinner fields never
-   bleed through under the overlay. */
+/* Hide native date icon; custom button + input onClick both call showPicker() (see lib/openDatePicker.ts). */
 input[type="date"].pr-date-input {
   cursor: pointer;
-  /* Hide the value/placeholder text without removing the input from layout. */
-  color: transparent;
 }
-/* Hide the native calendar glyph (tap anywhere opens the picker). */
 input[type="date"].pr-date-input::-webkit-calendar-picker-indicator {
   display: none;
   -webkit-appearance: none;
 }
 input[type="date"].pr-date-input::-moz-calendar-picker-indicator {
   display: none;
-}
-/* WebKit (iOS Safari/Chrome) renders the date as editable sub-fields and a
-   placeholder that ignore `color: transparent` on the element — hide them
-   explicitly so nothing shows through the overlay. */
-input[type="date"].pr-date-input::-webkit-datetime-edit,
-input[type="date"].pr-date-input::-webkit-datetime-edit-fields-wrapper,
-input[type="date"].pr-date-input::-webkit-datetime-edit-text,
-input[type="date"].pr-date-input::-webkit-datetime-edit-month-field,
-input[type="date"].pr-date-input::-webkit-datetime-edit-day-field,
-input[type="date"].pr-date-input::-webkit-datetime-edit-year-field {
-  color: transparent;
-}
-input[type="date"].pr-date-input::-webkit-datetime-edit {
-  /* Belt-and-suspenders: collapse the edit region so its placeholder can't paint. */
-  opacity: 0;
 }
 
 /* Scroll areas: make track + thumb visible (overlay scrollbars are often invisible until drag). */
