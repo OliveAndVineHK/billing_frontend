@@ -34,8 +34,10 @@ export function DateTextField({
     <div className="relative">
       {/* The real native date input fills the field. A tap anywhere on it opens the
           OS date picker natively on every platform — including iOS WebView, where
-          showPicker() against a hidden input was a no-op. The input's own text is
-          made transparent so it doesn't clash with the formatted overlay below. */}
+          showPicker() against a hidden input was a no-op. The input's own text,
+          placeholder, and spinner sub-fields are hidden via the .pr-date-input
+          rules in globals.css so the OS date format never bleeds through the
+          formatted overlay below. */}
       <input
         id={id}
         type="date"
@@ -44,7 +46,7 @@ export function DateTextField({
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className={textInputClassName + " pr-date-input text-transparent"}
+        className={textInputClassName + " pr-date-input"}
         style={{ colorScheme: "light" }}
       />
       {/* Formatted "dd mmm yyyy" display overlaid on top. pointer-events: none lets
