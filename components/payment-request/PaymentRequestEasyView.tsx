@@ -28,7 +28,7 @@ const EASY_VIEW_TD_BASE = "px-4 py-3 text-sm text-primary sm:px-5 sm:py-3.5";
 const easyViewContactTd = `${EASY_VIEW_TD_BASE} align-middle min-w-0`;
 const easyViewSubmittedTd = `${EASY_VIEW_TD_BASE} align-middle whitespace-nowrap tabular-nums`;
 const easyViewUnpaidTd = `${EASY_VIEW_TD_BASE} align-middle tabular-nums min-w-0`;
-const easyViewAttachmentTd = `${EASY_VIEW_TD_BASE} align-middle flex min-w-0 max-w-full flex-row flex-nowrap items-center justify-start gap-1.5 overflow-hidden sm:gap-2`;
+const easyViewAttachmentTd = `${EASY_VIEW_TD_BASE} align-middle flex min-w-0 max-w-full flex-row flex-nowrap items-center justify-start gap-1.5 overflow-visible sm:gap-2`;
 const easyViewStatusTd = `${EASY_VIEW_TD_BASE} align-middle min-w-0 max-w-full overflow-hidden`;
 
 /** For the **first** visible bill only: list scrolled this far from top — default invoice aside (no offset). */
@@ -701,7 +701,7 @@ export function PaymentRequestEasyView({
                   <li
                     key={row.id}
                     data-easy-view-row={row.id}
-                    className={`flex flex-col overflow-hidden rounded-lg border bg-white transition-[opacity,colors] duration-200 ${
+                    className={`flex flex-col overflow-visible rounded-lg border bg-white transition-[opacity,colors] duration-200 ${
                       isRowSelected ? "border-secondary/50" : "border-gray-200"
                     } ${dimRow ? "opacity-20" : "opacity-100"}`}
                   >
@@ -722,6 +722,15 @@ export function PaymentRequestEasyView({
                         <div className="flex w-full min-w-0 max-w-full flex-row flex-nowrap items-center gap-1.5 sm:gap-2">
                           <div className={EASY_VIEW_BANKSLIP_SLOT}>
                             <EasyViewBankSlipControl row={row} onOpen={onOpenBankSlipUpload} />
+                          </div>
+                          <div className="relative group inline-block transform translate-y-[3px]">
+                            <span className="material-symbols-outlined text-[16px] cursor-pointer text-black hover:text-stone-800 block">
+                              info
+                            </span>
+                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden group-hover:block bg-gray-950 text-white text-xs rounded-md py-2 px-3 whitespace-nowrap shadow-lg z-10 pointer-events-none">
+                              {row.contactCaption?.trim() ? row.contactCaption : "No description"}
+                              <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-950"></div>
+                            </div>
                           </div>
                           {row.status === "Partially Paid" ? (
                             <Image

@@ -1472,6 +1472,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         contactTitle={bill?.contact ?? ""}
         readOnly={recordPaymentReadOnly}
         invoiceAmount={invoiceTotalMajor}
+        description={bill?.description}
         currencyCode={formData?.currencyCode ?? "HKD"}
         onPaymentSaved={async () => {
           await loadPayments();

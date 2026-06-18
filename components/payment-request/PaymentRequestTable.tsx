@@ -39,6 +39,7 @@ export type PaymentRequestRow = {
   bankslipFileCount?: number;
   bankSlipDetails?: BankSlipDetails;
   xeroActive?: boolean;
+  description?: string;
 };
 
 function isActionColumnTitle(title: string) {
@@ -1064,42 +1065,55 @@ export const PaymentRequestTable = forwardRef<PaymentRequestTableHandle, Payment
                         case "Bankslip":
                           return (
                             <td key={title} className={`${invoiceDateCellClass} ${actionBodyCellBg}`}>
-                              {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
-                                <button
-                                  type="button"
-                                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:gap-2 ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setBankSlipDetailsRowId(row.id);
-                                  }}
-                                  aria-label={
-                                    isVoided
-                                      ? `View bank slip — voided, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
-                                      : isDraft
-                                        ? `View bank slip — draft, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
-                                        : `View bank slip — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`
-                                  }
-                                >
-                                  <span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span>
-                                  <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span>
-                                </button>
-                              ) : bankslipReadOnly || isViewOnly ? (
-                                <div
-                                  className={uploadBankslipReadOnlyClass}
-                                  aria-label={
-                                    isVoided
-                                      ? `Voided — upload not available for ${row.contactTitle}`
-                                      : isDraft
-                                        ? `Draft — upload not available for ${row.contactTitle}`
-                                        : `Upload not available for ${row.contactTitle}`
-                                  }
-                                >
-                                  <span className="whitespace-nowrap">Upload</span>
-                                  <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span>
+                              <div className="flex items-center gap-2">
+                                <div>
+                                  {row.bankslipFileCount != null && row.bankslipFileCount > 0 ? (
+                                    <button
+                                      type="button"
+                                      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:gap-2 ${bankslipReadOnly ? "text-primary/40" : "text-secondary"}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setBankSlipDetailsRowId(row.id);
+                                      }}
+                                      aria-label={
+                                        isVoided
+                                          ? `View bank slip — voided, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
+                                          : isDraft
+                                            ? `View bank slip — draft, ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"}`
+                                            : `View bank slip — ${row.bankslipFileCount} file${row.bankslipFileCount === 1 ? "" : "s"} uploaded`
+                                      }
+                                    >
+                                      <span className="text-sm font-semibold tabular-nums sm:text-base">{row.bankslipFileCount}</span>
+                                      <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>draft</span>
+                                    </button>
+                                  ) : bankslipReadOnly || isViewOnly ? (
+                                    <div
+                                      className={uploadBankslipReadOnlyClass}
+                                      aria-label={
+                                        isVoided
+                                          ? `Voided — upload not available for ${row.contactTitle}`
+                                          : isDraft
+                                            ? `Draft — upload not available for ${row.contactTitle}`
+                                            : `Upload not available for ${row.contactTitle}`
+                                      }
+                                    >
+                                      <span className="whitespace-nowrap">Upload</span>
+                                      <span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span>
+                                    </div>
+                                  ) : (
+                                    <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankSlipDetailsRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>
+                                  )}
                                 </div>
-                              ) : (
-                                <button type="button" className={uploadBankslipButtonClass} onClick={(e) => { e.stopPropagation(); setBankSlipDetailsRowId(row.id); }}><span className="whitespace-nowrap">Upload</span><span className="material-symbols-outlined shrink-0 text-[20px] leading-none sm:text-[22px]" aria-hidden>upload_file</span></button>
-                              )}
+                                <div className="relative group inline-block">
+                                  <span className="material-symbols-outlined text-[16px] cursor-pointer text-black hover:text-stone-800 block">
+                                    info
+                                  </span>
+                                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden group-hover:block bg-gray-950 text-white text-xs rounded-md py-2 px-3 whitespace-nowrap shadow-lg z-20 pointer-events-none">
+                                    {row.contactCaption?.trim() ? row.contactCaption : "No description"}
+                                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-950"></div>
+                                  </div>
+                                </div>
+                              </div>
                             </td>
                           );
                         default:

@@ -24,6 +24,7 @@ import {
   returnBill,
   type BillAttachment,
   type BillListItem,
+  type BillDetail
 } from "@/lib/api";
 import type { InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
@@ -167,6 +168,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   const tableRef = useRef<PaymentRequestTableHandle>(null);
   const [easyViewBankSlipRowId, setEasyViewBankSlipRowId] = useState<string | null>(null);
   const bulkActionsEnabled = selectedBillIds.length >= 2;
+  const [easyViewPayBill, setEasyViewPayBill] = useState<BillDetail | null>(null);
 
   /** Xero publish-state filter (client-side; `xeroActive` is derived in `mapBillToRow`). */
   const visibleBills = useMemo(() => {
@@ -286,6 +288,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
         readOnly={isViewOnly || easyViewPayReadOnly}
         invoiceAmount={parseFloat(easyViewPaySource.amount ?? "0") || 0}
         currencyCode={easyViewPaySource.currency_code?.trim() || "HKD"}
+        description={easyViewPayBill?.description ?? ""}
         onPaymentSaved={loadBills}
       />
     ) : null;
@@ -312,6 +315,25 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   useEffect(() => {
     if (!easyViewDraftBillId) setEasyViewDraftDeleteOpen(false);
   }, [easyViewDraftBillId]);
+ 
+  useEffect(() => {
+    if (!easyViewPayBillId) {
+      setEasyViewPayBill(null);
+      return;
+    }
+
+    const fetchBillDetail = async () => {
+    try {
+      const bill = await fetchBill(easyViewPayBillId);
+      setEasyViewPayBill(bill);
+    } catch (e) {
+      console.error("Failed to fetch bill for easy view modal:", e);
+    }
+  };
+  
+  fetchBillDetail();
+}, [easyViewPayBillId]);
+
 
   const easyViewDraftDetailActions = useMemo<EasyViewDraftDetailActions>(
     () => ({

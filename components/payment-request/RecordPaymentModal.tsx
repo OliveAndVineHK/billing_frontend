@@ -32,6 +32,7 @@ export type RecordPaymentModalProps = {
   billId: string;
   billStatus?: string | null;
   invoiceAmount?: number;
+  description?: string;
   currencyCode?: string;
   contactTitle?: string;
   onPaymentSaved?: () => void;
@@ -105,6 +106,7 @@ export function RecordPaymentModal({
   billId,
   billStatus,
   invoiceAmount = 0,
+  description,
   currencyCode = "HKD",
   contactTitle,
   onPaymentSaved,
@@ -483,10 +485,23 @@ export function RecordPaymentModal({
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-primary">
-                INVOICE AMOUNT
+              <div className="flex items-center gap-1">
+                <p className="text-sm font-medium text-primary">
+                  INVOICE AMOUNT
+                </p>
+                <div className="relative group inline-block">
+                  <span className="material-symbols-outlined text-[16px] cursor-pointer text-black hover:text-stone-800 block">
+                    info
+                  </span>
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden group-hover:block bg-gray-950 text-white text-xs rounded-md py-1 px-3 whitespace-nowrap shadow-lg z-20 pointer-events-none">
+                    {description?.trim() ? description : "No description"}
+                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-950"></div>
+                  </div>
+                </div>
+              </div>
+              <p className={`mt-1 font-bold text-primary ${isEasyInline ? "text-lg sm:text-xl" : "text-xl sm:text-2xl"}`}>
+                {formatMoney(invoiceAmount, currencyLabel)}
               </p>
-              <p className={`mt-1 font-bold text-primary ${isEasyInline ? "text-lg sm:text-xl" : "text-xl sm:text-2xl"}`}>{formatMoney(invoiceAmount, currencyLabel)}</p>
             </div>
             <button
               type="button"
