@@ -254,7 +254,7 @@ export function PaymentRequestToolbar({
     });
   };
 
-  /** Clears fields in the panel only; list does not update until Save changes. */
+  /** Instead, once "Reset" button is clicked, the filter should be reset without clicking "Apply" */
   const onResetFilterDraft = () => {
     setMinAmount("");
     setMaxAmount("");
@@ -263,9 +263,18 @@ export function PaymentRequestToolbar({
     setEndDate("");
     setXeroStatus("");
     onApplyFilters?.({ minAmount: "", maxAmount: "", dateType: "", startDate: "", endDate: "", xeroStatus: "" });
-    setFilterOpen(false);
-    setFilterMenu(null);
+    setFilterOpen(true);
+    if (filterButtonRef.current) {
+      // Use filterButtonRef instead of trigger parameter
+      const rect = filterButtonRef.current.getBoundingClientRect();
+      const viewportPadding = 8;
+      const maxWidth = Math.min(416, window.innerWidth - viewportPadding * 2);
+      const left = Math.max(viewportPadding, Math.min(rect.right - maxWidth, window.innerWidth - maxWidth - viewportPadding));
+      const top = rect.bottom + 8;
+      setFilterMenu({ top, left, width: maxWidth });
+    }
   };
+  
 
   const onSaveFilterChanges = () => {
     onApplyFilters?.({ minAmount, maxAmount, dateType, startDate, endDate, xeroStatus });
