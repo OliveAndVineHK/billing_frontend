@@ -135,7 +135,7 @@ function easyViewMainBackgroundClass(status: string): string {
 export type PaymentRequestEasyViewProps = {
   rows: PaymentRequestRow[];
   loading: boolean;
-  /** Empty array = "All" (no filter). Multiple entries = stacked OR-filter. */
+  /**  Empty array = "All" (no filter). Multiple entries = stacked OR-filter. */
   activeStatuses: PaymentRequestStatusFilter[];
   payPanelBillId: string | null;
   payPanel: ReactNode;
