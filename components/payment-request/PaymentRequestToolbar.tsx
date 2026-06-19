@@ -262,6 +262,9 @@ export function PaymentRequestToolbar({
     setStartDate("");
     setEndDate("");
     setXeroStatus("");
+    onApplyFilters?.({ minAmount: "", maxAmount: "", dateType: "", startDate: "", endDate: "", xeroStatus: "" });
+    setFilterOpen(false);
+    setFilterMenu(null);
   };
 
   const onSaveFilterChanges = () => {
