@@ -183,7 +183,7 @@ function EasyViewStatusCell({
   onRequestVoid?: (rowId: string) => void;
   voidDisabled?: boolean;
 }) {
-  const stop = (e: ReactMouseEvent) => e.stopPropagation();
+  const stop = (e: ReactMouseEvent) => { e.stopPropagation(); e.preventDefault(); };
   const statusHoverClass =
     "transition-[filter,box-shadow] hover:brightness-95 hover:shadow-sm active:brightness-90";
 
@@ -729,73 +729,75 @@ export function PaymentRequestEasyView({
                       isRowSelected ? "border-secondary/50" : "border-gray-200"
                     } ${dimRow ? "opacity-20" : "opacity-100"}`}
                   >
-                    <div
+                    <a
+                      href={`/payment-request/${row.id}`}
                       className={`${EASY_VIEW_ROW_GRID} cursor-pointer transition-colors hover:border-primary/20 hover:bg-gray-50/80`}
-                      onClick={() => onRowClick(row.id)}
                     >
-                      <div className={easyViewContactTd}>
-                        <div className="flex min-w-0 flex-col gap-0.5">
-                          <span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>
+                      
+                        <div className={easyViewContactTd}>
+                          <div className="flex min-w-0 flex-col gap-0.5">
+                            <span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div className={easyViewSubmittedTd}>{row.submittedDate}</div>
-                      <div className={easyViewAttachmentTd}>
-                        <div className="flex w-full min-w-0 max-w-full flex-row flex-nowrap items-center gap-1.5 sm:gap-2">
-                          <div className={EASY_VIEW_BANKSLIP_SLOT}>
-                            <EasyViewBankSlipControl row={row} onOpen={onOpenBankSlipUpload} />
-                          </div>
-                          <div className="relative group inline-block transform translate-y-[2px]">
-                            <span className="material-symbols-outlined text-[16px] cursor-pointer text-black hover:text-stone-800 block">
-                              info
-                            </span>
-                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden group-hover:block bg-gray-950 text-white text-xs rounded-md py-2 px-3 whitespace-nowrap shadow-lg z-10 pointer-events-none">
-                              {row.contactCaption?.trim() ? row.contactCaption : "No description"}
-                              <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-950"></div>
+                        <div className={easyViewSubmittedTd}>{row.submittedDate}</div>
+                        <div className={easyViewAttachmentTd}>
+                          <div className="flex w-full min-w-0 max-w-full flex-row flex-nowrap items-center gap-1.5 sm:gap-2">
+                            <div className={EASY_VIEW_BANKSLIP_SLOT}>
+                              <EasyViewBankSlipControl row={row} onOpen={onOpenBankSlipUpload} />
                             </div>
+                            <div className="relative group inline-block transform translate-y-[2px]">
+                              <span className="material-symbols-outlined text-[16px] cursor-pointer text-black hover:text-stone-800 block">
+                                info
+                              </span>
+                              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden group-hover:block bg-gray-950 text-white text-xs rounded-md py-2 px-3 whitespace-nowrap shadow-lg z-10 pointer-events-none">
+                                {row.contactCaption?.trim() ? row.contactCaption : "No description"}
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-950"></div>
+                              </div>
+                            </div>
+                            {row.status === "Partially Paid" ? (
+                              <Image
+                                src="/partial.png"
+                                alt=""
+                                width={18}
+                                height={18}
+                                className="h-[18px] w-[18px] shrink-0 object-contain"
+                                sizes="18px"
+                                aria-hidden
+                              />
+                            ) : null}
                           </div>
-                          {row.status === "Partially Paid" ? (
-                            <Image
-                              src="/partial.png"
-                              alt=""
-                              width={18}
-                              height={18}
-                              className="h-[18px] w-[18px] shrink-0 object-contain"
-                              sizes="18px"
-                              aria-hidden
-                            />
+                        </div>
+                        <div className={easyViewUnpaidTd}>
+                          {row.unpaidAmount || row.invoiceTotal ? (
+                            <div className="flex min-w-0 flex-col gap-0.5">
+                              {row.unpaidAmount ? (
+                                <span
+                                  className={`whitespace-nowrap text-sm font-semibold sm:text-base ${unpaidAmountClass(row.status)}`}
+                                >
+                                  {row.unpaidAmount}
+                                </span>
+                              ) : null}
+                              {row.invoiceTotal ? (
+                                <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">
+                                  (Inv total {currencyLabelForCode(row.currencyCode ?? "HKD")} {row.invoiceTotal})
+                                </span>
+                              ) : null}
+                            </div>
                           ) : null}
                         </div>
-                      </div>
-                      <div className={easyViewUnpaidTd}>
-                        {row.unpaidAmount || row.invoiceTotal ? (
-                          <div className="flex min-w-0 flex-col gap-0.5">
-                            {row.unpaidAmount ? (
-                              <span
-                                className={`whitespace-nowrap text-sm font-semibold sm:text-base ${unpaidAmountClass(row.status)}`}
-                              >
-                                {row.unpaidAmount}
-                              </span>
-                            ) : null}
-                            {row.invoiceTotal ? (
-                              <span className="whitespace-nowrap text-xs text-primary/65 tabular-nums sm:text-sm">
-                                (Inv total {currencyLabelForCode(row.currencyCode ?? "HKD")} {row.invoiceTotal})
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className={easyViewStatusTd} onClick={(e) => e.stopPropagation()}>
-                        <EasyViewStatusCell
-                          row={row}
-                          isElevated={isElevated}
-                          onPaymentRequestedPay={onPaymentRequestedPay}
-                          onPaidStatusOpen={onPaidStatusOpen}
-                          onDraftBillOpen={onDraftBillOpen}
-                          onRequestVoid={() => onRowDelete?.(row.id)}
-                          voidDisabled={draftDetailActions.deleteDisabled}  
-                        />
-                      </div>
-                    </div>
+                        <div className={easyViewStatusTd} onClick={(e) => e.stopPropagation()}>
+                          <EasyViewStatusCell
+                            row={row}
+                            isElevated={isElevated}
+                            onPaymentRequestedPay={onPaymentRequestedPay}
+                            onPaidStatusOpen={onPaidStatusOpen}
+                            onDraftBillOpen={onDraftBillOpen}
+                            onRequestVoid={() => onRowDelete?.(row.id)}
+                            voidDisabled={draftDetailActions.deleteDisabled}  
+                          />
+                        </div>
+                      
+                    </a>
                     {isPayPanelOpen ? (
                       <div
                         className="border-t border-gray-200 bg-gray-50/50 p-4 sm:p-5"
