@@ -53,8 +53,6 @@ export function DateTextField({
       dateInputRef.current?.focus();
     }
   };
-  
-
   return (
     <div onClick={handleContainerClick} className={`relative overflow-hidden flex items-center cursor-pointer ${textInputClassName}`}>
       {/* The real native date input fills the field. A tap anywhere on it opens the

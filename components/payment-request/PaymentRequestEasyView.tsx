@@ -160,6 +160,10 @@ export type PaymentRequestEasyViewProps = {
   onDraftBillSaved?: () => void;
   /** True while delete/void from easy view is executing (disables void on paid/returned panel). */
   easyViewBillMutatePending?: boolean;
+  onRequestVoid?: () => void;
+  voidDisabled?: boolean;
+  onRowDelete?: (rowId: string) => void;
+  easyViewDraftDeleteOpen?: boolean;
 };
 
 function EasyViewStatusCell({
@@ -168,12 +172,16 @@ function EasyViewStatusCell({
   onPaymentRequestedPay,
   onPaidStatusOpen,
   onDraftBillOpen,
+  onRequestVoid,
+  voidDisabled,
 }: {
   row: PaymentRequestRow;
   isElevated: boolean;
   onPaymentRequestedPay: (rowId: string) => void;
   onPaidStatusOpen: (rowId: string) => void;
   onDraftBillOpen: (rowId: string) => void;
+  onRequestVoid?: (rowId: string) => void;
+  voidDisabled?: boolean;
 }) {
   const stop = (e: ReactMouseEvent) => e.stopPropagation();
   const statusHoverClass =
@@ -257,18 +265,32 @@ function EasyViewStatusCell({
   }
   if (row.status === "Payment Requested") {
     return (
-      <button
-        type="button"
-        className={`${EASY_VIEW_STATUS_CELL} ${statusHoverClass} cursor-pointer border border-transparent bg-secondary text-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100 disabled:hover:shadow-none`}
-        onClick={(e) => {
-          stop(e);
-          if (!isElevated) return;
-          onPaymentRequestedPay(row.id);
-        }}
-        disabled={!isElevated}
-      >
-        Pay
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className={`${EASY_VIEW_STATUS_CELL} ${statusHoverClass} cursor-pointer border border-transparent bg-secondary text-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100 disabled:hover:shadow-none`}
+          onClick={(e) => {
+            stop(e);
+            if (!isElevated) return;
+            onPaymentRequestedPay(row.id);
+          }}
+          disabled={!isElevated}
+        >
+          Pay
+        </button>
+        <button
+          type="button"
+          className={`${EASY_VIEW_STATUS_CELL} ${statusHoverClass} cursor-pointer border border-transparent bg-red-600 hover:bg-red-700 text-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100 disabled:hover:shadow-none transition-colors`}
+          onClick={(e) => {
+            stop(e);
+            if (!isElevated) return;
+            onRequestVoid?.(row.id)
+          }}
+          disabled={!isElevated || voidDisabled}
+        >
+          Void
+        </button>
+      </div>
     );
   }
   return (
@@ -337,6 +359,8 @@ export function PaymentRequestEasyView({
   isViewOnly,
   onDraftBillSaved,
   easyViewBillMutatePending = false,
+  onRowDelete,
+  easyViewDraftDeleteOpen = false,
 }: PaymentRequestEasyViewProps) {
   const [sort, setSort] = useState<{ key: EasyViewSortKey; dir: "asc" | "desc" }>({
     key: "status",
@@ -693,7 +717,7 @@ export function PaymentRequestEasyView({
             <ul className="flex flex-col gap-3">
               {visibleRows.map((row) => {
                 const isPayPanelOpen = payPanelBillId === row.id && payPanel != null;
-                const isDraftDetailOpen = draftDetailBillId === row.id;
+                const isDraftDetailOpen = draftDetailBillId === row.id && !easyViewDraftDeleteOpen;
                 const isRowSelected = selectedBillId === row.id;
                 const isFocusBill = opacityFocusBillId != null && row.id === opacityFocusBillId;
                 const dimRow = opacityFocusBillId != null && !isFocusBill;
@@ -712,9 +736,6 @@ export function PaymentRequestEasyView({
                       <div className={easyViewContactTd}>
                         <div className="flex min-w-0 flex-col gap-0.5">
                           <span className="text-sm font-semibold text-primary sm:text-base">{row.contactTitle}</span>
-                          {row.contactCaption ? (
-                            <span className="text-xs text-primary/65 sm:text-sm">{row.contactCaption}</span>
-                          ) : null}
                         </div>
                       </div>
                       <div className={easyViewSubmittedTd}>{row.submittedDate}</div>
@@ -723,7 +744,7 @@ export function PaymentRequestEasyView({
                           <div className={EASY_VIEW_BANKSLIP_SLOT}>
                             <EasyViewBankSlipControl row={row} onOpen={onOpenBankSlipUpload} />
                           </div>
-                          <div className="relative group inline-block transform translate-y-[3px]">
+                          <div className="relative group inline-block transform translate-y-[2px]">
                             <span className="material-symbols-outlined text-[16px] cursor-pointer text-black hover:text-stone-800 block">
                               info
                             </span>
@@ -770,6 +791,8 @@ export function PaymentRequestEasyView({
                           onPaymentRequestedPay={onPaymentRequestedPay}
                           onPaidStatusOpen={onPaidStatusOpen}
                           onDraftBillOpen={onDraftBillOpen}
+                          onRequestVoid={() => onRowDelete?.(row.id)}
+                          voidDisabled={draftDetailActions.deleteDisabled}  
                         />
                       </div>
                     </div>

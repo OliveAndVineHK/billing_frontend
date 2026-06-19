@@ -528,6 +528,11 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
                 isViewOnly={isViewOnly}
                 onDraftBillSaved={loadBills}
                 easyViewBillMutatePending={easyViewDraftDeletePending}
+                onRowDelete={(rowId) => {
+                  setEasyViewDraftBillId(rowId);
+                  setEasyViewDraftDeleteOpen(true);
+                }}
+                easyViewDraftDeleteOpen={easyViewDraftDeleteOpen}
               />
             </div>
             <div className={easyView ? "max-lg:block lg:hidden" : "block"}>
@@ -602,7 +607,10 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
         isDraft={bills.find((r) => r.id === easyViewDraftBillId)?.status === "Draft"}
         pending={easyViewDraftDeletePending}
         onClose={() => {
-          if (!easyViewDraftDeletePending) setEasyViewDraftDeleteOpen(false);
+          if (!easyViewDraftDeletePending) {
+            setEasyViewDraftDeleteOpen(false);
+            setEasyViewDraftBillId(null);
+          }
         }}
         onConfirm={async () => {
           if (!easyViewDraftBillId) return;
