@@ -2,7 +2,7 @@
 import React, { useRef } from "react";
 import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
 
-export const DATE_TEXT_PLACEHOLDER = "dd mm yyyy";
+export const DATE_TEXT_PLACEHOLDER = "DD mm yyyy";
 
 export type DateTextFieldProps = {
   id: string;
