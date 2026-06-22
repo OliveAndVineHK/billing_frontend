@@ -172,10 +172,16 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
 
   /** Xero publish-state filter (client-side; `xeroActive` is derived in `mapBillToRow`). */
   const visibleBills = useMemo(() => {
-    if (xeroStatus === "published") return bills.filter((r) => r.xeroActive === true);
-    if (xeroStatus === "not_published") return bills.filter((r) => r.xeroActive !== true);
-    return bills;
-  }, [bills, xeroStatus]);
+    // Voided bills are hidden from every view unless the user explicitly selects the
+    // "Voided" status filter. A shop manager can accidentally void a bill when adding
+    // it, and surfacing those mistakes in the default list is confusing/irritating —
+    // they stay reachable only through the dedicated Voided filter.
+    const showVoided = statusFilters.includes("Voided");
+    let result = showVoided ? bills : bills.filter((r) => r.status !== "Voided");
+    if (xeroStatus === "published") result = result.filter((r) => r.xeroActive === true);
+    else if (xeroStatus === "not_published") result = result.filter((r) => r.xeroActive !== true);
+    return result;
+  }, [bills, xeroStatus, statusFilters]);
 
   const easyViewBankSlipSourceRow = useMemo(() => {
     if (!easyViewBankSlipRowId) return undefined;
