@@ -6,6 +6,7 @@ import {
   redirectToLogin,
   refreshToken,
 } from "./auth";
+import { compressImage } from "./compressImage";
 import { findEmailAddressInJson } from "./extractEmail";
 
 const API_BASE =
@@ -603,15 +604,24 @@ export function publishBill(billId: string): Promise<BillDetail> {
 
 // ── Attachments ──────────────────────────────────────────────────────
 
-export function uploadBillAttachments(billId: string, files: File[]): Promise<BillAttachment[]> {
+export async function uploadBillAttachments(
+  billId: string,
+  files: File[],
+): Promise<BillAttachment[]> {
   const form = new FormData();
+
   for (const file of files) {
-    form.append("files", file);
+    const optimized = await compressImage(file);
+    form.append("files", optimized);
   }
-  return apiFetch<BillAttachment[]>(`/bills/${billId}/attachments`, {
-    method: "POST",
-    body: form,
-  });
+
+  return apiFetch<BillAttachment[]>(
+    `/bills/${billId}/attachments`,
+    {
+      method: "POST",
+      body: form,
+    }
+  );
 }
 
 export function deleteBillAttachment(billId: string, attachmentId: string): Promise<void> {
@@ -711,19 +721,26 @@ export function deletePaymentAttachment(
 }
 
 /** Upload a file for a payment (e.g. bank slip). Multipart field `file`; `attachment_role` query defaults to bank_slip. */
-export function uploadPaymentAttachment(
+export async function uploadPaymentAttachment(
   billId: string,
   paymentId: string,
   file: File,
   attachmentRole: string = "bank_slip",
 ): Promise<PaymentAttachment> {
+  const optimized = await compressImage(file);
+
   const form = new FormData();
-  form.append("file", file);
+  form.append("file", optimized);
+
   const qs = new URLSearchParams();
   qs.set("attachment_role", attachmentRole);
+
   return apiFetch<PaymentAttachment>(
     `/bills/${billId}/payments/${paymentId}/attachments?${qs.toString()}`,
-    { method: "POST", body: form },
+    {
+      method: "POST",
+      body: form,
+    },
   );
 }
 
