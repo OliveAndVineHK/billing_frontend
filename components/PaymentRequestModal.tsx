@@ -287,8 +287,60 @@ export function PaymentRequestModal({
       setDraftSubmitting(false);
     }
   }, [open]);
+  //Helper Function
+  const convertImageToJpeg = async (file: File): Promise<File> => {
+    // If it's a PDF or already JPEG, return as-is
+    if (file.type === "application/pdf" || file.type === "image/jpeg") {
+      return file;
+    }
 
-  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // If it's not an image, return as-is
+    if (!file.type.startsWith("image/")) {
+      return file;
+    }
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Could not get canvas context"));
+            return;
+          }
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error("Could not convert image"));
+                return;
+              }
+              // Create new File with .jpg extension
+              const newFile = new File(
+                [blob],
+                file.name.replace(/\.[^.]+$/, ".jpg"),
+                { type: "image/jpeg" }
+              );
+              resolve(newFile);
+            },
+            "image/jpeg",
+            0.95 // 95% quality
+          );
+        };
+        img.onerror = () => reject(new Error("Could not load image"));
+        img.src = reader.result as string;
+      };
+      reader.onerror = () => reject(new Error("Could not read file"));
+      reader.readAsDataURL(file);
+    });
+  };
+
+
+  const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = e.target.files;
     if (!list?.length) return;
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -301,10 +353,17 @@ export function PaymentRequestModal({
       e.target.value = "";
       return;
     }
-    const added: UploadedEntry[] = Array.from(list).map((file) => ({
-      id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
-      file,
-    }));
+    const added: UploadedEntry[] = await Promise.all(
+      Array.from(list).map(async (file) => {
+        const convertedFile = await convertImageToJpeg(file);
+        return {
+          id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${convertedFile.name}-${convertedFile.size}-${convertedFile.lastModified}-${Math.random()}`,
+          file: convertedFile,
+        };
+      })
+    );
+
+
     setUploadedFiles((prev) => [...prev, ...added]);
     setPreviewFileId(added[added.length - 1]?.id ?? null);
     clearFieldError("attachments");
