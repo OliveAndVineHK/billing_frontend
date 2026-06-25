@@ -388,7 +388,7 @@ export function PaymentRequestToolbar({
                   <h3 className="text-sm font-semibold text-primary">Filters</h3>
                   <p className="mt-1 text-xs leading-snug text-primary/65">Adjust criteria, then apply to update the list. Closing without applying keeps the current filters.</p>
                 </div>
-                <div className="px-3 py-4 sm:px-4">
+                <div className="px-3 py-4 sm:px-4" onMouseDown={(e) => e.stopPropagation()}>
                   <div className="flex flex-col gap-5">
                     <div>
                       <label htmlFor={`${filterFieldIds}-min-amount`} className={fieldLabelClass}>
@@ -459,7 +459,7 @@ export function PaymentRequestToolbar({
                     </div>
                   </div>
                 </div>
-                <div className="border-t border-gray-200 px-3 py-2 sm:px-4">
+                <div className="border-t border-gray-200 px-3 py-2 sm:px-4" onMouseDown={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={onResetFilterDraft} className="box-border h-12 min-h-[48px] w-full min-w-0 flex-1 rounded-lg border-2 border-secondary bg-white px-4 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/10 sm:h-11 sm:min-h-[44px]">Reset</button>
                     <button type="button" onClick={onSaveFilterChanges} className="box-border h-12 min-h-[48px] w-full min-w-0 flex-1 rounded-lg border border-transparent bg-secondary px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:h-11 sm:min-h-[44px]">Apply</button>
