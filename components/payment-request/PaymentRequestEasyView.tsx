@@ -172,16 +172,12 @@ function EasyViewStatusCell({
   onPaymentRequestedPay,
   onPaidStatusOpen,
   onDraftBillOpen,
-  onRequestVoid,
-  voidDisabled,
 }: {
   row: PaymentRequestRow;
   isElevated: boolean;
   onPaymentRequestedPay: (rowId: string) => void;
   onPaidStatusOpen: (rowId: string) => void;
   onDraftBillOpen: (rowId: string) => void;
-  onRequestVoid?: (rowId: string) => void;
-  voidDisabled?: boolean;
 }) {
   const stop = (e: ReactMouseEvent) => { e.stopPropagation(); e.preventDefault(); };
   const statusHoverClass =
@@ -265,32 +261,18 @@ function EasyViewStatusCell({
   }
   if (row.status === "Payment Requested") {
     return (
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className={`${EASY_VIEW_STATUS_CELL} ${statusHoverClass} cursor-pointer border border-transparent bg-secondary text-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100 disabled:hover:shadow-none`}
-          onClick={(e) => {
-            stop(e);
-            if (!isElevated) return;
-            onPaymentRequestedPay(row.id);
-          }}
-          disabled={!isElevated}
-        >
-          Pay
-        </button>
-        <button
-          type="button"
-          className={`${EASY_VIEW_STATUS_CELL} ${statusHoverClass} cursor-pointer border border-transparent bg-red-600 hover:bg-red-700 text-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100 disabled:hover:shadow-none transition-colors`}
-          onClick={(e) => {
-            stop(e);
-            if (!isElevated) return;
-            onRequestVoid?.(row.id)
-          }}
-          disabled={!isElevated || voidDisabled}
-        >
-          Void
-        </button>
-      </div>
+      <button
+        type="button"
+        className={`${EASY_VIEW_STATUS_CELL} ${statusHoverClass} cursor-pointer border border-transparent bg-secondary text-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100 disabled:hover:shadow-none`}
+        onClick={(e) => {
+          stop(e);
+          if (!isElevated) return;
+          onPaymentRequestedPay(row.id);
+        }}
+        disabled={!isElevated}
+      >
+        Pay
+      </button>
     );
   }
   return (
@@ -359,7 +341,6 @@ export function PaymentRequestEasyView({
   isViewOnly,
   onDraftBillSaved,
   easyViewBillMutatePending = false,
-  onRowDelete,
   easyViewDraftDeleteOpen = false,
 }: PaymentRequestEasyViewProps) {
   const [sort, setSort] = useState<{ key: EasyViewSortKey; dir: "asc" | "desc" }>({
@@ -792,8 +773,6 @@ export function PaymentRequestEasyView({
                             onPaymentRequestedPay={onPaymentRequestedPay}
                             onPaidStatusOpen={onPaidStatusOpen}
                             onDraftBillOpen={onDraftBillOpen}
-                            onRequestVoid={() => onRowDelete?.(row.id)}
-                            voidDisabled={draftDetailActions.deleteDisabled}  
                           />
                         </div>
                       
