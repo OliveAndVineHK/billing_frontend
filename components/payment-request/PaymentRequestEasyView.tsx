@@ -628,7 +628,7 @@ export function PaymentRequestEasyView({
                 className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-center gap-1`}
               >
                 {/* Left spacer balances the right one so the centered label aligns with the centered content. */}
-                <span className="size-7 shrink-0" aria-hidden />
+                <span className="size-4 shrink-0" aria-hidden />
                 <span className="min-w-0 shrink truncate">Bank Slip</span>
                 {/* Invisible spacer matches the sort-chevron button height so the label aligns with the other columns. */}
                 <span className="size-7 shrink-0" aria-hidden />
@@ -648,6 +648,8 @@ export function PaymentRequestEasyView({
               <div
                 className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-center gap-1`}
               >
+                {/* Invisible spacer balances the sort chevron so the label centers over the centered status button. */}
+                <span className="size-1 shrink-0" aria-hidden />
                 <span className="min-w-0 shrink truncate">Status</span>
                 <EasyViewSortChevronButton
                   sortDir={sort.dir}
