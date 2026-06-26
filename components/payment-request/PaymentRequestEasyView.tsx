@@ -26,9 +26,9 @@ const EASY_VIEW_STATUS_CELL =
 const EASY_VIEW_TD_BASE = "px-4 py-3 text-sm text-primary sm:px-5 sm:py-3.5";
 
 const easyViewContactTd = `${EASY_VIEW_TD_BASE} align-middle min-w-0`;
-const easyViewSubmittedTd = `${EASY_VIEW_TD_BASE} align-middle whitespace-nowrap tabular-nums`;
+const easyViewSubmittedTd = `${EASY_VIEW_TD_BASE} align-middle whitespace-nowrap tabular-nums text-center`;
 const easyViewUnpaidTd = `${EASY_VIEW_TD_BASE} align-middle tabular-nums min-w-0`;
-const easyViewAttachmentTd = `${EASY_VIEW_TD_BASE} align-middle flex min-w-0 max-w-full flex-row flex-nowrap items-center justify-start gap-1.5 overflow-visible sm:gap-2`;
+const easyViewAttachmentTd = `${EASY_VIEW_TD_BASE} align-middle flex min-w-0 max-w-full flex-row flex-nowrap items-center justify-center gap-1.5 overflow-visible sm:gap-2`;
 const easyViewStatusTd = `${EASY_VIEW_TD_BASE} align-middle min-w-0 max-w-full overflow-hidden`;
 
 /** For the **first** visible bill only: list scrolled this far from top — default invoice aside (no offset). */
@@ -56,7 +56,7 @@ const EASY_VIEW_BANKSLIP_DEFAULT_BTN =
 
 /** Fixed-width area so rows without files still reserve space; partial icon stays column-aligned with rows that have a slip. */
 const EASY_VIEW_BANKSLIP_SLOT =
-  "flex h-10 w-24 shrink-0 items-center justify-start sm:h-[42px] sm:w-[6.5rem]";
+  "flex h-10 w-24 shrink-0 items-center justify-center sm:h-[42px] sm:w-[6.5rem]";
 
 /** Sortable columns exposed in easy view (same `compareRows` as the main table). */
 type EasyViewSortKey = Extract<SortKey, "contact" | "submittedDate" | "unpaidAmount" | "status">;
@@ -611,8 +611,10 @@ export function PaymentRequestEasyView({
                 />
               </div>
               <div
-                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-center gap-1`}
               >
+                {/* Invisible spacer balances the sort chevron on the right so the label centers over the centered content. */}
+                <span className="size-7 shrink-0" aria-hidden />
                 <span className="min-w-0 shrink truncate">Submitted Date</span>
                 <EasyViewSortChevronButton
                   sortDir={sort.dir}
@@ -623,8 +625,10 @@ export function PaymentRequestEasyView({
                 />
               </div>
               <div
-                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-center gap-1`}
               >
+                {/* Left spacer balances the right one so the centered label aligns with the centered content. */}
+                <span className="size-7 shrink-0" aria-hidden />
                 <span className="min-w-0 shrink truncate">Bank Slip</span>
                 {/* Invisible spacer matches the sort-chevron button height so the label aligns with the other columns. */}
                 <span className="size-7 shrink-0" aria-hidden />
@@ -642,7 +646,7 @@ export function PaymentRequestEasyView({
                 />
               </div>
               <div
-                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-center gap-1`}
               >
                 <span className="min-w-0 shrink truncate">Status</span>
                 <EasyViewSortChevronButton
@@ -722,7 +726,12 @@ export function PaymentRequestEasyView({
                         </div>
                         <div className={easyViewSubmittedTd}>{row.submittedDate}</div>
                         <div className={easyViewAttachmentTd}>
-                          <div className="flex w-full min-w-0 max-w-full flex-row flex-nowrap items-center gap-1.5 sm:gap-2">
+                          <div className="flex w-full min-w-0 max-w-full flex-row flex-nowrap items-center justify-center gap-1.5 sm:gap-2">
+                            {/* Left spacers balance the right-side info icon (and partial icon, when shown) so the slip slot centers in the column. */}
+                            {row.status === "Partially Paid" ? (
+                              <span className="h-[18px] w-[18px] shrink-0" aria-hidden />
+                            ) : null}
+                            <span className="size-4 shrink-0" aria-hidden />
                             <div className={EASY_VIEW_BANKSLIP_SLOT}>
                               <EasyViewBankSlipControl row={row} onOpen={onOpenBankSlipUpload} />
                             </div>
