@@ -16,7 +16,7 @@ import {
   type PaymentItem,
 } from "@/lib/api";
 import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
-import { formatFileSize, FullFilePreviewLink, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
+import { formatFileSize, FullFilePreviewLink, isImageFile, isPdfFile, isAllowedAttachment, ATTACHMENT_ACCEPT } from "@/lib/fileAttachmentPreview";
 import { AttachmentDeleteConfirmModal } from "./AttachmentDeleteConfirmModal";
 
 export type BankSlipFileRef = { id: string; name: string };
@@ -562,6 +562,12 @@ export function BankSlipDetailsModal({
       e.target.value = "";
       return;
     }
+    const disallowed = Array.from(list).filter((file) => !isAllowedAttachment(file));
+    if (disallowed.length > 0) {
+      setUploadError(`File${disallowed.length > 1 ? "s" : ""} not allowed (only PDF, JPEG, PNG): ${disallowed.map((f) => f.name).join(", ")}`);
+      e.target.value = "";
+      return;
+    }
     const added: StagedBankSlipEntry[] = Array.from(list).map((file) => ({
       id:
         typeof crypto !== "undefined" && crypto.randomUUID
@@ -862,7 +868,7 @@ export function BankSlipDetailsModal({
                   type="file"
                   className="absolute inset-0 z-20 h-full min-h-[156px] w-full cursor-pointer opacity-0 sm:min-h-[176px]"
                   multiple
-                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                  accept={ATTACHMENT_ACCEPT}
                   onChange={handleStagedFilesSelected}
                   disabled={uploading}
                   aria-label="Choose bank slip files to upload"

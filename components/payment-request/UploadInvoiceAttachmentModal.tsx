@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
-import { formatFileSize, isImageFile, isPdfFile } from "@/lib/fileAttachmentPreview";
+import { formatFileSize, isImageFile, isPdfFile, isAllowedAttachment, ATTACHMENT_ACCEPT } from "@/lib/fileAttachmentPreview";
 
 export type UploadInvoiceAttachmentModalProps = {
   open: boolean;
@@ -82,6 +82,12 @@ export function UploadInvoiceAttachmentModal({ open, onClose, onUpload }: Upload
     const oversized = Array.from(list).filter((file) => file.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
       setUploadError(`File${oversized.length > 1 ? "s" : ""} exceed the 10MB limit: ${oversized.map((f) => f.name).join(", ")}`);
+      e.target.value = "";
+      return;
+    }
+    const disallowed = Array.from(list).filter((file) => !isAllowedAttachment(file));
+    if (disallowed.length > 0) {
+      setUploadError(`File${disallowed.length > 1 ? "s" : ""} not allowed (only PDF, JPEG, PNG): ${disallowed.map((f) => f.name).join(", ")}`);
       e.target.value = "";
       return;
     }
@@ -223,7 +229,7 @@ export function UploadInvoiceAttachmentModal({ open, onClose, onUpload }: Upload
             </div>
 
             <div className="relative min-w-0">
-              <input ref={fileInputRef} type="file" className="absolute inset-0 z-20 h-full min-h-[156px] w-full cursor-pointer opacity-0 sm:min-h-[176px]" multiple accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.gif,application/pdf,image/*" onChange={handleFilesSelected} aria-label="Choose attachment files to upload" />
+              <input ref={fileInputRef} type="file" className="absolute inset-0 z-20 h-full min-h-[156px] w-full cursor-pointer opacity-0 sm:min-h-[176px]" multiple accept={ATTACHMENT_ACCEPT} onChange={handleFilesSelected} aria-label="Choose attachment files to upload" />
               <div className="pointer-events-none">
                 <div className="flex min-h-[156px] flex-col items-center justify-center gap-3 overflow-visible rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-5 sm:min-h-[176px] sm:gap-4 sm:py-6">
                   <span className="material-symbols-outlined inline-block origin-center text-[48px] leading-none text-gray-400 [font-variation-settings:'FILL'_0,'wght'_400,'GRAD'_0,'opsz'_48] scale-[1.78] sm:scale-[2.02]" aria-hidden>

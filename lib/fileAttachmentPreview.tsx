@@ -48,6 +48,37 @@ export function isPdfFile(file: File): boolean {
   return file.name.trim().toLowerCase().endsWith(".pdf");
 }
 
+/**
+ * Returns true when `file` matches an allowlist. Mirrors Minty's upload rule:
+ * validate by MIME type when the browser provides one, falling back to the file
+ * extension (drag-drop / some browsers report an empty `type`).
+ */
+export function isAllowedFileType(
+  file: File,
+  allowedExtensions: readonly string[],
+  allowedMimeTypes: readonly string[],
+): boolean {
+  const type = file.type.trim().toLowerCase();
+  if (type) return allowedMimeTypes.includes(type);
+  const ext = file.name.trim().split(".").pop()?.toLowerCase() ?? "";
+  return allowedExtensions.includes(ext);
+}
+
+/** Invoice / bank-slip attachments: PDF, JPEG, PNG only (aligned with Minty). */
+export const ATTACHMENT_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"] as const;
+export const ATTACHMENT_MIME_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+] as const;
+/** `accept` value for file inputs restricted to PDF/JPEG/PNG. */
+export const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png";
+
+export function isAllowedAttachment(file: File): boolean {
+  return isAllowedFileType(file, ATTACHMENT_EXTENSIONS, ATTACHMENT_MIME_TYPES);
+}
+
 export type FileIconInfo = { icon: string; iconClass: string };
 
 export function FileAttachmentPreviewLayer({
