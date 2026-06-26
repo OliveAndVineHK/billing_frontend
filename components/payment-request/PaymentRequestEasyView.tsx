@@ -46,7 +46,7 @@ const EASY_VIEW_ROW_GRID = `grid w-full min-w-0 grid-cols-1 gap-4 ${EASY_VIEW_GR
 
 const EASY_VIEW_HEADER_GRID = `mb-3 hidden min-w-0 md:grid ${EASY_VIEW_GRID_COLS} md:gap-x-3 md:items-end md:px-0`;
 
-const EASY_VIEW_HEADER_CELL = "text-left text-xs font-medium text-[#656565] sm:text-sm";
+const EASY_VIEW_HEADER_CELL = "text-left text-xs font-medium text-[#656565] sm:text-sm pb-0 translate-y-[20px]";
 
 const EASY_VIEW_BANKSLIP_VOIDED_BTN =
   "inline-flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent text-primary/40 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:gap-2";
@@ -575,23 +575,23 @@ export function PaymentRequestEasyView({
           </div>
           {loading ? (
             <div className={EASY_VIEW_HEADER_GRID} aria-hidden>
-              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
+              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-end justify-start gap-1 pb-1`}>
                 <div className="h-3.5 w-[min(100%,11rem)] rounded-md bg-gray-200/90 animate-pulse" />
                 <div className="size-7 shrink-0 rounded bg-gray-200/90 animate-pulse" />
               </div>
-              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
+              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-end justify-start gap-1 pb-1`}>
                 <div className="h-3.5 w-[min(100%,9.5rem)] rounded-md bg-gray-200/90 animate-pulse" />
                 <div className="size-7 shrink-0 rounded bg-gray-200/90 animate-pulse" />
               </div>
-              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
+              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-end justify-start gap-1 pb-1`}>
                 <div className="h-3.5 w-[min(100%,6rem)] rounded-md bg-gray-200/90 animate-pulse" />
                 <span className="size-7 shrink-0" aria-hidden />
               </div>
-              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
+              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-end justify-start gap-1 pb-1`}>
                 <div className="h-3.5 w-[min(100%,7.5rem)] rounded-md bg-gray-200/90 animate-pulse" />
                 <div className="size-7 shrink-0 rounded bg-gray-200/90 animate-pulse" />
               </div>
-              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-center justify-start gap-1 pb-1`}>
+              <div className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex items-end justify-start gap-1 pb-1`}>
                 <div className="h-3.5 w-[min(100%,5rem)] rounded-md bg-gray-200/90 animate-pulse" />
                 <div className="size-7 shrink-0 rounded bg-gray-200/90 animate-pulse" />
               </div>
@@ -599,7 +599,7 @@ export function PaymentRequestEasyView({
           ) : (
             <div className={EASY_VIEW_HEADER_GRID}>
               <div
-                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-end justify-start gap-1`}
               >
                 <span className="min-w-0 shrink truncate">Supplier</span>
                 <EasyViewSortChevronButton
@@ -611,7 +611,7 @@ export function PaymentRequestEasyView({
                 />
               </div>
               <div
-                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-center gap-1`}
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-end justify-center gap-1`}
               >
                 {/* Invisible spacer balances the sort chevron on the right so the label centers over the centered content. */}
                 <span className="size-7 shrink-0" aria-hidden />
@@ -625,7 +625,7 @@ export function PaymentRequestEasyView({
                 />
               </div>
               <div
-                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-center gap-1`}
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-end justify-center gap-1`}
               >
                 {/* Left spacer balances the right one so the centered label aligns with the centered content. */}
                 <span className="size-4 shrink-0" aria-hidden />
@@ -634,7 +634,7 @@ export function PaymentRequestEasyView({
                 <span className="size-7 shrink-0" aria-hidden />
               </div>
               <div
-                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-start gap-1`}
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-end justify-start gap-1`}
               >
                 <span className="min-w-0 shrink truncate">Unpaid Amount</span>
                 <EasyViewSortChevronButton
@@ -646,7 +646,7 @@ export function PaymentRequestEasyView({
                 />
               </div>
               <div
-                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-center justify-center gap-1`}
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-end justify-center gap-1`}
               >
                 {/* Invisible spacer balances the sort chevron so the label centers over the centered status button. */}
                 <span className="size-1 shrink-0" aria-hidden />
