@@ -46,7 +46,7 @@ const EASY_VIEW_ROW_GRID = `grid w-full min-w-0 grid-cols-1 gap-4 ${EASY_VIEW_GR
 
 const EASY_VIEW_HEADER_GRID = `mb-3 hidden min-w-0 md:grid ${EASY_VIEW_GRID_COLS} md:gap-x-3 md:items-end md:px-0`;
 
-const EASY_VIEW_HEADER_CELL = "text-left text-xs font-medium text-[#656565] sm:text-sm pb-0 translate-y-[20px]";
+const EASY_VIEW_HEADER_CELL = "text-left text-xs font-medium text-[#656565] sm:text-sm pt-0 pb-0 translate-y-[15px]";
 
 const EASY_VIEW_BANKSLIP_VOIDED_BTN =
   "inline-flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent text-primary/40 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary sm:gap-2";
@@ -514,7 +514,7 @@ export function PaymentRequestEasyView({
 
   return (
     <div
-      className={`flex min-h-0 flex-1 flex-col gap-4 px-4 pb-4 pt-1 sm:px-6 lg:flex-row lg:items-stretch lg:gap-6 lg:pt-2 ${mainBackgroundClass}`}
+      className={`flex min-h-0 flex-1 flex-col gap-0 px-4 pb-0 pt-0 sm:px-6 lg:flex-row lg:items-stretch lg:gap-4 lg:pt-2 ${mainBackgroundClass}`}
       onClick={(e) => {
         if (!onOutsideCloseRequested) return;
         const target = e.target as HTMLElement | null;
@@ -524,7 +524,7 @@ export function PaymentRequestEasyView({
       }}
     >
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="mb-3 flex w-full min-w-0 flex-wrap items-center gap-2">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
           <span className="min-w-0 truncate text-[18px] font-semibold text-black" title={headerStatusLabel}>
             {headerStatusLabel}
           </span>
@@ -599,7 +599,7 @@ export function PaymentRequestEasyView({
           ) : (
             <div className={EASY_VIEW_HEADER_GRID}>
               <div
-                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-end justify-start gap-1`}
+                className={`${EASY_VIEW_HEADER_CELL} ${EASY_VIEW_TD_BASE} flex min-w-0 flex-row flex-nowrap items-end justify-start gap-1 -translate-x-[10px]`}
               >
                 <span className="min-w-0 shrink truncate">Supplier</span>
                 <EasyViewSortChevronButton
