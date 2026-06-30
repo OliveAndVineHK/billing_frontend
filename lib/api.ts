@@ -12,7 +12,7 @@ import { findEmailAddressInJson } from "./extractEmail";
 const API_BASE =
   process.env.NEXT_PUBLIC_MODULE2_BACKEND_URL ?? "http://localhost:8000";
 
-// ── Error ────────────────────────────────────────────────────────────
+//  ── Error ────────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
   constructor(
