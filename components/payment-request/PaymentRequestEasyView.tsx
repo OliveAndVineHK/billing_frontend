@@ -718,6 +718,12 @@ export function PaymentRequestEasyView({
                   >
                     <a
                       href={`/payment-request/${row.id}`}
+                      onClick={(e) => {
+                        if (dimRow) {
+                          e.preventDefault();
+                          onOutsideCloseRequested?.();
+                        }
+                      }}
                       className={`${EASY_VIEW_ROW_GRID} cursor-pointer transition-colors hover:border-primary/20 hover:bg-gray-50/80`}
                     >
                       
