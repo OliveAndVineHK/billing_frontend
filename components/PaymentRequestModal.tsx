@@ -79,6 +79,26 @@ function parseAmountValue(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function formatCurrency(value: string): string {
+  const cleaned = value.trim().replace(/,/g, "");
+  const num = parseFloat(cleaned);
+  
+  if (!cleaned || !Number.isFinite(num)) {
+    return "";
+  }
+
+  return num.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatComma(value: string): string {
+  // Same as formatCurrency for this use case
+  return formatCurrency(value);
+}
+
+
 function validatePaymentRequestForm(values: {
   amount: string;
   contact: string;
@@ -713,9 +733,41 @@ export function PaymentRequestModal({
                   inputMode="decimal"
                   value={amount ?? ""}
                   onChange={(e) => {
-                    setAmount(e.target.value);
+                    let value = e.target.value;
+                    
+                    // Remove commas for validation
+                    const cleanValue = value.replace(/,/g, "");
+                    
+                    // Allow only digits and one decimal point
+                    if (!/^\d*\.?\d*$/.test(cleanValue)) {
+                      return; // Reject invalid characters
+                    }
+                    
+                    // If there's a decimal point, check decimal places
+                    if (cleanValue.includes(".")) {
+                      const parts = cleanValue.split(".");
+                      // Only keep up to 2 decimal places
+                      if (parts[1] && parts[1].length > 2) {
+                        value = parts[0] + "." + parts[1].substring(0, 2);
+                      } else {
+                        value = cleanValue;
+                      }
+                    } else {
+                      value = cleanValue;
+                    }
+                    
+                    setAmount(value);
                     clearFieldError("amount");
                   }}
+
+
+
+                  onBlur={(e) => {
+                    const formatted = formatCurrency(e.target.value);
+                    setAmount(formatted);
+                  }}
+
+
                   placeholder="0.00"
                   aria-invalid={!!fieldErrors.amount}
                   className={
