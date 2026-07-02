@@ -377,7 +377,9 @@ export type BillCreatePayload = {
   contact?: string;
   xero_contact_id?: string;
   description?: string;
-  amount?: number;
+  // Sent as an exact decimal string (e.g. "123456789012.00") to preserve
+  // precision end-to-end; number still accepted for the older edit path.
+  amount?: string | number;
   due_date?: string | null;
   invoice_date?: string | null;
   reference?: string;
@@ -386,8 +388,8 @@ export type BillCreatePayload = {
   line_items?: {
     description?: string;
     quantity?: number;
-    unit_amount?: number;
-    line_amount?: number;
+    unit_amount?: string | number;
+    line_amount?: string | number;
     account_code?: string;
     account_name?: string;
   }[];
