@@ -310,7 +310,8 @@ export function RecordPaymentModal({
 
   useEffect(() => {
     if (!open || payMode !== "full") return;
-    setDraftAmount(remaining > 0 ? remaining.toFixed(2) : "");
+    const fullAmount = remaining > 0 ? remaining.toFixed(2) : "";
+    setDraftAmount(fullAmount ? formatCurrency(fullAmount) : "");
   }, [open, payMode, remaining]);
 
   useEffect(() => {
