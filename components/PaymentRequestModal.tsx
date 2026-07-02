@@ -72,25 +72,71 @@ type ValidatedField =
   | "dueDate"
   | "attachments";
 
-function parseAmountValue(raw: string): number | null {
-  const t = raw.trim().replace(/,/g, "");
-  if (!t) return null;
-  const n = parseFloat(t);
-  return Number.isFinite(n) ? n : null;
+/**
+ * Max digits allowed before the decimal point on the amount field.
+ * Decimals are capped separately at 2.
+ */
+const MAX_AMOUNT_INT_DIGITS = 12;
+
+/** Strip grouping commas so only digits and at most one dot remain. */
+function cleanAmountString(raw: string): string {
+  return raw.trim().replace(/,/g, "");
 }
 
-function formatCurrency(value: string): string {
-  const cleaned = value.trim().replace(/,/g, "");
-  const num = parseFloat(cleaned);
-  
-  if (!cleaned || !Number.isFinite(num)) {
-    return "";
-  }
+/** Number of digits before the decimal point in a comma-free amount string. */
+function amountIntegerDigits(cleaned: string): number {
+  return (cleaned.split(".")[0] ?? "").length;
+}
 
-  return num.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+/**
+ * Live validation error for the amount field, or null when it's acceptable.
+ * Tied to the current value so the message clears itself as soon as the amount
+ * is valid again (12 or fewer digits before the decimal point).
+ */
+function amountLimitError(raw: string): string | null {
+  if (amountIntegerDigits(cleanAmountString(raw)) > MAX_AMOUNT_INT_DIGITS) {
+    return `You can only enter up to ${MAX_AMOUNT_INT_DIGITS} digits before the decimal point.`;
+  }
+  return null;
+}
+
+/** True when the field is empty (no digits entered). */
+function isBlankAmount(raw: string): boolean {
+  return cleanAmountString(raw) === "";
+}
+
+/** True when the amount has at least one non-zero digit (i.e. > 0). */
+function isPositiveAmount(raw: string): boolean {
+  const cleaned = cleanAmountString(raw);
+  if (!cleaned || cleaned === ".") return false;
+  return /[1-9]/.test(cleaned);
+}
+
+/**
+ * Normalize a typed amount to an exact decimal string with 2 decimal places,
+ * e.g. "12,312,312.5" -> "12312312.50". Pure string work — never parseFloat —
+ * so arbitrarily large values keep every digit. Returns undefined when blank.
+ */
+function toAmountString(raw: string): string | undefined {
+  const cleaned = cleanAmountString(raw);
+  if (!cleaned || cleaned === ".") return undefined;
+  const [intRaw = "", decRaw = ""] = cleaned.split(".");
+  let intPart = intRaw.replace(/^0+(?=\d)/, "");
+  if (intPart === "") intPart = "0";
+  const dec = (decRaw + "00").slice(0, 2);
+  return `${intPart}.${dec}`;
+}
+
+/**
+ * Format for display as xxx,xxx,xxx.xx by string grouping only (no parseFloat),
+ * so the number shown is exactly the number typed regardless of size.
+ */
+function formatCurrency(value: string): string {
+  const normalized = toAmountString(value);
+  if (normalized === undefined) return "";
+  const [intPart, dec] = normalized.split(".");
+  const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${grouped}.${dec}`;
 }
 
 function formatComma(value: string): string {
@@ -108,10 +154,11 @@ function validatePaymentRequestForm(values: {
   attachmentCount: number;
 }): Partial<Record<ValidatedField, string>> {
   const e: Partial<Record<ValidatedField, string>> = {};
-  const n = parseAmountValue(values.amount);
-  if (n === null) {
+  if (isBlankAmount(values.amount)) {
     e.amount = "Amount is required.";
-  } else if (n <= 0) {
+  } else if (amountIntegerDigits(cleanAmountString(values.amount)) > MAX_AMOUNT_INT_DIGITS) {
+    e.amount = `You can only enter up to ${MAX_AMOUNT_INT_DIGITS} digits before the decimal point.`;
+  } else if (!isPositiveAmount(values.amount)) {
     e.amount = "Enter an amount greater than zero.";
   }
   if (!values.contact.trim()) {
@@ -388,7 +435,7 @@ export function PaymentRequestModal({
     setFormError(null);
     setDraftSubmitting(true);
     try {
-      const parsedAmount = parseAmountValue(amount);
+      const amountStr = toAmountString(amount);
       const acctCode = accountCode.split(" - ")[0]?.trim() ?? "";
 
       const selectedContact = contactsMap.get(contact);
@@ -397,19 +444,19 @@ export function PaymentRequestModal({
         contact: contactName || undefined,
         xero_contact_id: selectedContact?.xero_contact_id || undefined,
         description: description || undefined,
-        amount: parsedAmount ?? undefined,
+        amount: amountStr,
         currency_code: modalCurrencyToIsoCode(currency) || undefined,
         invoice_date: invoiceDate || undefined,
         due_date: dueDate || undefined,
         reference: billNo || undefined,
         xero_account_code: acctCode || undefined,
-        line_items: acctCode || description || (parsedAmount && parsedAmount > 0)
+        line_items: acctCode || description || isPositiveAmount(amount)
           ? [
               {
                 description: description || undefined,
                 quantity: 1,
-                unit_amount: parsedAmount ?? undefined,
-                line_amount: parsedAmount ?? undefined,
+                unit_amount: amountStr,
+                line_amount: amountStr,
                 account_code: acctCode || undefined,
               },
             ]
@@ -474,7 +521,7 @@ export function PaymentRequestModal({
     if (confirmSubmitting) return;
     setConfirmSubmitting(true);
     try {
-      const parsedAmount = parseAmountValue(amount) ?? 0;
+      const amountStr = toAmountString(amount) ?? "0";
       const acctCode = accountCode.split(" - ")[0]?.trim() ?? "";
 
       const selectedContact = contactsMap.get(contact);
@@ -483,7 +530,7 @@ export function PaymentRequestModal({
         contact: contactName,
         xero_contact_id: selectedContact?.xero_contact_id || undefined,
         description,
-        amount: parsedAmount,
+        amount: amountStr,
         currency_code: modalCurrencyToIsoCode(currency),
         invoice_date: invoiceDate || null,
         due_date: dueDate || null,
@@ -493,8 +540,8 @@ export function PaymentRequestModal({
           {
             description,
             quantity: 1,
-            unit_amount: parsedAmount,
-            line_amount: parsedAmount,
+            unit_amount: amountStr,
+            line_amount: amountStr,
             account_code: acctCode,
           },
         ],
@@ -742,7 +789,7 @@ export function PaymentRequestModal({
                     if (!/^\d*\.?\d*$/.test(cleanValue)) {
                       return; // Reject invalid characters
                     }
-                    
+
                     // If there's a decimal point, check decimal places
                     if (cleanValue.includes(".")) {
                       const parts = cleanValue.split(".");
@@ -757,7 +804,15 @@ export function PaymentRequestModal({
                     }
                     
                     setAmount(value);
-                    clearFieldError("amount");
+
+                    // Show the 12-digit limit error only while it applies; clear
+                    // it the moment the amount is valid again so it doesn't stick.
+                    const err = amountLimitError(value);
+                    if (err) {
+                      setFieldErrors((prev) => ({ ...prev, amount: err }));
+                    } else {
+                      clearFieldError("amount");
+                    }
                   }}
 
 
@@ -765,6 +820,14 @@ export function PaymentRequestModal({
                   onBlur={(e) => {
                     const formatted = formatCurrency(e.target.value);
                     setAmount(formatted);
+
+                    // Keep the error in sync with the formatted value.
+                    const err = amountLimitError(formatted);
+                    if (err) {
+                      setFieldErrors((prev) => ({ ...prev, amount: err }));
+                    } else {
+                      clearFieldError("amount");
+                    }
                   }}
 
 
