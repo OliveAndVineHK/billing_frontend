@@ -313,6 +313,7 @@ export function RecordPaymentModal({
     const fullAmount = remaining > 0 ? remaining.toFixed(2) : "";
     setDraftAmount(fullAmount ? formatCurrency(fullAmount) : "");
   }, [open, payMode, remaining]);
+  //
 
   useEffect(() => {
     if (!open || !fullPayLocked || payMode !== "full") return;
