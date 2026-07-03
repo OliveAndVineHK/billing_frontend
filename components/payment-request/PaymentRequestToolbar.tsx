@@ -155,6 +155,10 @@ export function PaymentRequestToolbar({
       }
     };
     const onResizeOrScroll = () => {
+      // Focusing a control inside the panel (e.g. tapping the amount input) can cause the
+      // Don't treat those as an intent to dismiss the filter.
+      const active = document.activeElement;
+      if (active instanceof Element && active.closest("[data-filter-menu-panel]")) return;
       setFilterOpen(false);
       setFilterMenu(null);
     };
