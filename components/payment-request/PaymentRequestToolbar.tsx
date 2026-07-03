@@ -155,12 +155,19 @@ export function PaymentRequestToolbar({
       }
     };
     const onResizeOrScroll = () => {
-      // Focusing a control inside the panel (e.g. tapping the amount input) can cause the
-      // Don't treat those as an intent to dismiss the filter.
-      const active = document.activeElement;
-      if (active instanceof Element && active.closest("[data-filter-menu-panel]")) return;
-      setFilterOpen(false);
-      setFilterMenu(null);
+      // Reposition the menu to stay anchored to its button rather than closing.
+      // Closing here broke interacting with fields inside the panel: focusing the
+      // amount input (or switching between fields) scrolls it into view / opens the
+      // mobile keyboard, both of which fire scroll/resize and dismissed the filter.
+      // This matches how ThemedSelect / BillContactPicker handle scroll & resize.
+      const trigger = filterButtonRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const viewportPadding = 8;
+      const maxWidth = Math.min(416, window.innerWidth - viewportPadding * 2);
+      const left = Math.max(viewportPadding, Math.min(rect.right - maxWidth, window.innerWidth - maxWidth - viewportPadding));
+      const top = rect.bottom + 8;
+      setFilterMenu({ top, left, width: maxWidth });
     };
     document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("keydown", handleEscape);
