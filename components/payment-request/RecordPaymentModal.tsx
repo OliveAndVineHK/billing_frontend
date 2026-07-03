@@ -315,6 +315,7 @@ export function RecordPaymentModal({
   }, [open, payMode, remaining]);
   //
   //
+  //test3
 
   useEffect(() => {
     if (!open || !fullPayLocked || payMode !== "full") return;
