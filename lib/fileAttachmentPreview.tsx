@@ -48,6 +48,12 @@ export function isPdfFile(file: File): boolean {
   return file.name.trim().toLowerCase().endsWith(".pdf");
 }
 
+export function isHtmlFile(file: File): boolean {
+  if (file.type === "text/html") return true;
+  const ext = file.name.trim().split(".").pop()?.toLowerCase() ?? "";
+  return ext === "html" || ext === "htm";
+}
+
 /**
  * Returns true when `file` matches an allowlist. Mirrors Minty's upload rule:
  * validate by MIME type when the browser provides one, falling back to the file
@@ -64,16 +70,17 @@ export function isAllowedFileType(
   return allowedExtensions.includes(ext);
 }
 
-/** Invoice / bank-slip attachments: PDF, JPEG, PNG only (aligned with Minty). */
-export const ATTACHMENT_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"] as const;
+/** Invoice / bank-slip attachments: PDF, JPEG, PNG, HTML (aligned with Minty). */
+export const ATTACHMENT_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "html", "htm"] as const;
 export const ATTACHMENT_MIME_TYPES = [
   "application/pdf",
   "image/jpeg",
   "image/jpg",
   "image/png",
+  "text/html",
 ] as const;
-/** `accept` value for file inputs restricted to PDF/JPEG/PNG. */
-export const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png";
+/** `accept` value for file inputs restricted to PDF/JPEG/PNG/HTML. */
+export const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.html,.htm,application/pdf,image/jpeg,image/png,text/html";
 
 export function isAllowedAttachment(file: File): boolean {
   return isAllowedFileType(file, ATTACHMENT_EXTENSIONS, ATTACHMENT_MIME_TYPES);
@@ -96,6 +103,7 @@ export function FileAttachmentPreviewLayer({
   const previewSubtitleId = useId();
   const showImage = isImageFile(file);
   const showPdf = isPdfFile(file);
+  const showHtml = isHtmlFile(file);
   const { icon, iconClass } = getUploadedFileIconInfo(file.name);
   const sizeLabel = formatFileSize(file.size);
 
@@ -156,7 +164,16 @@ export function FileAttachmentPreviewLayer({
           {showPdf && !showImage ? (
             <PdfJsCanvasPreview src={objectUrl} title={file.name} className="w-full" maxPageWidthCssPx={640} />
           ) : null}
-          {!showImage && !showPdf ? (
+          {showHtml && !showImage && !showPdf ? (
+            <iframe
+              src={objectUrl}
+              title={`Preview: ${file.name}`}
+              sandbox=""
+              referrerPolicy="no-referrer"
+              className="mx-auto h-[min(70dvh,600px)] w-full max-w-full rounded-lg border border-gray-200 bg-white"
+            />
+          ) : null}
+          {!showImage && !showPdf && !showHtml ? (
             <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>
           ) : null}
         </div>

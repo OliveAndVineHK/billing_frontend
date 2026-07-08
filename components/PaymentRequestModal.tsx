@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
 import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
-import { formatFileSize, FullFilePreviewLink, isImageFile, isPdfFile, isAllowedFileType, ATTACHMENT_EXTENSIONS, ATTACHMENT_MIME_TYPES } from "@/lib/fileAttachmentPreview";
+import { formatFileSize, FullFilePreviewLink, isImageFile, isPdfFile, isHtmlFile, isAllowedFileType, ATTACHMENT_EXTENSIONS, ATTACHMENT_MIME_TYPES } from "@/lib/fileAttachmentPreview";
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
 import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
 
@@ -46,7 +46,7 @@ const BILL_ATTACHMENT_MIME_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
 const BILL_ATTACHMENT_ACCEPT =
-  ".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.xlsm,application/pdf,image/jpeg,image/png,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  ".pdf,.jpg,.jpeg,.png,.html,.htm,.xls,.xlsx,.xlsm,application/pdf,image/jpeg,image/png,text/html,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 /** Material Symbols icon + color for uploaded file row (Google Material Icons naming). */
 function getUploadedFileIconInfo(filename: string): { icon: string; iconClass: string } {
@@ -59,6 +59,9 @@ function getUploadedFileIconInfo(filename: string): { icon: string; iconClass: s
   }
   if (ext === "xls" || ext === "xlsx" || ext === "xlsm") {
     return { icon: "table_chart", iconClass: "text-emerald-700" };
+  }
+  if (ext === "html" || ext === "htm") {
+    return { icon: "html", iconClass: "text-orange-600" };
   }
   return { icon: "draft", iconClass: "text-primary" };
 }
@@ -384,7 +387,7 @@ export function PaymentRequestModal({
     if (disallowed.length > 0) {
       setFieldErrors((prev) => ({
         ...prev,
-        attachments: `File${disallowed.length > 1 ? "s" : ""} not allowed (only PDF, JPEG, PNG, Excel): ${disallowed.map((f) => f.name).join(", ")}`,
+        attachments: `File${disallowed.length > 1 ? "s" : ""} not allowed (only PDF, JPEG, PNG, HTML, Excel): ${disallowed.map((f) => f.name).join(", ")}`,
       }));
       e.target.value = "";
       return;
@@ -643,7 +646,7 @@ export function PaymentRequestModal({
                 <span className="material-symbols-outlined inline-block origin-center text-[48px] leading-none text-gray-400 [font-variation-settings:'FILL'_0,'wght'_400,'GRAD'_0,'opsz'_48] scale-[1.78] sm:text-[48px] sm:scale-[2.02]" aria-hidden>cloud_upload</span>
                 <div className="flex flex-col items-center">
                   <p className="px-2 text-center text-[14px] font-medium leading-tight text-gray-700">Click or drag files here to upload</p>
-                  <p className="mt-1 px-2 text-center text-[12px] leading-tight text-gray-400">PDF, JPEG, PNG (Max 10MB)</p>
+                  <p className="mt-1 px-2 text-center text-[12px] leading-tight text-gray-400">PDF, JPEG, PNG, HTML (Max 10MB)</p>
                 </div>
               </div>
             </div>
@@ -955,20 +958,38 @@ function PaymentRequestInlinePreview({
           </p>
         </div>
       </div>
-      <FullFilePreviewLink
-        href={objectUrl}
-        className="mt-3 min-h-[min(60dvh,420px)] overflow-auto rounded-lg bg-black/5 p-2 sm:p-3"
-      >
-        {isImageFile(file) ? (
-          <img src={objectUrl} alt={`Preview: ${file.name}`} className="mx-auto max-h-[min(65dvh,620px)] w-auto max-w-full object-contain" />
-        ) : null}
-        {isPdfFile(file) && !isImageFile(file) ? (
-          <PdfJsCanvasPreview src={objectUrl} title={file.name} className="w-full" maxPageWidthCssPx={640} />
-        ) : null}
-        {!isImageFile(file) && !isPdfFile(file) ? (
-          <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>
-        ) : null}
-      </FullFilePreviewLink>
+      {isHtmlFile(file) && !isImageFile(file) && !isPdfFile(file) ? (
+        <div className="mt-3 min-h-[min(60dvh,420px)] rounded-lg bg-black/5 p-2 sm:p-3">
+          <iframe
+            src={objectUrl}
+            title={`Preview: ${file.name}`}
+            sandbox=""
+            referrerPolicy="no-referrer"
+            className="h-[min(60dvh,420px)] w-full rounded-lg border border-gray-200 bg-white"
+          />
+          <FullFilePreviewLink href={objectUrl} className="mt-3 block text-center">
+            <span className="inline-flex items-center gap-2 text-sm font-semibold text-secondary underline">
+              <span className="material-symbols-outlined text-[24px] leading-none" aria-hidden>open_in_new</span>
+              Open full file in new tab
+            </span>
+          </FullFilePreviewLink>
+        </div>
+      ) : (
+        <FullFilePreviewLink
+          href={objectUrl}
+          className="mt-3 min-h-[min(60dvh,420px)] overflow-auto rounded-lg bg-black/5 p-2 sm:p-3"
+        >
+          {isImageFile(file) ? (
+            <img src={objectUrl} alt={`Preview: ${file.name}`} className="mx-auto max-h-[min(65dvh,620px)] w-auto max-w-full object-contain" />
+          ) : null}
+          {isPdfFile(file) && !isImageFile(file) ? (
+            <PdfJsCanvasPreview src={objectUrl} title={file.name} className="w-full" maxPageWidthCssPx={640} />
+          ) : null}
+          {!isImageFile(file) && !isPdfFile(file) ? (
+            <p className="py-8 text-center text-sm text-primary/70">Preview is not available for this file type.</p>
+          ) : null}
+        </FullFilePreviewLink>
+      )}
     </div>
   );
 }
