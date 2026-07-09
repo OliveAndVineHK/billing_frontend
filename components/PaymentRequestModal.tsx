@@ -758,9 +758,8 @@ export function PaymentRequestModal({
                 <div
                   aria-label="Currency"
                   className={
-                    fieldErrors.amount
-                      ? "flex w-24 shrink-0 items-center justify-center rounded-l-2xl rounded-r-none border border-r-0 border-red-500 bg-white px-2 text-black sm:px-3"
-                      : "flex w-24 shrink-0 items-center justify-center rounded-l-2xl rounded-r-none border border-r-0 bg-white px-2 text-black sm:px-3"
+                    "box-border flex h-11 min-h-[44px] w-24 shrink-0 items-center justify-center rounded-l-2xl rounded-r-none border border-r-0 bg-white px-2 text-base text-black sm:min-h-11 sm:px-3 sm:text-sm " +
+                    (fieldErrors.amount ? "border-red-500" : "border-gray-300")
                   }
                 >
                   HK$

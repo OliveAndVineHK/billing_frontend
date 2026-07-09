@@ -11,6 +11,7 @@ import {
   formatPaymentRequestDetailLongDate,
   paymentRequestDetailAmountValueInputClass,
   paymentRequestDetailCancelButtonClass,
+  paymentRequestDetailCurrencyCellClass,
   paymentRequestDetailDateTextInputClass,
   paymentRequestDetailDateTextInputClassError,
   paymentRequestDetailEditToggleButtonClass,
@@ -431,9 +432,8 @@ export function EasyViewDraftDetailedInformationEdit({
               id={idCur}
               aria-label="Currency"
               className={
-                amountError
-                  ? "flex w-full shrink-0 items-center justify-center rounded-2xl border border-red-500 bg-white px-2 py-2 text-black sm:w-24 sm:rounded-l-2xl sm:rounded-r-none sm:border-r-0 sm:px-3"
-                  : "flex w-full shrink-0 items-center justify-center rounded-2xl border bg-white px-2 py-2 text-black sm:w-24 sm:rounded-l-2xl sm:rounded-r-none sm:border-r-0 sm:px-3"
+                `${paymentRequestDetailCurrencyCellClass} ` +
+                (amountError ? "border-red-500" : "border-gray-300")
               }
             >
               {currencyLabelForCode(currencyCode)}

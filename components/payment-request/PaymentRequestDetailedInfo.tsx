@@ -67,6 +67,10 @@ export const paymentRequestDetailModalTextInputClass =
 export const paymentRequestDetailAmountValueInputClass =
   "box-border h-11 min-h-[44px] min-w-0 w-full rounded-2xl border border-gray-300 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:outline-none focus:ring-2 sm:min-h-11 sm:flex-1 sm:rounded-l-none sm:rounded-r-2xl sm:border-l-0 sm:text-sm focus:border-secondary focus:ring-secondary/25";
 
+/** Static currency cell left of the amount input — mirrors the amount input's border/size. */
+export const paymentRequestDetailCurrencyCellClass =
+  "box-border flex h-11 min-h-[44px] w-full shrink-0 items-center justify-center rounded-2xl border bg-white px-2 text-base text-black sm:min-h-11 sm:w-24 sm:rounded-l-2xl sm:rounded-r-none sm:border-r-0 sm:px-3 sm:text-sm";
+
 export const paymentRequestDetailDateTextInputClass =
   "relative z-[1] box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white py-0 pl-3 pr-3 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 [color-scheme:light] sm:min-h-11 sm:text-sm";
 
@@ -462,9 +466,8 @@ export function PaymentRequestDetailedInfo({
                     id={idCurrency}
                     aria-label="Currency"
                     className={
-                      amountError
-                        ? "flex w-full shrink-0 items-center justify-center rounded-2xl border border-red-500 bg-white px-2 py-2 text-black sm:w-24 sm:rounded-l-2xl sm:rounded-r-none sm:border-r-0 sm:px-3"
-                        : "flex w-full shrink-0 items-center justify-center rounded-2xl border bg-white px-2 py-2 text-black sm:w-24 sm:rounded-l-2xl sm:rounded-r-none sm:border-r-0 sm:px-3"
+                      `${paymentRequestDetailCurrencyCellClass} ` +
+                      (amountError ? "border-red-500" : "border-gray-300")
                     }
                   >
                     {currencyDisplayLabel}
