@@ -4,8 +4,6 @@ import { currencyLabelForCode } from "@/lib/currencyDisplay";
 /** Currency values as shown in the create-bill modal select (left gray cell). */
 export const BILL_CURRENCY_SELECT_OPTIONS: ThemedSelectOption[] = [
   { value: "HK$", label: "HK$" },
-  { value: "USD", label: "US$" },
-  { value: "CNY", label: "CN¥" },
 ];
 
 export const BILL_CONTACT_SELECT_OPTIONS: ThemedSelectOption[] = [
@@ -32,7 +30,7 @@ export function isoCodeToModalCurrency(code: string): string {
   return u;
 }
 
-/** Options for the currency dropdown, including the bill’s code if it is not HK$/USD/CNY. */
+/** Options for the currency dropdown, including the bill’s code if it is not HK$. */
 export function currencyOptionsForEditing(isoCode: string): ThemedSelectOption[] {
   const current = isoCodeToModalCurrency(isoCode);
   const inList = BILL_CURRENCY_SELECT_OPTIONS.some((o) => o.value === current);
