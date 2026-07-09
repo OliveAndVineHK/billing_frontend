@@ -486,11 +486,11 @@ export function PaymentRequestToolbar({
             {bulkOpen && bulkMenu && bulkActionsEnabled && typeof document !== "undefined"
               ? createPortal(
                   <div data-bulk-menu-panel role="menu" aria-label="Bulk actions" className="fixed z-[400] rounded-lg border border-gray-200 bg-white py-1 shadow-lg" style={{ top: bulkMenu.top, left: bulkMenu.left, minWidth: bulkMenu.minWidth }}>
-                    {!isViewOnly && !(selectionContainsPaid && !canVoidPaid) ? (
-                      <button type="button" role="menuitem" className="block w-full cursor-pointer px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50" onClick={() => { onBulkDeleteSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Void</button>
-                    ) : null}
                     {!isViewOnly && canPublish ? (
                       <button type="button" role="menuitem" className="block w-full cursor-pointer px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-gray-100" onClick={() => { onBulkPublishSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Publish</button>
+                    ) : null}
+                    {!isViewOnly && !(selectionContainsPaid && !canVoidPaid) ? (
+                      <button type="button" role="menuitem" className="block w-full cursor-pointer px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50" onClick={() => { onBulkDeleteSelected?.(); setBulkOpen(false); setBulkMenu(null); }}>Void</button>
                     ) : null}
                     {isViewOnly ? (
                       <div className="px-3 py-2 text-sm text-gray-400 select-none">View-only access</div>
