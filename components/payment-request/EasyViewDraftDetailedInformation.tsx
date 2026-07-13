@@ -7,6 +7,7 @@ import { DateTextField } from "@/components/DateTextField";
 import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
 import { mergeSelectOption } from "@/lib/billFormSelectOptions";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import { acceptAmountInput, formatAmount, toAmountEditString } from "@/lib/amountFormat";
 import {
   formatPaymentRequestDetailLongDate,
   paymentRequestDetailAmountValueInputClass,
@@ -442,8 +443,15 @@ export function EasyViewDraftDetailedInformationEdit({
               id={idAmt}
               type="text"
               inputMode="decimal"
+              placeholder="0.00"
               value={amount ?? ""}
-              onChange={(e) => onPatchChange({ amount: e.target.value })}
+              onChange={(e) => {
+                const value = acceptAmountInput(e.target.value);
+                if (value === null) return;
+                onPatchChange({ amount: value });
+              }}
+              onFocus={() => onPatchChange({ amount: toAmountEditString(amount) })}
+              onBlur={(e) => onPatchChange({ amount: formatAmount(e.target.value) })}
               disabled={disabled}
               aria-invalid={!!amountError}
               className={
