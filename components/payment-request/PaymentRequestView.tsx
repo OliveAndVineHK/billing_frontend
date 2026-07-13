@@ -28,7 +28,6 @@ import {
 } from "@/lib/api";
 import type { InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
-import { formatAmount, formatMoney, parseAmount } from "@/lib/amountFormat";
 import { fetchBillBankSlipEnrichment } from "@/lib/bankSlipEnrichment";
 import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
 import { getAuth } from "@/lib/auth";
@@ -49,6 +48,15 @@ function formatDate(dateStr: string): string {
   return formatIsoDateForDisplay(`${y}-${m}-${day}`) || dateStr;
 }
 
+function formatAmount(value: string | number): string {
+  const n = typeof value === "string" ? parseFloat(value) : value;
+  if (!Number.isFinite(n)) return "0.00";
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 function mapBillToRow(bill: BillListItem): PaymentRequestRow {
   const status = billStatusToDisplayLabel(bill.status);
   const iso = (bill.currency_code && bill.currency_code.trim()) || "HKD";
@@ -67,8 +75,11 @@ function mapBillToRow(bill: BillListItem): PaymentRequestRow {
     invoiceDate: bill.invoice_date ? formatDate(bill.invoice_date) : "",
     status,
     submittedDate: formatDate(bill.created_at),
-    unpaidAmount: formatMoney(bill.amount_due, symbol) || `${symbol} 0.00`,
-    invoiceTotal: formatAmount(bill.amount),
+    unpaidAmount:
+      parseFloat(bill.amount_due) !== 0
+        ? `${symbol} ${formatAmount(bill.amount_due)}`
+        : `${symbol} 0.00`,
+    invoiceTotal: bill.amount ? formatAmount(bill.amount) : "",
     payment: "",
     paidDate: bill.paid_at ? formatDate(bill.paid_at) : "",
     bankslip: "",
@@ -230,8 +241,8 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
         page_size: 100,
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(apiStatus ? { status: apiStatus } : {}),
-        ...(parseAmount(minAmount) !== null ? { amount_min: parseAmount(minAmount)! } : {}),
-        ...(parseAmount(maxAmount) !== null ? { amount_max: parseAmount(maxAmount)! } : {}),
+        ...(minAmount !== "" ? { amount_min: parseFloat(minAmount) } : {}),
+        ...(maxAmount !== "" ? { amount_max: parseFloat(maxAmount) } : {}),
         ...(dateField ? { date_field: dateField } : {}),
         ...(startDate ? { date_from: startDate } : {}),
         ...(endDate ? { date_to: endDate } : {}),

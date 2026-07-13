@@ -25,13 +25,6 @@ import { buildBankSlipDetailsFromPaymentList } from "@/lib/bankSlipEnrichment";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { shouldShowPaymentInHistory } from "@/lib/paymentHistoryDisplay";
 import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
-import {
-  acceptAmountInput,
-  formatAmount,
-  formatMoney,
-  parseAmount,
-  toAmountEditString,
-} from "@/lib/amountFormat";
 
 export type RecordPaymentModalProps = {
   open: boolean;
@@ -50,6 +43,11 @@ export type RecordPaymentModalProps = {
 
 type PayMode = "full" | "partial";
 
+function formatMoney(amount: number, currencyLabel: string) {
+  const n = Math.round(amount * 100) / 100;
+  return `${currencyLabel} ${n.toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function formatPaymentDateLabel(dateStr: string | null) {
   if (!dateStr) return "—";
   const head = dateStr.trim().slice(0, 10);
@@ -62,6 +60,32 @@ function formatPaymentDateLabel(dateStr: string | null) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return formatIsoDateForDisplay(`${y}-${m}-${day}`) || dateStr;
+}
+
+function formatCurrency(value: string): string {
+  const cleaned = value.trim().replace(/,/g, "");
+  const num = parseFloat(cleaned);
+  
+  if (!cleaned || !Number.isFinite(num)) {
+    return "";
+  }
+
+  return num.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatComma(value: string): string {
+  // Same as formatCurrency for this use case
+  return formatCurrency(value);
+}
+
+function parseAmount(raw: string): number | null {
+  const t = raw.trim().replace(/,/g, "");
+  if (!t) return null;
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : null;
 }
 
 function todayISO() {
@@ -286,7 +310,8 @@ export function RecordPaymentModal({
 
   useEffect(() => {
     if (!open || payMode !== "full") return;
-    setDraftAmount(remaining > 0 ? formatAmount(remaining) : "");
+    const fullAmount = remaining > 0 ? remaining.toFixed(2) : "";
+    setDraftAmount(fullAmount ? formatCurrency(fullAmount) : "");
   }, [open, payMode, remaining]);
   //
   //
@@ -691,12 +716,35 @@ export function RecordPaymentModal({
                         placeholder="0.00"
                         value={draftAmount ?? ""}
                         onChange={(e) => {
-                          const value = acceptAmountInput(e.target.value);
-                          if (value === null) return;
-                          setDraftAmount(value);
-                        }}
-                        onFocus={() => setDraftAmount((prev) => toAmountEditString(prev))}
-                        onBlur={(e) => setDraftAmount(formatAmount(e.target.value))}
+                        let value = e.target.value;
+                        
+                        // Remove commas for validation
+                        const cleanValue = value.replace(/,/g, "");
+                        
+                        // Allow only digits and one decimal point
+                        if (!/^\d*\.?\d*$/.test(cleanValue)) {
+                          return; // Reject invalid characters
+                        }
+                        
+                        // If there's a decimal point, check decimal places
+                        if (cleanValue.includes(".")) {
+                          const parts = cleanValue.split(".");
+                          // Only keep up to 2 decimal places
+                          if (parts[1] && parts[1].length > 2) {
+                            value = parts[0] + "." + parts[1].substring(0, 2);
+                          } else {
+                            value = cleanValue;
+                          }
+                        } else {
+                          value = cleanValue;
+                        }
+                        
+                        setDraftAmount(value);
+                      }}
+                      onBlur={(e) => {
+                        const formatted = formatCurrency(e.target.value);
+                        setDraftAmount(formatted);
+                      }}
                         readOnly={payMode === "full"}
                         className="box-border min-h-[44px] min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-base text-black placeholder:text-gray-700 read-only:cursor-default read-only:text-gray-700 read-only:placeholder:text-gray-500 focus:outline-none focus:ring-0 sm:min-h-11 sm:text-sm"
                       />
@@ -733,12 +781,36 @@ export function RecordPaymentModal({
                       placeholder="0.00"
                       value={draftAmount ?? ""}
                       onChange={(e) => {
-                        const value = acceptAmountInput(e.target.value);
-                        if (value === null) return;
+                        let value = e.target.value;
+                        
+                        // Remove commas for validation
+                        const cleanValue = value.replace(/,/g, "");
+                        
+                        // Allow only digits and one decimal point
+                        if (!/^\d*\.?\d*$/.test(cleanValue)) {
+                          return; // Reject invalid characters
+                        }
+                        
+                        // If there's a decimal point, check decimal places
+                        if (cleanValue.includes(".")) {
+                          const parts = cleanValue.split(".");
+                          // Only keep up to 2 decimal places
+                          if (parts[1] && parts[1].length > 2) {
+                            value = parts[0] + "." + parts[1].substring(0, 2);
+                          } else {
+                            value = cleanValue;
+                          }
+                        } else {
+                          value = cleanValue;
+                        }
+                        
                         setDraftAmount(value);
                       }}
-                      onFocus={() => setDraftAmount((prev) => toAmountEditString(prev))}
-                      onBlur={(e) => setDraftAmount(formatAmount(e.target.value))}
+                      onBlur={(e) => {
+                        const formatted = formatCurrency(e.target.value);
+                        setDraftAmount(formatted);
+                      }}
+
                       readOnly={payMode === "full"}
                       className="box-border h-11 min-h-[44px] w-full rounded-2xl border border-gray-300 bg-white px-3 text-base text-black placeholder:text-gray-700 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25 sm:min-h-11 sm:text-sm read-only:cursor-default read-only:border-gray-200 read-only:bg-gray-100 read-only:text-gray-700 read-only:shadow-[inset_0_1px_3px_rgba(0,0,0,0.06)] read-only:placeholder:text-gray-500 read-only:focus:border-gray-300 read-only:focus:ring-1 read-only:focus:ring-gray-300/50"
                     />

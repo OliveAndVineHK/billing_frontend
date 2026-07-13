@@ -1,10 +1,15 @@
 import type { BillCreatePayload, BillDetail } from "./api";
 import type { PaymentRequestDetailedInfoData } from "@/components/payment-request/PaymentRequestDetailedInfo";
-import { formatAmount, parseAmount } from "./amountFormat";
 
 function toIsoDateOnly(value: string | null): string {
   if (!value) return "";
   return value.slice(0, 10);
+}
+
+function formatAmountForInput(raw: string): string {
+  const n = Number.parseFloat(raw.replace(/,/g, ""));
+  if (!Number.isFinite(n)) return raw;
+  return n.toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function billToDetailedInfo(bill: BillDetail): PaymentRequestDetailedInfoData {
@@ -15,7 +20,7 @@ export function billToDetailedInfo(bill: BillDetail): PaymentRequestDetailedInfo
     code && name ? `${code} - ${name}` : code;
   return {
     billNo: bill.reference,
-    amount: formatAmount(bill.amount),
+    amount: formatAmountForInput(bill.amount),
     currencyCode: bill.currency_code,
     description: bill.description ?? "",
     contact: bill.contact,
@@ -43,7 +48,7 @@ export function buildBillUpdatePayload(
   bill: BillDetail,
   draft: PaymentRequestDetailedInfoData,
 ): Partial<BillCreatePayload> & { status?: string } {
-  const amount = parseAmount(draft.amount) ?? NaN;
+  const amount = Number.parseFloat(draft.amount.replace(/,/g, ""));
   const { account_code, account_name } = parseAccountField(draft.accountCode);
 
   const payload: Partial<BillCreatePayload> = {

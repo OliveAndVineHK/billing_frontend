@@ -25,13 +25,6 @@ import {
 } from "@/lib/api";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
-import {
-  MAX_AMOUNT_INT_DIGITS,
-  formatAmount,
-  formatMoney,
-  isWithinAmountLimits,
-  parseAmount,
-} from "@/lib/amountFormat";
 import { billStatusToDisplayLabel } from "@/lib/billStatusDisplay";
 import { billHasRemainingCountablePayments, billStatusShouldRollbackWhenNoPayments } from "@/lib/billStatusRollback";
 import { enrichAccountCodeWithOptions } from "@/lib/billFormSelectOptions";
@@ -76,11 +69,9 @@ function validateDetailRequiredForSubmit(d: PaymentRequestDetailedInfoData): Det
   if (!d.contact.trim()) errors.contact = "Supplier is required.";
   if (!d.invoiceDate.trim()) errors.invoiceDate = "Invoice date is required.";
   if (!d.dueDate.trim()) errors.dueDate = "Due date is required.";
-  const amt = parseAmount(d.amount);
-  if (amt === null || amt <= 0) {
+  const amt = Number.parseFloat((d.amount ?? "").replace(/,/g, ""));
+  if (!(d.amount ?? "").trim() || !Number.isFinite(amt) || amt <= 0) {
     errors.amount = "Enter a valid amount greater than zero.";
-  } else if (!isWithinAmountLimits(d.amount ?? "")) {
-    errors.amount = `You can only enter up to ${MAX_AMOUNT_INT_DIGITS} digits before the decimal point.`;
   }
   return Object.keys(errors).length ? errors : null;
 }
@@ -571,11 +562,15 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
   const formData = isEditing && draft ? draft : viewData;
 
   const invoiceTotalMajor = useMemo(() => {
-    return parseAmount(formData?.amount) ?? 0;
+    const raw = formData?.amount ?? "0";
+    return Number.parseFloat(raw.replace(/,/g, "")) || 0;
   }, [formData?.amount]);
 
   const unpaidAmountDisplay = useMemo(() => {
-    return formatAmount(bill?.amount_due) || undefined;
+    const raw = bill?.amount_due ?? "";
+    const n = Number.parseFloat(raw.replace(/,/g, ""));
+    if (!Number.isFinite(n)) return undefined;
+    return n.toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }, [bill?.amount_due]);
 
   const handleEdit = useCallback(() => {
@@ -798,7 +793,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         (sum, p) => sum + parseFloat(p.amount || "0"),
         0,
       );
-      const newAmount = parseAmount(draft.amount) ?? NaN;
+      const newAmount = Number.parseFloat(draft.amount.replace(/,/g, ""));
       if (Number.isFinite(newAmount) && newAmount < totalPaid - 1e-9) {
         setOverpaymentWarningOpen(true);
         return;
@@ -879,7 +874,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     );
     if (completedPayments.length > 0) {
       const totalPaid = completedPayments.reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0);
-      const newAmount = parseAmount(info.amount) ?? NaN;
+      const newAmount = Number.parseFloat(info.amount.replace(/,/g, ""));
       if (Number.isFinite(newAmount) && newAmount < totalPaid - 1e-9) {
         setOverpaymentWarningOpen(true);
         return;
@@ -1038,7 +1033,7 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         billId: p.bill_id,
         billStatus: p.bill_status,
         date: dateLabel,
-        amountLabel: `(${formatMoney(p.amount || "0", currencyLabel)})`,
+        amountLabel: `(${currencyLabel} ${parseFloat(p.amount || "0").toLocaleString("en-HK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
         statusLabel,
         invoiceNo: ref,
         invoiceHref: forThisBill ? "#" : `/payment-request/${p.bill_id}`,
