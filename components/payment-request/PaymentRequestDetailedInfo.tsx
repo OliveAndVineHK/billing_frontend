@@ -10,6 +10,7 @@ import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import { mergeSelectOption } from "@/lib/billFormSelectOptions";
 import type { EntityBillContact } from "@/lib/api";
+import { acceptAmountInput, formatAmount, toAmountEditString } from "@/lib/amountFormat";
 
 /** Bill / request fields shown in the “Detailed Information” card. */
 export type PaymentRequestDetailedInfoData = {
@@ -110,25 +111,6 @@ function FieldLabel({
     );
   }
   return <div className={paymentRequestDetailFieldLabelClass}>{children}</div>;
-}
-
-function formatCurrency(value: string): string {
-  const cleaned = value.trim().replace(/,/g, "");
-  const num = parseFloat(cleaned);
-  
-  if (!cleaned || !Number.isFinite(num)) {
-    return "";
-  }
-
-  return num.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-function formatComma(value: string): string {
-  // Same as formatCurrency for this use case
-  return formatCurrency(value);
 }
 
 export function formatPaymentRequestDetailLongDate(iso: string): string {
@@ -479,36 +461,14 @@ export function PaymentRequestDetailedInfo({
                     placeholder="0.00"
                     value={amount ?? ""}
                     onChange={(e) => {
-                      let value = e.target.value;
-                      
-                      // Remove commas for validation
-                      const cleanValue = value.replace(/,/g, "");
-                      
-                      // Allow only digits and one decimal point
-                      if (!/^\d*\.?\d*$/.test(cleanValue)) {
-                        return; // Reject invalid characters
-                      }
-                      
-                      // If there's a decimal point, check decimal places
-                      if (cleanValue.includes(".")) {
-                        const parts = cleanValue.split(".");
-                        // Only keep up to 2 decimal places
-                        if (parts[1] && parts[1].length > 2) {
-                          value = parts[0] + "." + parts[1].substring(0, 2);
-                        } else {
-                          value = cleanValue;
-                        }
-                      } else {
-                        value = cleanValue;
-                      }
-                      
+                      const value = acceptAmountInput(e.target.value);
+                      if (value === null) return;
                       patch({ amount: value });
                     }}
+                    onFocus={() => patch({ amount: toAmountEditString(amount) })}
                     onBlur={(e) => {
-                      const formatted = formatCurrency(e.target.value);
-                      patch({ amount: formatted });
+                      patch({ amount: formatAmount(e.target.value) });
                     }}
-
                     aria-invalid={!!amountError}
                     aria-describedby={amountError ? idAmountError : undefined}
                     className={

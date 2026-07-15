@@ -23,6 +23,15 @@ import {
 } from "@/lib/api";
 import type { EntityBillContact } from "@/lib/api";
 import { DateTextField } from "@/components/DateTextField";
+import {
+  MAX_AMOUNT_INT_DIGITS,
+  acceptAmountInput,
+  amountIntegerDigits,
+  cleanAmountString,
+  formatAmount,
+  toAmountEditString,
+  toAmountString,
+} from "@/lib/amountFormat";
 
 export type PaymentRequestModalProps = {
   open: boolean;
@@ -72,22 +81,6 @@ type ValidatedField =
   | "attachments";
 
 /**
- * Max digits allowed before the decimal point on the amount field.
- * Decimals are capped separately at 2.
- */
-const MAX_AMOUNT_INT_DIGITS = 12;
-
-/** Strip grouping commas so only digits and at most one dot remain. */
-function cleanAmountString(raw: string): string {
-  return raw.trim().replace(/,/g, "");
-}
-
-/** Number of digits before the decimal point in a comma-free amount string. */
-function amountIntegerDigits(cleaned: string): number {
-  return (cleaned.split(".")[0] ?? "").length;
-}
-
-/**
  * Live validation error for the amount field, or null when it's acceptable.
  * Tied to the current value so the message clears itself as soon as the amount
  * is valid again (12 or fewer digits before the decimal point).
@@ -109,38 +102,6 @@ function isPositiveAmount(raw: string): boolean {
   const cleaned = cleanAmountString(raw);
   if (!cleaned || cleaned === ".") return false;
   return /[1-9]/.test(cleaned);
-}
-
-/**
- * Normalize a typed amount to an exact decimal string with 2 decimal places,
- * e.g. "12,312,312.5" -> "12312312.50". Pure string work — never parseFloat —
- * so arbitrarily large values keep every digit. Returns undefined when blank.
- */
-function toAmountString(raw: string): string | undefined {
-  const cleaned = cleanAmountString(raw);
-  if (!cleaned || cleaned === ".") return undefined;
-  const [intRaw = "", decRaw = ""] = cleaned.split(".");
-  let intPart = intRaw.replace(/^0+(?=\d)/, "");
-  if (intPart === "") intPart = "0";
-  const dec = (decRaw + "00").slice(0, 2);
-  return `${intPart}.${dec}`;
-}
-
-/**
- * Format for display as xxx,xxx,xxx.xx by string grouping only (no parseFloat),
- * so the number shown is exactly the number typed regardless of size.
- */
-function formatCurrency(value: string): string {
-  const normalized = toAmountString(value);
-  if (normalized === undefined) return "";
-  const [intPart, dec] = normalized.split(".");
-  const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${grouped}.${dec}`;
-}
-
-function formatComma(value: string): string {
-  // Same as formatCurrency for this use case
-  return formatCurrency(value);
 }
 
 
@@ -770,29 +731,8 @@ export function PaymentRequestModal({
                   inputMode="decimal"
                   value={amount ?? ""}
                   onChange={(e) => {
-                    let value = e.target.value;
-                    
-                    // Remove commas for validation
-                    const cleanValue = value.replace(/,/g, "");
-                    
-                    // Allow only digits and one decimal point
-                    if (!/^\d*\.?\d*$/.test(cleanValue)) {
-                      return; // Reject invalid characters
-                    }
-
-                    // If there's a decimal point, check decimal places
-                    if (cleanValue.includes(".")) {
-                      const parts = cleanValue.split(".");
-                      // Only keep up to 2 decimal places
-                      if (parts[1] && parts[1].length > 2) {
-                        value = parts[0] + "." + parts[1].substring(0, 2);
-                      } else {
-                        value = cleanValue;
-                      }
-                    } else {
-                      value = cleanValue;
-                    }
-                    
+                    const value = acceptAmountInput(e.target.value);
+                    if (value === null) return;
                     setAmount(value);
 
                     // Show the 12-digit limit error only while it applies; clear
@@ -804,11 +744,9 @@ export function PaymentRequestModal({
                       clearFieldError("amount");
                     }
                   }}
-
-
-
+                  onFocus={() => setAmount((prev) => toAmountEditString(prev))}
                   onBlur={(e) => {
-                    const formatted = formatCurrency(e.target.value);
+                    const formatted = formatAmount(e.target.value);
                     setAmount(formatted);
 
                     // Keep the error in sync with the formatted value.
@@ -819,8 +757,6 @@ export function PaymentRequestModal({
                       clearFieldError("amount");
                     }
                   }}
-
-
                   placeholder="0.00"
                   aria-invalid={!!fieldErrors.amount}
                   className={
