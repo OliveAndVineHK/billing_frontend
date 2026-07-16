@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { pushAppScrollLock } from "@/lib/appScrollRoot";
+import { useEntityCurrency } from "@/lib/entityCurrency";
 import { PdfJsCanvasPreview } from "@/components/PdfJsCanvasPreview";
 import { formatFileSize, FullFilePreviewLink, isImageFile, isPdfFile, isHtmlFile, isAllowedFileType, ATTACHMENT_EXTENSIONS, ATTACHMENT_MIME_TYPES } from "@/lib/fileAttachmentPreview";
 import { saveAttachmentBlobs } from "@/lib/paymentRequestAttachmentStore";
@@ -175,6 +176,7 @@ export function PaymentRequestModal({
   onConfirm,
 }: PaymentRequestModalProps) {
   const router = useRouter();
+  const entityCurrency = useEntityCurrency();
   const titleId = useId();
   const previewSubtitleId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -403,7 +405,7 @@ export function PaymentRequestModal({
         xero_contact_id: selectedContact?.xero_contact_id || undefined,
         description: description || undefined,
         amount: amountStr,
-        currency_code: "HKD",
+        currency_code: entityCurrency,
         invoice_date: invoiceDate || undefined,
         due_date: dueDate || undefined,
         reference: billNo || undefined,
@@ -489,7 +491,7 @@ export function PaymentRequestModal({
         xero_contact_id: selectedContact?.xero_contact_id || undefined,
         description,
         amount: amountStr,
-        currency_code: "HKD",
+        currency_code: entityCurrency,
         invoice_date: invoiceDate || null,
         due_date: dueDate || null,
         reference: billNo,
@@ -723,7 +725,7 @@ export function PaymentRequestModal({
                     (fieldErrors.amount ? "border-red-500" : "border-gray-300")
                   }
                 >
-                  HK$
+                  {entityCurrency}
                 </div>
                 <input
                   id="pr-amount"

@@ -5,7 +5,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { BillContactPicker } from "@/components/BillContactPicker";
 import { DateTextField } from "@/components/DateTextField";
 import { ThemedSelect } from "@/components/ThemedSelect";
-import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import { useEntityCurrency } from "@/lib/entityCurrency";
 import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
 import { mergeSelectOption } from "@/lib/billFormSelectOptions";
@@ -308,8 +308,9 @@ export function PaymentRequestDetailedInfo({
   const idAmountError = `detail-amount-err-${uid}`;
   const idContactError = `detail-contact-err-${uid}`;
 
+  const entityCurrency = useEntityCurrency();
   const accountOptions = mergeSelectOption(accountOptionsProp ?? [], accountCode);
-  const currencyDisplayLabel = currencyLabelForCode(currencyCode);
+  const currencyDisplayLabel = entityCurrency;
 
   return (
     <section className={`rounded-xl border border-gray-200/90 bg-white p-4 sm:p-5 md:p-6 ${className}`}>

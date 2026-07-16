@@ -22,7 +22,7 @@ import { useUserRole } from "@/lib/useUserRole";
 import { PaymentDeleteConfirmModal } from "./PaymentDeleteConfirmModal";
 import { BankSlipDetailsModal, type BankSlipDetails } from "./BankSlipDetailsModal";
 import { buildBankSlipDetailsFromPaymentList } from "@/lib/bankSlipEnrichment";
-import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import { useEntityCurrency } from "@/lib/entityCurrency";
 import { shouldShowPaymentInHistory } from "@/lib/paymentHistoryDisplay";
 import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
 import {
@@ -102,14 +102,17 @@ export function RecordPaymentModal({
   billStatus,
   invoiceAmount = 0,
   description,
-  currencyCode = "HKD",
   contactTitle,
   onPaymentSaved,
   readOnly = false,
   presentation = "modal",
 }: RecordPaymentModalProps) {
-  const iso = (currencyCode || "HKD").trim() || "HKD";
-  const currencyLabel = currencyLabelForCode(iso);
+  // Currency ALWAYS comes from the entity's selected currency
+  // (entities.currency_id -> iso_code) — display and payloads alike; no
+  // per-bill or hardcoded fallback. Blank until the lookup resolves.
+  const entityCurrency = useEntityCurrency();
+  const currencyLabel = entityCurrency;
+  const iso = entityCurrency;
   const { isElevated, isViewOnly } = useUserRole();
   // Delete payments requires elevated role AND the user must not be in
   // read-only mode (system superuser without entity membership).

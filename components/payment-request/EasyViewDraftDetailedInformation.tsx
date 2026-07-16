@@ -6,7 +6,7 @@ import { BillContactPicker } from "@/components/BillContactPicker";
 import { DateTextField } from "@/components/DateTextField";
 import { ThemedSelect, type ThemedSelectOption } from "@/components/ThemedSelect";
 import { mergeSelectOption } from "@/lib/billFormSelectOptions";
-import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import { useEntityCurrency } from "@/lib/entityCurrency";
 import { acceptAmountInput, formatAmount, toAmountEditString } from "@/lib/amountFormat";
 import {
   formatPaymentRequestDetailLongDate,
@@ -179,7 +179,8 @@ export function EasyViewDraftDetailedInformation({
   readOnlyFooter?: ReactNode;
 }) {
   const { billNo, amount, currencyCode, description, contact, accountCode, invoiceDate, dueDate } = data;
-  const currencyDisplayLabel = currencyLabelForCode(currencyCode);
+  const entityCurrency = useEntityCurrency();
+  const currencyDisplayLabel = entityCurrency;
 
   return (
     <div className={easyViewDetailedInformationShellClass}>
@@ -303,6 +304,7 @@ export function EasyViewDraftDetailedInformationEdit({
   onSave: () => void;
 }) {
   const uid = useId();
+  const entityCurrency = useEntityCurrency();
   const idBillNo = `ev-draft-bn-${uid}`;
   const idInv = `ev-draft-inv-${uid}`;
   const idDue = `ev-draft-due-${uid}`;
@@ -437,7 +439,7 @@ export function EasyViewDraftDetailedInformationEdit({
                 (amountError ? "border-red-500" : "border-gray-300")
               }
             >
-              {currencyLabelForCode(currencyCode)}
+              {entityCurrency}
             </div>
             <input
               id={idAmt}

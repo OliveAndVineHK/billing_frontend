@@ -83,8 +83,8 @@ export function isWithinAmountLimits(raw: string): boolean {
 }
 
 /**
- * Format an amount with its currency symbol, e.g. "HK$ 12,000.00".
- * Pass the symbol from currencyLabelForCode().
+ * Format an amount with its currency label, e.g. "HKD 12,000.00".
+ * Pass the ISO code label from currencyLabelForCode().
  */
 export function formatMoney(
   value: string | number | null | undefined,

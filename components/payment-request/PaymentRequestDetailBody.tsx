@@ -24,7 +24,7 @@ import {
   type PaymentItem,
 } from "@/lib/api";
 import type { ThemedSelectOption } from "@/components/ThemedSelect";
-import { currencyLabelForCode } from "@/lib/currencyDisplay";
+import { useEntityCurrency } from "@/lib/entityCurrency";
 import {
   MAX_AMOUNT_INT_DIGITS,
   formatAmount,
@@ -195,6 +195,7 @@ function computePaymentHistoryPanelStyle(anchorRoot: HTMLDivElement | null): CSS
 }
 
 export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetailBodyProps) {
+  const entityCurrency = useEntityCurrency();
   const params = useParams();
   const requestId = typeof params?.id === "string" ? params.id : "";
   const { isElevated, isViewOnly } = useUserRole();
@@ -1011,7 +1012,8 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
     }
   }, [requestId, bill, isReturning, bumpAudit, onBillUpdated]);
 
-  const currencyLabel = formData ? currencyLabelForCode(formData.currencyCode) : "HK$";
+  // Always the entity's selected currency (entities.currency_id -> iso_code).
+  const currencyLabel = entityCurrency;
 
   const paymentHistoryRows = useMemo((): PaymentHistoryRow[] => {
     if (!requestId) return [];
@@ -1478,7 +1480,6 @@ export function PaymentRequestDetailBody({ onBillUpdated }: PaymentRequestDetail
         readOnly={recordPaymentReadOnly}
         invoiceAmount={invoiceTotalMajor}
         description={bill?.description}
-        currencyCode={formData?.currencyCode ?? "HKD"}
         onPaymentSaved={async () => {
           await loadPayments();
           await reloadBill();
