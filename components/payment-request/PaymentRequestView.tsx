@@ -34,7 +34,7 @@ import {
 import type { InvoiceAttachmentPreviewItem } from "./InvoiceAttachmentPreview";
 import { currencyLabelForCode } from "@/lib/currencyDisplay";
 import { fetchBillBankSlipEnrichment, type BankSlipEnrichment } from "@/lib/bankSlipEnrichment";
-import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
+import { BILLING_TIME_ZONE, formatIsoDateForDisplay, isoDateInTimeZone } from "@/lib/dateDisplayFormat";
 import { getAuth } from "@/lib/auth";
 import { compareRows, type SortKey } from "@/lib/paymentRequestRowSort";
 import { rowMatchesSearch, type SearchMode } from "@/lib/paymentRequestSearch";
@@ -47,19 +47,29 @@ const MAX_FETCHED_ROWS = 2000;
 /** Bank-slip enrichment requests issued in parallel. */
 const ENRICH_BATCH = 5;
 
+/** A date-only API value (`invoice_date`) — no instant, so no timezone to apply. */
+const PLAIN_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * The Hong Kong calendar date an API value falls on, as `yyyy-mm-dd`.
+ *
+ * Timestamps (`created_at`, `paid_at`) are UTC, so the date has to be resolved in
+ * Hong Kong rather than by slicing the string: 2026-08-31T18:00:00Z is 1 Sep locally.
+ * Plain dates pass through untouched.
+ */
+function toBillingIsoDate(dateStr: string): string {
+  const s = dateStr.trim();
+  if (!s) return "";
+  if (PLAIN_DATE_RE.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return "";
+  return isoDateInTimeZone(d, BILLING_TIME_ZONE);
+}
+
 function formatDate(dateStr: string): string {
   if (!dateStr) return "";
-  const head = dateStr.trim().slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(head)) {
-    const f = formatIsoDateForDisplay(head);
-    if (f) return f;
-  }
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return dateStr;
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return formatIsoDateForDisplay(`${y}-${m}-${day}`) || dateStr;
+  const iso = toBillingIsoDate(dateStr);
+  return iso ? formatIsoDateForDisplay(iso) || dateStr : dateStr;
 }
 
 function formatAmount(value: string | number): string {
@@ -87,8 +97,10 @@ function mapBillToRow(bill: BillListItem): PaymentRequestRow {
     contactCaption: bill.description,
     currencyCode: iso,
     invoiceDate: bill.invoice_date ? formatDate(bill.invoice_date) : "",
+    invoiceDateIso: bill.invoice_date ? toBillingIsoDate(bill.invoice_date) : "",
     status,
     submittedDate: formatDate(bill.created_at),
+    submittedDateIso: toBillingIsoDate(bill.created_at),
     unpaidAmount:
       parseFloat(bill.amount_due) !== 0
         ? `${symbol} ${formatAmount(bill.amount_due)}`
@@ -108,11 +120,6 @@ const STATUS_LABEL_TO_API: Record<string, string> = {
   "Partially Paid": "partially_paid",
   "Voided": "voided",
   "Returned": "returned",
-};
-
-const DATE_TYPE_TO_FIELD: Record<string, string> = {
-  "Invoice Date": "invoice_date",
-  "Submitted Date": "created_at",
 };
 
 type EnrichmentEntry = { epoch: number; value: BankSlipEnrichment };
@@ -230,8 +237,22 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
     else if (xeroStatus === "not_published") result = result.filter((r) => r.xeroActive !== true);
     if (statusFilters.length > 0) result = result.filter((r) => statusFilters.some((s) => s === r.status));
     if (debouncedSearch) result = result.filter((r) => rowMatchesSearch(r, debouncedSearch, searchMode));
+    // Dates are matched here rather than server-side so the comparison uses the same
+    // Hong Kong calendar date the column shows. The API compares `created_at` (a UTC
+    // timestamp) against a date coerced to midnight, which drops the whole end day —
+    // a same-day range returned nothing at all.
+    if (startDate || endDate) {
+      const submitted = dateType === "Submitted Date";
+      result = result.filter((r) => {
+        const iso = submitted ? r.submittedDateIso : r.invoiceDateIso;
+        if (!iso) return false;
+        if (startDate && iso < startDate) return false;
+        if (endDate && iso > endDate) return false;
+        return true;
+      });
+    }
     return result;
-  }, [enrichedBills, xeroStatus, statusFilters, debouncedSearch, searchMode]);
+  }, [enrichedBills, xeroStatus, statusFilters, debouncedSearch, searchMode, dateType, startDate, endDate]);
 
   const totalItems = filteredBills.length;
   const pageCount = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -360,16 +381,13 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
       // we omit the param and let the client-side filter narrow the rows.
       const apiStatus =
         statusFilters.length === 1 ? STATUS_LABEL_TO_API[statusFilters[0]!] : undefined;
-      const dateField = DATE_TYPE_TO_FIELD[dateType];
-      // Search is applied client-side (it also matches invoice totals, which the
-      // server's `search` does not), so it is deliberately not sent here.
+      // Search and the date range are applied client-side — search because it also
+      // matches invoice totals, which the server's `search` does not, and dates so the
+      // comparison agrees with the Hong Kong date shown in the column.
       const baseParams = {
         ...(apiStatus ? { status: apiStatus } : {}),
         ...(minAmount !== "" ? { amount_min: parseFloat(minAmount) } : {}),
         ...(maxAmount !== "" ? { amount_max: parseFloat(maxAmount) } : {}),
-        ...(dateField ? { date_field: dateField } : {}),
-        ...(startDate ? { date_from: startDate } : {}),
-        ...(endDate ? { date_to: endDate } : {}),
       };
 
       const all: BillListItem[] = [];
@@ -420,7 +438,9 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
     } finally {
       if (seq === loadSeqRef.current) setLoading(false);
     }
-  }, [statusFilters, minAmount, maxAmount, dateType, startDate, endDate]);
+    // No date deps: the range is applied client-side, so changing it filters the rows
+    // already in memory instead of refetching the whole list.
+  }, [statusFilters, minAmount, maxAmount]);
 
   /** Rows on screen in either view — the only ones worth enriching. */
   const enrichTargets = useMemo(() => {
@@ -702,9 +722,8 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
     }
   }, [activeSelectedIds, loadBills]);
 
-  /** Any narrowing of the default list: status pills, search, or the filter panel. */
+  /** A deliberate narrowing of the list: search or the filter panel. */
   const hasActiveFilters =
-    statusFilters.length > 0 ||
     debouncedSearch !== "" ||
     minAmount !== "" ||
     maxAmount !== "" ||
@@ -712,11 +731,18 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
     endDate !== "" ||
     xeroStatus !== "";
 
+  /**
+   * Status pills that are worth totalling. All (no pill) is the default view and Draft
+   * holds bills that were never submitted, so neither opens with a total; every other
+   * status does. A mixed selection counts as soon as one non-Draft status is in it.
+   */
+  const statusWorthTotalling = statusFilters.some((s) => s !== "Draft");
+
   // Hidden on a plain, unfiltered list — it only earns its space once the user has
   // narrowed the list or picked rows. Built once and handed to both branches so the
   // two copies can never disagree.
   const totalsBanner =
-    activeSelectedRows.length > 0 || hasActiveFilters ? (
+    activeSelectedRows.length > 0 || hasActiveFilters || statusWorthTotalling ? (
       <PaymentRequestTotalsBanner
         allRows={filteredBills}
         selectedRows={activeSelectedRows}
