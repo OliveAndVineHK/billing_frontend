@@ -9,7 +9,11 @@ import {
   PaymentRequestTable,
   type PaymentRequestRow,
 } from "./PaymentRequestTable";
-import { PaymentRequestToolbar, type PaymentRequestStatusFilter } from "./PaymentRequestToolbar";
+import {
+  DEFAULT_FILTER_DATE_TYPE,
+  PaymentRequestToolbar,
+  type PaymentRequestStatusFilter,
+} from "./PaymentRequestToolbar";
 import { PaymentRequestPagination, PAGE_SIZE_OPTIONS } from "./PaymentRequestPagination";
 import { PaymentRequestTotalsBanner } from "./PaymentRequestTotalsBanner";
 import { BulkDeleteConfirmModal } from "./BulkDeleteConfirmModal";
@@ -33,7 +37,7 @@ import { fetchBillBankSlipEnrichment, type BankSlipEnrichment } from "@/lib/bank
 import { formatIsoDateForDisplay } from "@/lib/dateDisplayFormat";
 import { getAuth } from "@/lib/auth";
 import { compareRows, type SortKey } from "@/lib/paymentRequestRowSort";
-import { rowMatchesSearch } from "@/lib/paymentRequestSearch";
+import { rowMatchesSearch, type SearchMode } from "@/lib/paymentRequestSearch";
 import { useUserRole } from "@/lib/useUserRole";
 
 /** Rows requested per `fetchBills` call while walking the whole list. */
@@ -155,9 +159,11 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   const [statusFilters, setStatusFilters] = useState<PaymentRequestStatusFilter[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  /** Typing searches by "contains"; submitting the box narrows to an exact match. */
+  const [searchMode, setSearchMode] = useState<SearchMode>("contains");
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
-  const [dateType, setDateType] = useState("");
+  const [dateType, setDateType] = useState<string>(DEFAULT_FILTER_DATE_TYPE);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [xeroStatus, setXeroStatus] = useState("");
@@ -223,9 +229,9 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
     if (xeroStatus === "published") result = result.filter((r) => r.xeroActive === true);
     else if (xeroStatus === "not_published") result = result.filter((r) => r.xeroActive !== true);
     if (statusFilters.length > 0) result = result.filter((r) => statusFilters.some((s) => s === r.status));
-    if (debouncedSearch) result = result.filter((r) => rowMatchesSearch(r, debouncedSearch));
+    if (debouncedSearch) result = result.filter((r) => rowMatchesSearch(r, debouncedSearch, searchMode));
     return result;
-  }, [enrichedBills, xeroStatus, statusFilters, debouncedSearch]);
+  }, [enrichedBills, xeroStatus, statusFilters, debouncedSearch, searchMode]);
 
   const totalItems = filteredBills.length;
   const pageCount = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -313,6 +319,25 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
     }
     const id = window.setTimeout(() => setDebouncedSearch(trimmed), 300);
     return () => window.clearTimeout(id);
+  }, [searchQuery]);
+
+  /** Editing the query drops back to "contains" — including the native × clear, which fires onChange(""). */
+  const onSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    setSearchMode("contains");
+  }, []);
+
+  /**
+   * Submitting the search box (Enter, or the Search key on a phone keyboard) narrows
+   * to an exact match and commits the query straight away rather than waiting out the
+   * 300 ms debounce. A timer already in flight writes the same trimmed value after,
+   * so the two can't disagree.
+   */
+  const onSearchSubmit = useCallback(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+    setDebouncedSearch(trimmed);
+    setSearchMode("exact");
   }, [searchQuery]);
 
   /**
@@ -616,7 +641,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
   /** Any change to what the list contains sends the user back to page 1. */
   useEffect(() => {
     setPage(1);
-  }, [statusFilterKey, debouncedSearch, minAmount, maxAmount, dateType, startDate, endDate, xeroStatus]);
+  }, [statusFilterKey, debouncedSearch, searchMode, minAmount, maxAmount, dateType, startDate, endDate, xeroStatus]);
 
   useEffect(() => {
     if (page !== safePage) setPage(safePage);
@@ -677,15 +702,28 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
     }
   }, [activeSelectedIds, loadBills]);
 
-  // Built once and handed to both branches so the two copies can never disagree.
-  const totalsBanner = (
-    <PaymentRequestTotalsBanner
-      allRows={filteredBills}
-      selectedRows={activeSelectedRows}
-      startDate={startDate}
-      endDate={endDate}
-    />
-  );
+  /** Any narrowing of the default list: status pills, search, or the filter panel. */
+  const hasActiveFilters =
+    statusFilters.length > 0 ||
+    debouncedSearch !== "" ||
+    minAmount !== "" ||
+    maxAmount !== "" ||
+    startDate !== "" ||
+    endDate !== "" ||
+    xeroStatus !== "";
+
+  // Hidden on a plain, unfiltered list — it only earns its space once the user has
+  // narrowed the list or picked rows. Built once and handed to both branches so the
+  // two copies can never disagree.
+  const totalsBanner =
+    activeSelectedRows.length > 0 || hasActiveFilters ? (
+      <PaymentRequestTotalsBanner
+        allRows={filteredBills}
+        selectedRows={activeSelectedRows}
+        startDate={startDate}
+        endDate={endDate}
+      />
+    ) : null;
 
   const pagination = (
     <PaymentRequestPagination
@@ -705,7 +743,8 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
         onActiveStatusesChange={setStatusFilters}
         onBillCreated={loadBills}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={onSearchChange}
+        onSearchSubmit={onSearchSubmit}
         bulkActionsEnabled={bulkActionsEnabled}
         bulkSelectedCount={activeSelectedIds.length}
         onBulkDeleteSelected={openBulkDeleteModal}
@@ -719,7 +758,7 @@ export function PaymentRequestView({ easyView }: PaymentRequestViewProps) {
         onApplyFilters={(f) => {
           setMinAmount(f.minAmount ?? "");
           setMaxAmount(f.maxAmount ?? "");
-          setDateType(f.dateType ?? "");
+          setDateType(f.dateType || DEFAULT_FILTER_DATE_TYPE);
           setStartDate(f.startDate ?? "");
           setEndDate(f.endDate ?? "");
           setXeroStatus(f.xeroStatus ?? "");
